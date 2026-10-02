@@ -77,12 +77,27 @@
   .mealchip small{font-size:10px;color:var(--dim);white-space:nowrap}
   .mealchip.on{background:var(--acc);border-color:transparent;color:#06210f}
   .mealchip.on small{color:#06210f;opacity:.75}
-  /* 明细分组 */
-  .mgroup{display:flex;justify-content:space-between;align-items:baseline;
-    font-size:12px;color:var(--dim);font-weight:600;letter-spacing:.03em;
-    margin:12px 0 2px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+  /* 明细分组（标题兼折叠按钮） */
+  .mgroup{display:flex;justify-content:space-between;align-items:center;width:100%;
+    background:transparent;border:none;border-bottom:1px solid var(--line);
+    color:var(--dim);font:inherit;font-size:12px;font-weight:600;letter-spacing:.03em;
+    margin:12px 0 0;padding:7px 0;cursor:pointer;text-align:left}
   .mgroup:first-child{margin-top:0}
-  .mgroup i{font-style:normal;font-weight:400}
+  .mgroup .gleft,.mgroup .gright{display:flex;align-items:center;gap:6px}
+  .mgroup .chev{display:inline-block;font-size:10px;transition:transform .15s}
+  .mgroup.collapsed .chev{transform:rotate(-90deg)}
+  .mgroup .gright i{font-style:normal;font-weight:400}
+  /* 每条记录的餐次下拉：改餐次后自动移动到对应分组 */
+  .mealpick{display:inline-flex;align-items:center;gap:3px;margin-top:6px;
+    font-size:11px;color:var(--dim)}
+  .mealpick select{appearance:none;-webkit-appearance:none;background-color:var(--card2);
+    border:1px solid var(--line);color:var(--fg);border-radius:8px;
+    padding:3px 20px 3px 8px;font:inherit;font-size:11px;
+    background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
+                     linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+    background-position:calc(100% - 12px) 52%,calc(100% - 8px) 52%;
+    background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+  .mealpick select:focus{outline:none;border-color:var(--acc)}
   .item{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
   .item:first-of-type{border-top:none}
   .item .nm{flex:1;min-width:0}
@@ -255,6 +270,8 @@ function guessMeal(){
 }
 
 let currentMeal = guessMeal();
+/* 明细里各餐分组的折叠状态（只记"是否收起"） */
+let collapsedGroups = {};
 let store = {};
 let settings = { kcal: 2000, p: 120, f: 60, c: 250 };
 
@@ -468,13 +485,23 @@ function render(){
     if (!list.length) continue;
     any = true;
     const gs = sum(list);
-    const head = document.createElement('div');
-    head.className = 'mgroup';
-    head.innerHTML = '<span></span><i></i>';
-    head.querySelector('span').textContent = g.title;
+    const collapsed = collapsedGroups[g.k] === true;
+
+    // 分组标题：整行可点，折叠/展开
+    const head = document.createElement('button');
+    head.className = 'mgroup' + (collapsed ? ' collapsed' : '');
+    head.innerHTML =
+      '<span class="gleft"><span class="chev">▾</span><span class="gname"></span></span>' +
+      '<span class="gright"><i></i></span>';
+    head.querySelector('.gname').textContent = g.title;
     head.querySelector('i').textContent =
       Math.round(gs.kcal) + ' kcal · 蛋' + N(gs.p) + ' 脂' + N(gs.f) + ' 碳' + N(gs.c);
+    head.addEventListener('click', () => {
+      collapsedGroups[g.k] = !collapsed;
+      render();
+    });
     box.appendChild(head);
+    if (collapsed) continue;
 
     list.forEach((it, i) => {
       const el = document.createElement('div');
@@ -483,6 +510,7 @@ function render(){
         '<div class="nm"><strong></strong>' +
         '<small class="sub"></small>' +
         '<div class="gwrap">重量 <input type="number" inputmode="decimal" value="' + (it.grams || '') + '"> g</div>' +
+        '<div class="mealpick">餐次 <select></select></div>' +
         '</div>' +
         '<div class="right"><b>' + Math.round(it.kcal) + '</b><small>kcal</small>' +
         '<small class="m"></small></div>' +
@@ -490,6 +518,19 @@ function render(){
       el.querySelector('strong').textContent = it.name;
       el.querySelector('.sub').textContent = it.grams ? ('约 ' + it.grams + ' g') : '';
       el.querySelector('.m').textContent = '蛋' + N(it.protein) + ' 脂' + N(it.fat) + ' 碳' + N(it.carbs);
+
+      // 餐次下拉：改完直接把这条移到对应分组
+      const sel = el.querySelector('select');
+      const opts = MEALS.map(m => ({ k: m.k, name: m.icon + ' ' + m.name }));
+      if (g.k === LEGACY) opts.unshift({ k: LEGACY, name: '📋 未分餐' });
+      for (const o of opts){
+        const op = document.createElement('option');
+        op.value = o.k; op.textContent = o.name;
+        if (o.k === g.k) op.selected = true;
+        sel.appendChild(op);
+      }
+      sel.addEventListener('change', () => moveItem(g.k, it, sel.value));
+
       el.querySelector('input').addEventListener('change', e => {
         const ng = Math.max(0, parseFloat(e.target.value) || 0);
         const og = +it.grams || 0;
@@ -514,6 +555,19 @@ function addItems(items){
   save(); render();
   toast('已记入' + mealName(currentMeal) + ' ' + items.length + ' 项，共 ' + Math.round(sum(items).kcal) + ' kcal');
   return items.length;
+}
+
+/* 把某条记录移动到另一餐（也用于把「未分餐」的旧记录归位）。
+   按对象引用查找而不是按下标，避免重渲染后下标失效移错条目。 */
+function moveItem(fromKey, item, toKey){
+  if (!toKey || toKey === fromKey) return;
+  const from = today()[fromKey] || [];
+  const idx = from.indexOf(item);
+  if (idx === -1) return;
+  from.splice(idx, 1);
+  mealList(toKey).push(item);            // mealList 会自动建桶
+  save(); render();
+  toast('已移动到' + (toKey === LEGACY ? '未分餐' : mealName(toKey)));
 }
 
 /* ---------------- 交互 ---------------- */
@@ -687,7 +741,7 @@ window.addEventListener('unhandledrejection', e => showFatal(e.reason));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-02.7';
+const APP_VERSION = '2026-10-02.8';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
