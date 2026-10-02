@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#151a24"/>
+      <stop offset="1" stop-color="#0f1115"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8a5c"/>
+      <stop offset="1" stop-color="#ff5c5c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#g)"/>
+  <g transform="translate(0,26)">
+    <path d="M256 66c-16 50-62 76-84 118-20 38-24 74-8 110 14 32 44 56 84 58 42 2 76-22 90-56 16-38 8-76-12-108-22-36-54-62-70-122z"
+          fill="url(#flame)"/>
+    <path d="M256 176c-8 26-32 42-40 66-8 22-2 44 14 58 14 12 34 16 50 8 18-8 28-28 26-48-2-22-16-38-30-56-8-10-16-20-20-28z"
+          fill="#0f1115" opacity="0.82"/>
+  </g>
+  <text x="256" y="446" font-family="PingFang SC,Microsoft YaHei,sans-serif"
+        font-size="118" font-weight="700" fill="#3ddc84" text-anchor="middle">卡</text>
+</svg>
