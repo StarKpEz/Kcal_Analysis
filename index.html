@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>热量记账 · 拍照算热量</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
 <style>
   :root{
     --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
@@ -468,6 +471,13 @@ $('btnSaveSet').addEventListener('click', () => {
 /* 启动 */
 $('todayLabel').textContent = '今日总计 · ' + todayKey();
 render();
+
+/* 离线缓存：仅 http(s) 下注册，file:// 打开时静默跳过 */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
