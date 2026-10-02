@@ -1,8 +1,11 @@
 /* 热量记账 · Service Worker
    策略：应用外壳预缓存 + 请求优先走网络、失败回退缓存。
    这样一旦打开过一次，断网也能用（记录、计算全在本地）。 */
-const CACHE = 'kcal-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+const CACHE = 'kcal-v2';
+const SHELL = [
+  './', './index.html', './manifest.webmanifest', './icon.svg',
+  './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(
