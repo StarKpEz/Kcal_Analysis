@@ -1,18 +1,26 @@
 /* 热量记账 · Service Worker
-   策略：应用外壳预缓存 + 请求优先走网络、失败回退缓存。
-   这样一旦打开过一次，断网也能用（记录、计算全在本地）。 */
-const CACHE = 'kcal-v3';
+   设计要点（针对 iOS 主屏幕 PWA 的坑）：
+   1) HTML / 导航请求一律「网络优先」—— 只要联网就拿到最新版，不需要用户做任何操作
+   2) 其他静态资源「缓存优先」，快且省流量
+   3) install 时 skipWaiting + activate 时 clients.claim，新版立刻接管，不等所有窗口关闭
+   4) 离线时回退缓存，所以断网依然可用 */
+const CACHE = 'kcal-v4';
+
+/* 注意：index.html 故意不预缓存，避免"预缓存的旧版"把网络优先短路掉 */
 const SHELL = [
-  './', './index.html', './manifest.webmanifest', './icon.svg',
-  './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png'
+  './manifest.webmanifest',
+  './icon.svg',
+  './icons/apple-touch-icon.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
       .then(c => c.addAll(SHELL))
+      .catch(() => {})
       .then(() => self.skipWaiting())
-      .catch(() => self.skipWaiting())
   );
 });
 
@@ -24,20 +32,51 @@ self.addEventListener('activate', e => {
   );
 });
 
+/* 供页面「立即更新」调用 */
+self.addEventListener('message', e => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+function isHTML(req){
+  return req.mode === 'navigate' ||
+         (req.headers.get('accept') || '').indexOf('text/html') !== -1;
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  if (new URL(req.url).origin !== self.location.origin) return;   // 外部请求不插手
 
+  let url;
+  try { url = new URL(req.url); } catch (err) { return; }
+  if (url.origin !== self.location.origin) return;   // 外部请求不插手
+
+  // ---- HTML：网络优先，失败回退缓存 ----
+  if (isHTML(req)) {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // ---- 其他资源：缓存优先 ----
   e.respondWith(
-    fetch(req)
-      .then(res => {
+    caches.match(req).then(hit => {
+      if (hit) return hit;
+      return fetch(req).then(res => {
         if (res && res.status === 200 && res.type === 'basic') {
           const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(req, copy));
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
         }
         return res;
-      })
-      .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
+      }).catch(() => hit);
+    })
   );
 });
