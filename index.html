@@ -8,8 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>热量记账 · 拍照算热量</title>
 <link rel="manifest" href="./manifest.webmanifest">
+<!-- PNG 图标：安卓 Chrome 不接受 SVG 作主屏幕图标，iOS 也不支持 SVG 的 apple-touch-icon -->
+<link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" sizes="180x180">
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="./icon.svg">
 <style>
   :root{
     --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
@@ -76,9 +78,14 @@
   label.file{display:inline-block;background:var(--card2);border:1px solid var(--line);
     border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
   label.file input{display:none}
-  dialog{border:1px solid var(--line);background:var(--card);color:var(--fg);
-    border-radius:var(--radius);padding:16px;width:min(92vw,420px)}
-  dialog::backdrop{background:rgba(0,0,0,.55)}
+  /* 设置面板：用自绘遮罩而不是原生 <dialog>，兼容性更稳 */
+  .modal{position:fixed;inset:0;z-index:90;display:none}
+  .modal.on{display:block}
+  .modal .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+  .modal .panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(92vw,420px);max-height:86vh;overflow:auto;
+    background:var(--card);color:var(--fg);border:1px solid var(--line);
+    border-radius:var(--radius);padding:18px}
   .fld{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
   .fld label{font-size:14px}
   .fld input{width:104px;background:var(--card2);border:1px solid var(--line);color:var(--fg);
@@ -120,7 +127,10 @@
   <div class="photo">
     <img id="prev" alt="">
     <div>
-      <label class="file">📷 选照片/拍照<input type="file" id="file" accept="image/*" capture="environment"></label>
+      <div class="row" style="margin-top:0">
+        <label class="file">🖼️ 从相册选<input type="file" id="filePick" accept="image/*"></label>
+        <label class="file">📷 拍照<input type="file" id="fileShot" accept="image/*" capture="environment"></label>
+      </div>
       <div class="hint" style="margin-top:6px">照片只留在手机上，用于一键复制进 DeepSeek</div>
     </div>
   </div>
@@ -149,19 +159,22 @@
 </div>
 
 <!-- ===== 设置 ===== -->
-<dialog id="dlg">
-  <h2 style="margin:0 0 14px;font-size:16px">每日目标</h2>
-  <div class="fld"><label>热量 kcal</label><input id="sKcal" type="number" inputmode="numeric"></div>
-  <div class="fld"><label>蛋白质 g</label><input id="sP" type="number" inputmode="numeric"></div>
-  <div class="fld"><label>脂肪 g</label><input id="sF" type="number" inputmode="numeric"></div>
-  <div class="fld"><label>碳水 g</label><input id="sC" type="number" inputmode="numeric"></div>
-  <div class="row" style="margin-top:16px">
-    <button class="wide primary" id="btnSaveSet">保存</button>
-    <button class="wide ghost" id="btnCloseSet">取消</button>
+<div class="modal" id="dlg">
+  <div class="backdrop" id="dlgBack"></div>
+  <div class="panel">
+    <h2 style="margin:0 0 14px;font-size:16px">每日目标</h2>
+    <div class="fld"><label>热量 kcal</label><input id="sKcal" type="number" inputmode="numeric"></div>
+    <div class="fld"><label>蛋白质 g</label><input id="sP" type="number" inputmode="numeric"></div>
+    <div class="fld"><label>脂肪 g</label><input id="sF" type="number" inputmode="numeric"></div>
+    <div class="fld"><label>碳水 g</label><input id="sC" type="number" inputmode="numeric"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="wide primary" id="btnSaveSet">保存</button>
+      <button class="wide ghost" id="btnCloseSet">取消</button>
+    </div>
+    <div class="hint">参考：轻体力活动成年人约 1800–2200 kcal；减脂期常见 1200–1600 kcal，
+      蛋白质建议 1.2–1.6 g/kg 体重。</div>
   </div>
-  <div class="hint">参考：轻体力活动成年人约 1800–2200 kcal；减脂期常见 1200–1600 kcal，
-    蛋白质建议 1.2–1.6 g/kg 体重。</div>
-</dialog>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -364,14 +377,18 @@ function toast(msg){
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2200);
 }
 
-$('file').addEventListener('change', e => {
+function handleFile(e){
   const f = e.target.files && e.target.files[0];
   if (!f) return;
   const img = $('prev');
-  img.src = URL.createObjectURL(f); img.style.display = 'block';
-  img.dataset.name = f.name || 'meal.jpg';
-  img.dataset.raw = '';
-});
+  try { if (img.dataset.url) URL.revokeObjectURL(img.dataset.url); } catch (err) {}
+  const url = URL.createObjectURL(f);
+  img.dataset.url = url;
+  img.src = url;
+  img.style.display = 'block';
+}
+$('filePick').addEventListener('change', handleFile);
+$('fileShot').addEventListener('change', handleFile);
 
 $('btnCopy').addEventListener('click', async () => {
   const prompt = buildPrompt();
@@ -424,7 +441,11 @@ $('btnManual').addEventListener('click', () => {
 
 $('btnAgain').addEventListener('click', () => {
   $('desc').value = '';
-  const img = $('prev'); img.style.display = 'none'; img.removeAttribute('src'); $('file').value = '';
+  const img = $('prev');
+  img.style.display = 'none';
+  img.removeAttribute('src');
+  if (img.dataset.url){ try { URL.revokeObjectURL(img.dataset.url); } catch (err) {} delete img.dataset.url; }
+  $('filePick').value = ''; $('fileShot').value = '';
   $('desc').focus();
 });
 
@@ -453,29 +474,63 @@ $('btnExport').addEventListener('click', () => {
   }
 });
 
-/* 设置弹窗 */
-$('btnSet').addEventListener('click', () => {
+/* 设置弹窗（自绘遮罩，不依赖 <dialog>） */
+const openSet = () => {
   $('sKcal').value = settings.kcal; $('sP').value = settings.p;
   $('sF').value = settings.f; $('sC').value = settings.c;
-  $('dlg').showModal();
-});
-$('btnCloseSet').addEventListener('click', () => $('dlg').close());
+  $('dlg').classList.add('on');
+};
+$('btnSet').addEventListener('click', openSet);
+$('dlgBack').addEventListener('click', () => $('dlg').classList.remove('on'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('dlg').classList.remove('on'); });
+$('btnCloseSet').addEventListener('click', () => $('dlg').classList.remove('on'));
 $('btnSaveSet').addEventListener('click', () => {
   settings.kcal = parseFloat($('sKcal').value) || 0;
   settings.p = parseFloat($('sP').value) || 0;
   settings.f = parseFloat($('sF').value) || 0;
   settings.c = parseFloat($('sC').value) || 0;
-  saveSet(); render(); $('dlg').close(); toast('目标已保存');
+  saveSet(); render(); $('dlg').classList.remove('on'); toast('目标已保存');
 });
 
-/* 启动 */
-$('todayLabel').textContent = '今日总计 · ' + todayKey();
-render();
+/* 启动：全部包在 try 里，任何一个环节出错都不至于让按钮集体失灵 */
+try {
+  $('todayLabel').textContent = '今日总计 · ' + todayKey();
+  render();
+} catch (err) {
+  showFatal(err);
+}
+
+/* 全局错误兜底：出问题要看得见，而不是静默失效 */
+function showFatal(err){
+  const msg = (err && (err.message || err.reason && err.reason.message)) || String(err);
+  try {
+    const t = $('toast');
+    t.textContent = '出错了：' + msg;
+    t.classList.add('on');
+  } catch (e) {}
+  console.error('[热量记账]', err);
+}
+window.addEventListener('error', e => showFatal(e.error || e.message));
+window.addEventListener('unhandledrejection', e => showFatal(e.reason));
 
 /* 离线缓存：仅 http(s) 下注册，file:// 打开时静默跳过 */
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // 有新版本部署时主动提示，避免一直看到旧缓存
+      const check = () => reg.update().catch(() => {});
+      check();
+      setInterval(check, 60 * 60 * 1000);
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            toast('有新版本，下拉刷新即可更新');
+          }
+        });
+      });
+    }).catch(() => {});
   });
 }
 </script>
