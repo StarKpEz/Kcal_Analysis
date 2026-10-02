@@ -68,24 +68,29 @@
   .item .right{text-align:right;white-space:nowrap}
   .item .right b{font-size:15px}
   .item .right small{display:block;color:var(--dim);font-size:11px;margin-top:2px}
-  .gwrap{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12px;color:var(--dim)}
-  .gwrap input{width:64px;background:var(--card2);border:1px solid var(--line);color:var(--fg);
+  .gwrap{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12px;color:var(--dim);
+    max-width:100%;flex-wrap:wrap}
+  .gwrap input{width:64px;min-width:0;background:var(--card2);border:1px solid var(--line);color:var(--fg);
     border-radius:8px;padding:4px 6px;font:inherit;font-size:12px;text-align:right}
   .del{background:transparent;border:none;color:var(--dim);font-size:16px;padding:2px 0 2px 6px;cursor:pointer}
   .empty{color:var(--dim);font-size:13px;text-align:center;padding:18px 0}
-  /* 照片相关样式已移除：应用不再接触照片 */
-  /* 设置面板：用自绘遮罩而不是原生 <dialog>，兼容性更稳 */
-  .modal{position:fixed;inset:0;z-index:90;display:none}
-  .modal.on{display:block}
-  .modal .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6)}
-  .modal .panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:min(92vw,420px);max-height:86vh;overflow:auto;
+  /* 设置面板：flex 居中 + iOS 安全区适配。
+     不用 transform 居中（在 dvh 视口下会偏移），也不用 inset 简写（兼容性） */
+  .modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:90;display:none;
+    background:rgba(0,0,0,.6);
+    padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));}
+  .modal.on{display:flex;align-items:center;justify-content:center}
+  .modal .panel{width:100%;max-width:430px;max-height:100%;overflow:auto;
+    -webkit-overflow-scrolling:touch;
     background:var(--card);color:var(--fg);border:1px solid var(--line);
-    border-radius:var(--radius);padding:18px}
+    border-radius:var(--radius);padding:16px}
+  .modal h2{position:sticky;top:-16px;margin:-16px -16px 12px;padding:16px;
+    background:var(--card);display:flex;justify-content:space-between;align-items:center;
+    font-size:16px;border-bottom:1px solid var(--line)}
   .fld{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
-  .fld label{font-size:14px}
-  .fld input{width:104px;background:var(--card2);border:1px solid var(--line);color:var(--fg);
-    border-radius:10px;padding:8px;font:inherit;text-align:right}
+  .fld label{font-size:14px;flex:0 0 auto}
+  .fld input{width:110px;min-width:0;flex:0 1 auto;background:var(--card2);border:1px solid var(--line);
+    color:var(--fg);border-radius:10px;padding:8px;font:inherit;text-align:right}
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
     background:#000c;color:#fff;padding:10px 16px;border-radius:99px;font-size:13px;
     opacity:0;pointer-events:none;transition:.25s;z-index:99}
@@ -149,11 +154,17 @@
 </div>
 
 <!-- ===== 设置 ===== -->
+<!-- 遮罩直接挂在 body 上（不在任何 transform 容器内），并用 flex 居中 + 安全区 padding，
+     避免 iOS 主屏幕版被底部悬浮工具栏压住或偏移 -->
 <div class="modal" id="dlg">
-  <div class="backdrop" id="dlgBack"></div>
   <div class="panel">
-    <h2 style="margin:0 0 14px;font-size:16px;display:flex;justify-content:space-between;align-items:baseline">
-      <span>每日目标</span><small id="verLabel" style="color:var(--dim);font-size:11px;font-weight:400"></small>
+    <h2>
+      <span>每日目标</span>
+      <span style="display:flex;align-items:center;gap:10px">
+        <small id="verLabel" style="color:var(--dim);font-size:11px;font-weight:400"></small>
+        <button class="iconbtn" id="btnCloseX" title="关闭"
+          style="width:30px;height:30px;font-size:15px;line-height:1">✕</button>
+      </span>
     </h2>
     <div class="fld"><label>热量 kcal</label><input id="sKcal" type="number" inputmode="numeric"></div>
     <div class="fld"><label>蛋白质 g</label><input id="sP" type="number" inputmode="numeric"></div>
@@ -439,21 +450,27 @@ $('btnExport').addEventListener('click', () => {
 });
 
 /* 设置弹窗（自绘遮罩，不依赖 <dialog>） */
+const closeSet = () => $('dlg').classList.remove('on');
 const openSet = () => {
   $('sKcal').value = settings.kcal; $('sP').value = settings.p;
   $('sF').value = settings.f; $('sC').value = settings.c;
   $('dlg').classList.add('on');
 };
+function onBackdrop(e){
+  // 只有点在面板外面才关闭（点面板内部不关）
+  if (e.target === $('dlg')) closeSet();
+}
 $('btnSet').addEventListener('click', openSet);
-$('dlgBack').addEventListener('click', () => $('dlg').classList.remove('on'));
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('dlg').classList.remove('on'); });
-$('btnCloseSet').addEventListener('click', () => $('dlg').classList.remove('on'));
+$('dlg').addEventListener('click', onBackdrop);
+$('btnCloseX').addEventListener('click', closeSet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSet(); });
+$('btnCloseSet').addEventListener('click', closeSet);
 $('btnSaveSet').addEventListener('click', () => {
   settings.kcal = parseFloat($('sKcal').value) || 0;
   settings.p = parseFloat($('sP').value) || 0;
   settings.f = parseFloat($('sF').value) || 0;
   settings.c = parseFloat($('sC').value) || 0;
-  saveSet(); render(); $('dlg').classList.remove('on'); toast('目标已保存');
+  saveSet(); render(); closeSet(); toast('目标已保存');
 });
 
 /* 启动：全部包在 try 里，任何一个环节出错都不至于让按钮集体失灵 */
@@ -480,7 +497,7 @@ window.addEventListener('unhandledrejection', e => showFatal(e.reason));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-02.4';
+const APP_VERSION = '2026-10-02.5';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
