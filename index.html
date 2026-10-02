@@ -73,11 +73,7 @@
     border-radius:8px;padding:4px 6px;font:inherit;font-size:12px;text-align:right}
   .del{background:transparent;border:none;color:var(--dim);font-size:16px;padding:2px 0 2px 6px;cursor:pointer}
   .empty{color:var(--dim);font-size:13px;text-align:center;padding:18px 0}
-  .photo{display:flex;gap:10px;align-items:center;margin-bottom:10px}
-  .photo img{width:64px;height:64px;object-fit:cover;border-radius:12px;border:1px solid var(--line);display:none}
-  label.file{display:inline-block;background:var(--card2);border:1px solid var(--line);
-    border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
-  label.file input{display:none}
+  /* 照片相关样式已移除：应用不再接触照片 */
   /* 设置面板：用自绘遮罩而不是原生 <dialog>，兼容性更稳 */
   .modal{position:fixed;inset:0;z-index:90;display:none}
   .modal.on{display:block}
@@ -124,22 +120,15 @@
 <div class="card">
   <h2>记录一餐</h2>
 
-  <div class="photo">
-    <img id="prev" alt="">
-    <div>
-      <div class="row" style="margin-top:0">
-        <label class="file">🖼️ 从相册选<input type="file" id="filePick" accept="image/*"></label>
-        <label class="file">📷 拍照<input type="file" id="fileShot" accept="image/*" capture="environment"></label>
-      </div>
-      <div class="hint" style="margin-top:6px">照片只留在手机上，用于一键复制进 DeepSeek</div>
-    </div>
+  <div class="hint" style="margin:0 0 10px">
+    📷 <b>照片直接在 DeepSeek 里上传</b> —— 本应用不需要也不接触照片，更不需要相机权限。
   </div>
 
   <textarea id="desc" placeholder="可选，写一句更准，例如：一碗米饭约200g、两块红烧肉、半盘炒青菜，油比较多"></textarea>
 
   <div class="row">
-    <button class="wide primary" id="btnCopy">① 复制给 DeepSeek</button>
-    <button class="wide" id="btnPaste">② 粘贴结果</button>
+    <button class="wide primary" id="btnCopy">① 复制提问文字</button>
+    <button class="wide" id="btnPaste">② 粘贴回答</button>
   </div>
   <div class="row">
     <button class="wide ghost" id="btnManual">＋ 手动添一条</button>
@@ -147,8 +136,9 @@
   </div>
 
   <div class="hint">
-    用法：点「复制给 DeepSeek」→ 打开 DeepSeek App/网页 → 有照片就先传照片 → 粘贴 → 发送 →
-    把回答整段复制回来 → 点「粘贴结果」，自动解析成热量和三大营养素。
+    <b>三步用法：</b><br>
+    ① 点「复制提问文字」→ 2. 去 DeepSeek <b>上传餐食照片</b> → 3. 粘贴并发送<br>
+    再把回答整段复制回来 → 点「粘贴回答」，自动解析成热量和三大营养素。
   </div>
 </div>
 
@@ -210,7 +200,7 @@ const sum = arr => arr.reduce((a, o) => ({
 function buildPrompt(){
   const d = $('desc').value.trim();
   const one = (d ? `【我的描述】${d}\n\n` : '') +
-`结合${d ? '我的描述和' : ''}图片内容，估算这一餐的热量和三大营养素。要求：
+`估算我这一餐的热量和三大营养素（若上面附了照片，请结合照片；否则按我的描述估算）。要求：
 1. 逐项列出每种食物，给出估算重量（克）、热量（kcal）、蛋白质、脂肪、碳水（克）
 2. 考虑中式烹饪的用油量，不要低估炒菜、红烧、油炸的热量
 3. 最后一行给出合计
@@ -377,38 +367,12 @@ function toast(msg){
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2200);
 }
 
-function handleFile(e){
-  const f = e.target.files && e.target.files[0];
-  if (!f) return;
-  const img = $('prev');
-  try { if (img.dataset.url) URL.revokeObjectURL(img.dataset.url); } catch (err) {}
-  const url = URL.createObjectURL(f);
-  img.dataset.url = url;
-  img.src = url;
-  img.style.display = 'block';
-}
-$('filePick').addEventListener('change', handleFile);
-$('fileShot').addEventListener('change', handleFile);
-
+/* 只复制提问文字；照片由用户在 DeepSeek 里自行上传，本应用不接触照片 */
 $('btnCopy').addEventListener('click', async () => {
   const prompt = buildPrompt();
-  const img = $('prev');
-  // 优先尝试「图片 + 文字」一起复制，可直接粘贴进 DeepSeek
-  try {
-    if (img.style.display === 'block' && window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
-      const blob = await (await fetch(img.src)).blob();
-      const type = blob.type || 'image/jpeg';
-      await navigator.clipboard.write([new ClipboardItem({
-        [type]: blob,
-        'text/plain': new Blob([prompt], { type: 'text/plain' })
-      })]);
-      toast('已复制「图片 + 文字」，去 DeepSeek 直接粘贴');
-      return;
-    }
-  } catch (err) { /* 浏览器不支持，退回只复制文字 */ }
   try {
     await navigator.clipboard.writeText(prompt);
-    toast('已复制文字，去 DeepSeek 粘贴并附上照片');
+    toast('已复制提问文字，去 DeepSeek 上传照片后粘贴');
   } catch (err) {
     $('desc').value = prompt;   // 兜底：放进输入框让用户手动全选复制
     $('desc').focus(); $('desc').select();
@@ -441,11 +405,6 @@ $('btnManual').addEventListener('click', () => {
 
 $('btnAgain').addEventListener('click', () => {
   $('desc').value = '';
-  const img = $('prev');
-  img.style.display = 'none';
-  img.removeAttribute('src');
-  if (img.dataset.url){ try { URL.revokeObjectURL(img.dataset.url); } catch (err) {} delete img.dataset.url; }
-  $('filePick').value = ''; $('fileShot').value = '';
   $('desc').focus();
 });
 
