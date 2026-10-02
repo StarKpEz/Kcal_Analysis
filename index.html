@@ -152,7 +152,9 @@
 <div class="modal" id="dlg">
   <div class="backdrop" id="dlgBack"></div>
   <div class="panel">
-    <h2 style="margin:0 0 14px;font-size:16px">每日目标</h2>
+    <h2 style="margin:0 0 14px;font-size:16px;display:flex;justify-content:space-between;align-items:baseline">
+      <span>每日目标</span><small id="verLabel" style="color:var(--dim);font-size:11px;font-weight:400"></small>
+    </h2>
     <div class="fld"><label>热量 kcal</label><input id="sKcal" type="number" inputmode="numeric"></div>
     <div class="fld"><label>蛋白质 g</label><input id="sP" type="number" inputmode="numeric"></div>
     <div class="fld"><label>脂肪 g</label><input id="sF" type="number" inputmode="numeric"></div>
@@ -160,6 +162,9 @@
     <div class="row" style="margin-top:16px">
       <button class="wide primary" id="btnSaveSet">保存</button>
       <button class="wide ghost" id="btnCloseSet">取消</button>
+    </div>
+    <div class="row">
+      <button class="wide ghost" id="btnUpdate">🔄 检查更新</button>
     </div>
     <div class="hint">参考：轻体力活动成年人约 1800–2200 kcal；减脂期常见 1200–1600 kcal，
       蛋白质建议 1.2–1.6 g/kg 体重。</div>
@@ -472,23 +477,63 @@ function showFatal(err){
 window.addEventListener('error', e => showFatal(e.error || e.message));
 window.addEventListener('unhandledrejection', e => showFatal(e.reason));
 
-/* 离线缓存：仅 http(s) 下注册，file:// 打开时静默跳过 */
+/* ---------------- 版本与更新 ----------------
+   iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
+   所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
+const APP_VERSION = '2026-10-02.4';
+try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
+
+let waitingSW = null;
+
+function checkUpdate(manual){
+  if (!('serviceWorker' in navigator) || location.protocol.indexOf('http') !== 0){
+    if (manual) toast('当前不是网页环境，无法检查更新');
+    return;
+  }
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (!reg){ if (manual) toast('还没有缓存，刷新一次即可'); return; }
+    reg.update().then(() => {
+      if (reg.waiting) waitingSW = reg.waiting;
+      if (waitingSW){
+        offerUpdate();
+      } else if (manual){
+        toast('已是最新版 v' + APP_VERSION);
+      }
+    }).catch(() => { if (manual) toast('检查失败，请确认网络'); });
+  }).catch(() => { if (manual) toast('检查失败'); });
+}
+
+function offerUpdate(){
+  if (window.confirm('发现新版本，现在更新并刷新页面？')) applyUpdate();
+}
+
+function applyUpdate(){
+  let done = false;
+  const reload = () => { if (done) return; done = true; location.reload(); };
+  navigator.serviceWorker.addEventListener('controllerchange', reload);
+  if (waitingSW) waitingSW.postMessage('SKIP_WAITING');
+  setTimeout(reload, 1500);          // 万一 controllerchange 没触发也强制刷新
+}
+
+$('btnUpdate').addEventListener('click', () => checkUpdate(true));
+
+/* 注册 Service Worker */
 if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      // 有新版本部署时主动提示，避免一直看到旧缓存
-      const check = () => reg.update().catch(() => {});
-      check();
-      setInterval(check, 60 * 60 * 1000);
+      if (reg.waiting) waitingSW = reg.waiting;
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
         if (!sw) return;
         sw.addEventListener('statechange', () => {
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-            toast('有新版本，下拉刷新即可更新');
+          if (sw.state === 'installed' && navigator.serviceWorker.controller){
+            waitingSW = sw;
+            offerUpdate();
           }
         });
       });
+      // 打开时自动查一次；iOS 后台会冻结 SW，所以这只是一层额外保障
+      reg.update().catch(() => {});
     }).catch(() => {});
   });
 }
