@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>预览 · 摄入统计圆环</title>
@@ -14,91 +14,103 @@
 <link rel="icon" href="./icon.svg" type="image/svg+xml">
 <style>
   :root{
-    --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
-    --fg:#e9edf5; --dim:#98a1b3; --acc:#3ddc84; --p:#5aa9ff; --f:#ffc857; --c:#ff8a5c;
-    --radius:16px;
+    /* iOS 系统色（深色模式变体），贴近原生质感 */
+    --bg:#000000; --card:#1c1c1e; --card2:#2c2c2e; --line:#38383a;
+    --fg:#ffffff; --dim:#98989f;
+    --acc:#30d158;          /* systemGreen dark */
+    --p:#0a84ff;            /* systemBlue dark */
+    --f:#ffd60a;            /* systemYellow dark */
+    --c:#ff9f0a;            /* systemOrange dark */
+    --radius:22px; --radius-sm:14px;
+    --shadow:0 12px 34px rgba(0,0,0,.5);
   }
   @media (prefers-color-scheme: light){
     :root{
-      --bg:#f4f6fa; --card:#ffffff; --card2:#f0f3f8; --line:#e2e7f0;
-      --fg:#151a22; --dim:#66708a;
+      --bg:#f2f2f7; --card:#ffffff; --card2:#e9e9ee; --line:#e2e2e7;
+      --fg:#000000; --dim:#8a8a8e;
+      --acc:#34c759; --p:#007aff; --f:#ffcc00; --c:#ff9500;
+      --shadow:0 12px 34px rgba(0,0,0,.12);
     }
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
-    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased}
   body{padding:calc(14px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
     max-width:640px;margin:0 auto}
-  h1{font-size:17px;margin:0;display:flex;align-items:center;gap:8px;line-height:1.2}
-  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px}
+  h1{font-size:22px;margin:0;display:flex;align-items:center;gap:8px;line-height:1.2;
+    font-weight:700;letter-spacing:-.02em}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px}
   /* 关键：flex 居中 + padding:0 + line-height:1
-     否则 button 的默认 padding 和 emoji 字形的行盒会让齿轮在方框里偏移 */
+     否则 button 的默认 padding 和 emoji 字形的行盒会让齿轮偏 */
   .iconbtn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
     padding:0;line-height:1;
-    background:var(--card);border:1px solid var(--line);color:var(--fg);
-    width:38px;height:38px;border-radius:12px;font-size:20px;cursor:pointer}
+    background:var(--card2);border:none;color:var(--fg);
+    width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer}
   button.iconbtn{font-family:inherit}
   /* emoji 字形的几何中心略低于方框中心，单独微调 */
   .top .iconbtn{font-size:21px}
   .top .iconbtn>span,.modal h2 .iconbtn>span{display:block;transform:translateY(-1px)}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-    padding:14px;margin-bottom:12px}
-  .card h2{font-size:13px;font-weight:600;color:var(--dim);margin:0 0 10px;
+  .card{background:var(--card);border:none;border-radius:var(--radius);
+    padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .card h2{font-size:13px;font-weight:600;color:var(--dim);margin:0 0 12px;
     letter-spacing:.04em;text-transform:uppercase}
   .kcal{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
-  .kcal b{font-size:38px;font-weight:700;letter-spacing:-.02em}
-  .kcal span{color:var(--dim);font-size:13px}
-  .bar{height:7px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:10px}
+  .kcal b{font-size:44px;font-weight:700;letter-spacing:-.03em}
+  .kcal span{color:var(--dim);font-size:14px}
+  .bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden;margin-top:12px}
   .bar>i{display:block;height:100%;background:var(--acc);width:0;border-radius:99px;
-    transition:width .3s ease}
-  .macro{display:flex;justify-content:space-between;font-size:13px;margin-top:12px}
+    transition:width .35s cubic-bezier(.25,.8,.35,1)}
+  .macro{display:flex;justify-content:space-between;font-size:13px;margin-top:14px}
   .macro>div{flex:1;text-align:center}
-  .macro b{display:block;font-size:16px;font-weight:600}
+  .macro b{display:block;font-size:17px;font-weight:700}
   .macro small{color:var(--dim);font-size:11px}
   textarea{width:100%;min-height:96px;background:var(--card2);color:var(--fg);
-    border:1px solid var(--line);border-radius:12px;padding:11px;font:inherit;resize:vertical}
-  textarea:focus{outline:none;border-color:var(--acc)}
-  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  button{font:inherit;font-weight:600;border-radius:12px;border:1px solid var(--line);
-    background:var(--card2);color:var(--fg);padding:11px 14px;cursor:pointer}
-  button:active{transform:scale(.98)}
-  button.primary{background:var(--acc);color:#06210f;border-color:transparent}
-  button.ghost{background:transparent}
+    border:none;border-radius:var(--radius-sm);padding:13px;font:inherit;resize:vertical}
+  textarea::placeholder{color:var(--dim)}
+  textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.35)}
+  .row{display:flex;gap:9px;flex-wrap:wrap;margin-top:11px}
+  button{font:inherit;font-weight:600;border-radius:var(--radius-sm);border:none;
+    background:var(--card2);color:var(--fg);padding:12px 15px;cursor:pointer;
+    transition:transform .12s ease,opacity .12s ease}
+  button:active{transform:scale(.97);opacity:.85}
+  button.primary{background:var(--acc);color:#04240f}
+  button.ghost{background:var(--card2);color:var(--fg);opacity:.92}
   button.wide{flex:1}
   button:disabled{opacity:.45}
-  .hint{color:var(--dim);font-size:12px;margin-top:10px;line-height:1.65}
-  .hint code{background:var(--card2);padding:1px 5px;border-radius:5px;font-size:11px}
+  .hint{color:var(--dim);font-size:12.5px;margin-top:12px;line-height:1.6}
+  .hint code{background:var(--card2);padding:1px 6px;border-radius:6px;font-size:11px}
   /* 餐次选择 */
-  .mealbar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-  .mealchip{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px;
-    padding:8px 4px;border-radius:12px;border:1px solid var(--line);background:var(--card2);
-    color:var(--fg);font:inherit;cursor:pointer}
+  .mealbar{display:flex;gap:7px;margin-bottom:11px;flex-wrap:wrap}
+  .mealchip{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:9px 4px;border-radius:var(--radius-sm);border:none;background:var(--card2);
+    color:var(--fg);font:inherit;cursor:pointer;transition:transform .12s ease}
   .mealchip b{font-size:13px;font-weight:600;white-space:nowrap}
   .mealchip small{font-size:10px;color:var(--dim);white-space:nowrap}
-  .mealchip.on{background:var(--acc);border-color:transparent;color:#06210f}
-  .mealchip.on small{color:#06210f;opacity:.75}
+  .mealchip.on{background:var(--acc);color:#04240f}
+  .mealchip.on small{color:#04240f;opacity:.7}
   /* 明细分组（标题兼折叠按钮） */
   .mgroup{display:flex;justify-content:space-between;align-items:center;width:100%;
     background:transparent;border:none;border-bottom:1px solid var(--line);
-    color:var(--dim);font:inherit;font-size:12px;font-weight:600;letter-spacing:.03em;
-    margin:12px 0 0;padding:7px 0;cursor:pointer;text-align:left}
+    color:var(--dim);font:inherit;font-size:12.5px;font-weight:600;letter-spacing:.02em;
+    margin:14px 0 0;padding:8px 0;cursor:pointer;text-align:left;border-radius:0}
   .mgroup:first-child{margin-top:0}
   .mgroup .gleft,.mgroup .gright{display:flex;align-items:center;gap:6px}
-  .mgroup .chev{display:inline-block;font-size:10px;transition:transform .15s}
+  .mgroup .chev{display:inline-block;font-size:10px;transition:transform .2s ease}
   .mgroup.collapsed .chev{transform:rotate(-90deg)}
   .mgroup .gright i{font-style:normal;font-weight:400}
   /* 每条记录的餐次下拉：改餐次后自动移动到对应分组 */
-  .mealpick{display:inline-flex;align-items:center;gap:3px;margin-top:6px;
+  .mealpick{display:inline-flex;align-items:center;gap:4px;margin-top:7px;
     font-size:11px;color:var(--dim)}
   .mealpick select{appearance:none;-webkit-appearance:none;background-color:var(--card2);
-    border:1px solid var(--line);color:var(--fg);border-radius:8px;
-    padding:3px 20px 3px 8px;font:inherit;font-size:11px;
+    border:none;color:var(--fg);border-radius:9px;
+    padding:4px 21px 4px 9px;font:inherit;font-size:11.5px;
     background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),
                      linear-gradient(135deg,var(--dim) 50%,transparent 50%);
     background-position:calc(100% - 12px) 52%,calc(100% - 8px) 52%;
     background-size:4px 4px,4px 4px;background-repeat:no-repeat}
-  .mealpick select:focus{outline:none;border-color:var(--acc)}
-  .item{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+  .mealpick select:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
+  .item{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
   .item:first-of-type{border-top:none}
   .item .nm{flex:1;min-width:0}
   .item .nm strong{display:block;font-size:14px;font-weight:600;
@@ -109,62 +121,76 @@
   .item .right small{display:block;color:var(--dim);font-size:11px;margin-top:2px}
   .gwrap{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12px;color:var(--dim);
     max-width:100%;flex-wrap:wrap}
-  .gwrap input{width:64px;min-width:0;background:var(--card2);border:1px solid var(--line);color:var(--fg);
-    border-radius:8px;padding:4px 6px;font:inherit;font-size:12px;text-align:right}
-  .del{background:transparent;border:none;color:var(--dim);font-size:16px;padding:2px 0 2px 6px;cursor:pointer}
-  .empty{color:var(--dim);font-size:13px;text-align:center;padding:18px 0}
-  /* 设置面板：flex 居中 + iOS 安全区适配。
-     不用 transform 居中（在 dvh 视口下会偏移），也不用 inset 简写（兼容性） */
+  .gwrap input{width:66px;min-width:0;background:var(--card2);border:none;color:var(--fg);
+    border-radius:9px;padding:5px 7px;font:inherit;font-size:12.5px;text-align:right}
+  .del{background:transparent;border:none;color:var(--dim);font-size:17px;padding:2px 0 2px 6px;cursor:pointer}
+  .empty{color:var(--dim);font-size:13.5px;text-align:center;padding:20px 0}
+  /* 弹出层：flex 居中 + 安全区适配 + iOS 毛玻璃 */
   .modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:90;display:none;
-    background:rgba(0,0,0,.6);
+    background:rgba(0,0,0,.62);
     padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));}
+  /* 支持毛玻璃时才用低透明度，避免不支持时内容透出来影响阅读 */
+  @supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+    .modal{background:rgba(0,0,0,.42);
+      -webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px)}
+  }
   .modal.on{display:flex;align-items:center;justify-content:center}
   .modal .panel{width:100%;max-width:430px;max-height:100%;overflow:auto;
     -webkit-overflow-scrolling:touch;
-    background:var(--card);color:var(--fg);border:1px solid var(--line);
-    border-radius:var(--radius);padding:16px}
-  .modal h2{position:sticky;top:-16px;margin:-16px -16px 12px;padding:16px;
+    background:var(--card);color:var(--fg);border:none;
+    border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .modal h2{position:sticky;top:-18px;margin:-18px -18px 14px;padding:18px;
     background:var(--card);display:flex;justify-content:space-between;align-items:center;
-    font-size:16px;border-bottom:1px solid var(--line)}
-  .fld{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
-  .fld label{font-size:14px;flex:0 0 auto}
-  .fld input{width:110px;min-width:0;flex:0 1 auto;background:var(--card2);border:1px solid var(--line);
-    color:var(--fg);border-radius:10px;padding:8px;font:inherit;text-align:right}
-  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
-    background:#000c;color:#fff;padding:10px 16px;border-radius:99px;font-size:13px;
-    opacity:0;pointer-events:none;transition:.25s;z-index:99}
+    font-size:18px;font-weight:700;border-bottom:1px solid var(--line)}
+  .fld{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+  .fld label{font-size:15px;flex:0 0 auto}
+  .fld input{width:112px;min-width:0;flex:0 1 auto;background:var(--card2);border:none;
+    color:var(--fg);border-radius:11px;padding:9px 11px;font:inherit;text-align:right}
+  .fld input:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
+  .toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));
+    transform:translateX(-50%) translateY(20px);
+    background:rgba(28,28,30,.92);color:#fff;padding:11px 18px;border-radius:99px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:.25s;z-index:99;
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
   /* ===== 统计面板（圆环 + 周/月） ===== */
-  .statbtn{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;
-    min-width:0;background:var(--card);border:1px solid var(--line);color:var(--fg);
-    border-radius:12px;height:38px;padding:0 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
-  .tabs{display:flex;gap:6px;background:var(--card2);padding:4px;border-radius:12px;margin-bottom:14px}
-  .tab{flex:1;border:none;background:transparent;color:var(--dim);font:inherit;font-size:13px;
-    font-weight:600;padding:7px 0;border-radius:9px;cursor:pointer}
-  .tab.on{background:var(--card);color:var(--fg)}
-  .dashhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+  .statbtn{flex:0 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    min-width:0;background:var(--card2);border:none;color:var(--fg);
+    border-radius:99px;height:38px;padding:0 16px;font:inherit;font-size:14px;
+    font-weight:600;cursor:pointer}
+  .tabs{display:flex;gap:4px;background:var(--card2);padding:3px;border-radius:11px;margin-bottom:16px}
+  .tab{flex:1;border:none;background:transparent;color:var(--dim);font:inherit;font-size:13.5px;
+    font-weight:600;padding:8px 0;border-radius:9px;cursor:pointer;transition:background .15s}
+  .tab.on{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .dashhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
   .dashhead .dtitle{display:flex;flex-direction:column;align-items:center;min-width:0}
-  .dashhead .dtitle b{font-size:14px;font-weight:600;white-space:nowrap}
-  .dashhead .dtitle small{color:var(--dim);font-size:10px}
-  .navbtn{width:34px;height:34px;flex:0 0 auto;border-radius:10px;background:var(--card2);
-    border:1px solid var(--line);color:var(--fg);font-size:14px;cursor:pointer}
-  .ringbox{display:flex;gap:16px;align-items:center;margin:6px 0 14px}
-  .ringbox svg{flex:0 0 auto}
-  .legend{flex:1;min-width:0}
-  .lrow{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:9px}
-  .lrow .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
-  .lrow .nm{flex:1;color:var(--dim)}
-  .lrow b{font-weight:600;white-space:nowrap}
-  .hist{display:flex;align-items:flex-end;gap:5px;height:126px;margin:4px 0 6px}
+  .dashhead .dtitle b{font-size:16px;font-weight:700;white-space:nowrap}
+  .dashhead .dtitle small{color:var(--dim);font-size:11px}
+  .navbtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;background:var(--card2);
+    border:none;color:var(--fg);font-size:17px;cursor:pointer}
+  /* 圆环与图例：窄屏自动改为上下排列，避免挤在一起 */
+  .ringbox{display:flex;gap:14px;align-items:center;margin:2px 0 16px}
+  .ringbox svg{flex:0 0 auto;width:196px;height:196px}
+  .legend{flex:1;min-width:0;padding-left:4px}
+  .lrow{display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:11px}
+  .lrow .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+  .lrow .nm{flex:1;color:var(--dim);min-width:0}
+  .lrow b{font-weight:700;white-space:nowrap}
+  @media (max-width:379px){
+    .ringbox{flex-direction:column;gap:10px}
+    .legend{width:100%}
+    .lrow{margin-bottom:8px}
+  }
+  .hist{display:flex;align-items:flex-end;gap:5px;height:132px;margin:6px 0 6px}
   .hcol{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
   .htrack{flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end}
-  .hfill{width:100%;background:var(--acc);border-radius:6px 6px 3px 3px;min-height:3px;transition:height .3s}
-  .hcol small{font-size:9px;color:var(--dim);margin-top:5px;white-space:nowrap}
+  .hfill{width:100%;background:var(--acc);border-radius:7px 7px 4px 4px;min-height:3px;
+    transition:height .35s cubic-bezier(.25,.8,.35,1)}
+  .hcol small{font-size:9.5px;color:var(--dim);margin-top:6px;white-space:nowrap}
   .hcol.today small{color:var(--fg);font-weight:600}
   .dashsum{font-size:12px;color:var(--dim);line-height:1.7;margin-top:6px}
   .dashsum b{color:var(--fg)}
   @media (prefers-color-scheme: light){.toast{background:#1a1f2bdd}}
-  /* 仅统计预览页：打开统计面板，并预填一批示例数据便于看圆环效果 */
   #dash{display:flex !important;align-items:center;justify-content:center}
 </style>
 </head>
@@ -292,7 +318,7 @@
     </div>
 
     <div class="ringbox">
-      <svg id="ringSvg" width="158" height="158" viewBox="0 0 158 158" aria-label="营养素圆环"></svg>
+      <svg id="ringSvg" width="196" height="196" viewBox="0 0 196 196" aria-label="营养素圆环"></svg>
       <div class="legend" id="ringLegend"></div>
     </div>
 
@@ -369,7 +395,7 @@ for (const date of Object.keys(store)) store[date] = normalizeDay(store[date]);
     var k = new Date(d.getTime() - i*86400000).toLocaleDateString('sv-SE');
     var base = [1750, 2100, 1600, 2400, 1450, 1980, 2200][i % 7];
     store[k] = { breakfast: [{name:'示例早餐',grams:300,kcal:Math.round(base*0.25),protein:20,fat:12,carbs:45}],
-                 lunch:     [{name:'示例午餐',grams:500,kcal:Math.round(base*0.4), protein:35,fat:20,carbs:70}],
+                 lunch:     [{name:'示例午餐',grams:500,kcal:Math.round(base*0.40),protein:35,fat:20,carbs:70}],
                  dinner:    [{name:'示例晚餐',grams:450,kcal:Math.round(base*0.35),protein:30,fat:18,carbs:60}] };
   }
 })();
@@ -818,12 +844,19 @@ window.addEventListener('unhandledrejection', e => showFatal(e.reason));
 /* 三大营养素产能：蛋白质 4 kcal/g，碳水 4 kcal/g，脂肪 9 kcal/g。
    圆环按"占各自目标的比例"画三段弧，所以一眼能看出哪一项超标/不足。 */
 const KCAL_PER_G = { p: 4, c: 4, f: 9 };
+/* 画布 196×196，中心 (98,98)。几何约束（都有测试守着）：
+     · 环间距 18px ≥ 描边 16px → 三环之间留 2px 空隙，不会视觉粘连
+     · 最外沿 = 82+8 = 90 ≤ 98 → 不贴边
+     · 最内环内孔 = 46-8 = 38 → 内孔直径 76px
+   中心数字按位数自适应字号（34/28/22），4 位数约 67px 宽，仍在 76px 内孔里。 */
+const RING_CENTER = 98, RING_STROKE = 16;
 const RING_DEF = [
-  { key: 'p', name: '蛋白质', color: '#5aa9ff', r: 66 },
-  { key: 'f', name: '脂肪',   color: '#ffc857', r: 50 },
-  { key: 'c', name: '碳水',   color: '#ff8a5c', r: 34 }
+  { key: 'p', name: '蛋白质', color: 'var(--p)', r: 82 },
+  { key: 'f', name: '脂肪',   color: 'var(--f)', r: 64 },
+  { key: 'c', name: '碳水',   color: 'var(--c)', r: 46 }
 ];
-const RING_STROKE = 12;
+/* 与 RING_DEF 同序，供图例使用（图例要用真实色值画小圆点，不能用 var()） */
+const RING_COLOURS = { p: '#0a84ff', f: '#ffd60a', c: '#ff9f0a' };
 
 let dashDate = todayKey();
 let dashView = 'day';                        // day | week | month
@@ -852,32 +885,39 @@ function ringSVG(dayKey){
     c: Math.max(1, settings.c * KCAL_PER_G.c)
   };
   const val = { p: s.pk, f: s.fk, c: s.ck };
+  const C = RING_CENTER;
 
   let out = '';
   for (const d of RING_DEF){
     const circ = +(2 * Math.PI * d.r).toFixed(1);
     const pct = Math.max(0, Math.min(1, val[d.key] / targets[d.key]));
-    out += '<circle cx="79" cy="79" r="' + d.r + '" fill="none" stroke="var(--card2)" stroke-width="' + RING_STROKE + '"/>';
+    out += '<circle cx="' + C + '" cy="' + C + '" r="' + d.r +
+           '" fill="none" stroke="var(--card2)" stroke-width="' + RING_STROKE + '"/>';
     if (pct > 0){
-      out += '<circle cx="79" cy="79" r="' + d.r + '" fill="none" stroke="' + d.color +
+      out += '<circle cx="' + C + '" cy="' + C + '" r="' + d.r +
+             '" fill="none" stroke="' + d.color +
              '" stroke-width="' + RING_STROKE + '" stroke-linecap="round" stroke-dasharray="' + circ +
              '" stroke-dashoffset="' + (circ * (1 - pct)).toFixed(1) +
-             '" transform="rotate(-90 79 79)"/>';
+             '" transform="rotate(-90 ' + C + ' ' + C + ')"/>';
     }
   }
-  out += '<text x="79" y="75" text-anchor="middle" font-size="30" font-weight="700" fill="var(--fg)">' +
-         Math.round(s.kcal) + '</text>';
-  out += '<text x="79" y="93" text-anchor="middle" font-size="11" fill="var(--dim)">/ ' +
-         Math.round(goalKcal) + ' kcal</text>';
+
+  // 中心文字：数字自适应字号，位数多也不会顶到内环
+  const txt = String(Math.round(s.kcal));
+  const size = txt.length <= 3 ? 34 : (txt.length === 4 ? 28 : 22);
+  out += '<text x="' + C + '" y="' + (C - 2) + '" text-anchor="middle" font-size="' + size +
+         '" font-weight="700" fill="var(--fg)" letter-spacing="-1">' + txt + '</text>';
+  out += '<text x="' + C + '" y="' + (C + 19) + '" text-anchor="middle" font-size="12" fill="var(--dim)">' +
+         '／ ' + Math.round(goalKcal) + ' kcal</text>';
   return out;
 }
 
 function ringLegend(dayKey){
   const s = summarize(dayKey);
   const rows = [
-    { name: '蛋白质', color: RING_DEF[0].color, grams: s.p, kcal: s.pk, goal: settings.p * KCAL_PER_G.p },
-    { name: '脂肪',   color: RING_DEF[1].color, grams: s.f, kcal: s.fk, goal: settings.f * KCAL_PER_G.f },
-    { name: '碳水',   color: RING_DEF[2].color, grams: s.c, kcal: s.ck, goal: settings.c * KCAL_PER_G.c }
+    { name: '蛋白质', color: RING_COLOURS.p, grams: s.p, kcal: s.pk, goal: settings.p * KCAL_PER_G.p },
+    { name: '脂肪',   color: RING_COLOURS.f, grams: s.f, kcal: s.fk, goal: settings.f * KCAL_PER_G.f },
+    { name: '碳水',   color: RING_COLOURS.c, grams: s.c, kcal: s.ck, goal: settings.c * KCAL_PER_G.c }
   ];
   let h = '';
   for (const r of rows){
@@ -1018,7 +1058,7 @@ document.querySelectorAll('#dashTabs .tab').forEach(b => {
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-02.9';
+const APP_VERSION = '2026-10-03.0';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
