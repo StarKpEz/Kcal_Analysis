@@ -191,8 +191,8 @@
   .dashsum{font-size:12px;color:var(--dim);line-height:1.7;margin-top:6px}
   .dashsum b{color:var(--fg)}
   @media (prefers-color-scheme: light){.toast{background:#1a1f2bdd}}
-  .modal{display:flex !important;align-items:center;justify-content:center}
-  .modal .panel{outline:2px dashed #ff3d2e}
+.modal{display:flex !important;align-items:center;justify-content:center}
+.modal .panel{outline:2px dashed #ff3d2e}
 </style>
 </head>
 <body>
@@ -835,19 +835,67 @@ window.addEventListener('unhandledrejection', e => showFatal(e.reason));
 /* 三大营养素产能：蛋白质 4 kcal/g，碳水 4 kcal/g，脂肪 9 kcal/g。
    圆环按"占各自目标的比例"画三段弧，所以一眼能看出哪一项超标/不足。 */
 const KCAL_PER_G = { p: 4, c: 4, f: 9 };
-/* 画布 196×196，中心 (98,98)。几何约束（都有测试守着）：
-     · 环间距 18px ≥ 描边 16px → 三环之间留 2px 空隙，不会视觉粘连
-     · 最外沿 = 82+8 = 90 ≤ 98 → 不贴边
-     · 最内环内孔 = 46-8 = 38 → 内孔直径 76px
-   中心数字按位数自适应字号（34/28/22），4 位数约 67px 宽，仍在 76px 内孔里。 */
-const RING_CENTER = 98, RING_STROKE = 16;
-const RING_DEF = [
-  { key: 'p', name: '蛋白质', color: 'var(--p)', r: 82 },
-  { key: 'f', name: '脂肪',   color: 'var(--f)', r: 64 },
-  { key: 'c', name: '碳水',   color: 'var(--c)', r: 46 }
-];
-/* 与 RING_DEF 同序，供图例使用（图例要用真实色值画小圆点，不能用 var()） */
+/* 画布 196×196，中心 (98,98)。
+   几何不能用"字数×系数"猜文字宽度 —— 不同字体/字距会偏，之前就是这么翻车的。
+   做法：先用浏览器把中心文字真实量出来（getBBox），再反推环半径：
+     · 内孔半径 = max(文字半宽 + 间隙, 下限)，【不设硬上限】
+       上限由画布约束自动反推（见 ringLayout 的 innerMax）
+     · 三环半径由内孔向外等距排布，间距 = 描边宽 + 与环的空隙 → 环之间不粘连
+     · 若文字仍宽于上限（位数太多），再按比例缩小字号（下限 15px） */
+const RING_CENTER = 98, RING_STROKE = 15, RING_GAP = 16;
+const RING_INNER_MIN = 30, RING_FONT_MIN = 15;
+/* 图例要用真实色值画小圆点，不能用 var() */
 const RING_COLOURS = { p: '#0a84ff', f: '#ffd60a', c: '#ff9f0a' };
+const RING_KEYS = [
+  { key: 'p', name: '蛋白质', color: 'var(--p)' },
+  { key: 'f', name: '脂肪',   color: 'var(--f)' },
+  { key: 'c', name: '碳水',   color: 'var(--c)' }
+];
+
+/* 用隐藏 SVG 真实测量一段文字的像素宽度；失败时回退到保守估计 */
+let _measureSvg = null;
+function measureText(text, fontPx, bold){
+  try {
+    if (!_measureSvg){
+      _measureSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      _measureSvg.setAttribute('width', '0');
+      _measureSvg.setAttribute('height', '0');
+      _measureSvg.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;overflow:hidden';
+      document.body.appendChild(_measureSvg);
+    }
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('font-size', String(fontPx));
+    if (bold) t.setAttribute('font-weight', '700');
+    t.setAttribute('letter-spacing', bold ? '-1' : '0');
+    t.textContent = text;
+    _measureSvg.appendChild(t);
+    const w = t.getBBox().width;
+    _measureSvg.removeChild(t);
+    if (w > 0) return w;
+  } catch (e) { /* 环境不支持测量，走回退 */ }
+  return text.length * fontPx * 0.62;          // 保守回退
+}
+
+/* 纯函数：给定文字宽度与字号，算出中心与三环的半径。测试直接喂宽度即可。
+   内孔半径只设下限、不设硬上限；上限由画布约束反推，保证外沿不越界。
+   若文字实在放不下（宽度 > 2×(innerMax-间隙)），返回 shrink 让调用方缩小字号。 */
+function ringLayout(textW, goalW, canvasR, stroke, gap, innerMin){
+  const step = stroke + 4;                       // 相邻环中心距
+  const innerMax = canvasR - stroke / 2 - step * 2;   // 外沿恰好贴住画布内沿
+  const needed = Math.max(textW, goalW) / 2 + gap;
+  const inner = Math.max(innerMin, Math.min(innerMax, needed));
+  const fitWidth = 2 * (innerMax - gap);         // 这个字号下允许的最大文字宽度
+  return {
+    inner: inner,
+    radii: [inner + step * 2, inner + step, inner],   // 外 → 内（与 RING_KEYS 同序）
+    outerEdge: inner + step * 2 + stroke / 2,
+    canvasR: canvasR,
+    textHalf: textW / 2,
+    clearance: inner - textW / 2,
+    innerMax: innerMax,
+    shrink: Math.max(textW, goalW) > fitWidth ? fitWidth / Math.max(textW, goalW) : 1
+  };
+}
 
 let dashDate = todayKey();
 let dashView = 'day';                        // day | week | month
@@ -877,29 +925,45 @@ function ringSVG(dayKey){
   };
   const val = { p: s.pk, f: s.fk, c: s.ck };
   const C = RING_CENTER;
+  const txt = String(Math.round(s.kcal));
+  const goalTxt = '／ ' + Math.round(goalKcal) + ' kcal';
+
+  // 真实量出文字宽度，再据此决定字号与环半径
+  let size = txt.length <= 3 ? 34 : (txt.length === 4 ? 26 : 21);
+  let textW = measureText(txt, size, true);
+  const goalW = measureText(goalTxt, 12, false);
+  let L = ringLayout(textW, goalW, C, RING_STROKE, RING_GAP, RING_INNER_MIN);
+
+  // 若这个字号放不下（位数太多），按比例缩字号重量一次
+  if (L.shrink < 1){
+    size = Math.max(RING_FONT_MIN, Math.floor(size * L.shrink));
+    textW = measureText(txt, size, true);
+    L = ringLayout(textW, goalW, C, RING_STROKE, RING_GAP, RING_INNER_MIN);
+  }
 
   let out = '';
-  for (const d of RING_DEF){
-    const circ = +(2 * Math.PI * d.r).toFixed(1);
+  RING_KEYS.forEach((d, i) => {
+    const r = L.radii[i];
+    const circ = +(2 * Math.PI * r).toFixed(1);
     const pct = Math.max(0, Math.min(1, val[d.key] / targets[d.key]));
-    out += '<circle cx="' + C + '" cy="' + C + '" r="' + d.r +
+    out += '<circle cx="' + C + '" cy="' + C + '" r="' + r +
            '" fill="none" stroke="var(--card2)" stroke-width="' + RING_STROKE + '"/>';
     if (pct > 0){
-      out += '<circle cx="' + C + '" cy="' + C + '" r="' + d.r +
+      out += '<circle cx="' + C + '" cy="' + C + '" r="' + r +
              '" fill="none" stroke="' + d.color +
              '" stroke-width="' + RING_STROKE + '" stroke-linecap="round" stroke-dasharray="' + circ +
              '" stroke-dashoffset="' + (circ * (1 - pct)).toFixed(1) +
              '" transform="rotate(-90 ' + C + ' ' + C + ')"/>';
     }
-  }
+  });
 
-  // 中心文字：数字自适应字号，位数多也不会顶到内环
-  const txt = String(Math.round(s.kcal));
-  const size = txt.length <= 3 ? 34 : (txt.length === 4 ? 28 : 22);
-  out += '<text x="' + C + '" y="' + (C - 2) + '" text-anchor="middle" font-size="' + size +
+  // 数字与目标两行整体垂直居中：
+  // 数字基线 = 中心 + 0.35×字号，目标行基线 = 数字基线 + 19
+  const numY = Math.round(C + size * 0.35 - 8);
+  out += '<text x="' + C + '" y="' + numY + '" text-anchor="middle" font-size="' + size +
          '" font-weight="700" fill="var(--fg)" letter-spacing="-1">' + txt + '</text>';
-  out += '<text x="' + C + '" y="' + (C + 19) + '" text-anchor="middle" font-size="12" fill="var(--dim)">' +
-         '／ ' + Math.round(goalKcal) + ' kcal</text>';
+  out += '<text x="' + C + '" y="' + (numY + 19) + '" text-anchor="middle" font-size="12" fill="var(--dim)">' +
+         goalTxt + '</text>';
   return out;
 }
 
@@ -1049,7 +1113,7 @@ document.querySelectorAll('#dashTabs .tab').forEach(b => {
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.0';
+const APP_VERSION = '2026-10-03.1';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
