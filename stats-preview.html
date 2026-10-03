@@ -416,6 +416,16 @@ const N = v => Number.isFinite(v) ? Math.round(v * 10) / 10 : 0;
 const LSK = 'kcal.entries.v1', LSS = 'kcal.settings.v1', LSM = 'kcal.meta.v1';
 const todayKey = () => new Date().toLocaleDateString('sv-SE');   // YYYY-MM-DD 本地时区
 
+/* 日期加减：必须定义在记录/渲染之前 —— render() 会用到它，
+   放在下面的统计面板区会造成「暂时性死区」而在启动时抛错（曾经真的发生过） */
+function shiftDay(k, n){
+  const p = String(k).split('-').map(Number);
+  const dt = new Date(p[0], p[1] - 1, p[2]);
+  dt.setDate(dt.getDate() + n);
+  return dt.toLocaleDateString('sv-SE');
+}
+function dayBack(n){ return shiftDay(todayKey(), -n); }
+
 /* 餐次定义：顺序即界面顺序 */
 const MEALS = [
   { k: 'breakfast', name: '早餐', icon: '🌅' },
@@ -485,16 +495,6 @@ function normalizeStore(raw){
 store = normalizeStore(store);
 
 // 只保留最近 30 天
-(function demoSeed(){
-  var d = new Date();
-  for (var i = 0; i < 30; i++){
-    var k = new Date(d.getTime() - i*86400000).toLocaleDateString('sv-SE');
-    var base = [1750, 2100, 1600, 2400, 1450, 1980, 2200][i % 7];
-    store[k] = { breakfast: [{name:'示例早餐',grams:300,kcal:Math.round(base*0.25),protein:20,fat:12,carbs:45}],
-                 lunch:     [{name:'示例午餐',grams:500,kcal:Math.round(base*0.40),protein:35,fat:20,carbs:70}],
-                 dinner:    [{name:'示例晚餐',grams:450,kcal:Math.round(base*0.35),protein:30,fat:18,carbs:60}] };
-  }
-})();
 (function prune(){
   const keys = Object.keys(store).sort();
   while (keys.length > 30) delete store[keys.shift()];
@@ -817,6 +817,7 @@ function moveItem(fromKey, item, toKey){
 
 /* ---------------- 交互 ---------------- */
 function toast(msg){
+  if (typeof __dshTestHook === 'function') __dshTestHook('toast', msg);   // 测试探针
   const t = $('toast'); t.textContent = msg; t.classList.add('on');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2200);
 }
@@ -969,28 +970,31 @@ $('btnSaveSet').addEventListener('click', () => {
   saveSet(); render(); closeSet(); toast('目标已保存');
 });
 
-/* 启动：全部包在 try 里，任何一个环节出错都不至于让按钮集体失灵 */
-try {
-  $('todayLabel').textContent = '今日总计 · ' + todayKey();
-  render();
-  refreshRisk();
-  // 超过 7 天没备份就提醒一次；若备份文件还没生成过则在首次提醒里说明
-  (function backupReminder(){
-    if (!Object.keys(store).length) return;
-    const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
-    if (since === null || since > 7){
-      setTimeout(() => toast(since === null
-        ? '⚠️ 还没备份过，点「备份全部数据」存档'
-        : '⚠️ 已 ' + since + ' 天没备份，建议现在备份'), 1800);
-    }
-  })();
-} catch (err) {
-  showFatal(err);
+/* 启动：分步容错 —— 任何一步失败都不该让整个界面变成"全 0 且点不动" */
+function boot(){
+  const errs = [];
+  try { $('todayLabel').textContent = '今日总计 · ' + todayKey(); } catch (e) { errs.push(e); }
+  try { render(); } catch (e) { errs.push(e); }
+  try { refreshRisk(); } catch (e) { errs.push(e); }
+  try {
+    (function backupReminder(){
+      if (!Object.keys(store).length) return;
+      const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
+      if (since === null || since > 7){
+        setTimeout(() => toast(since === null
+          ? '⚠️ 还没备份过，点「备份全部数据」存档'
+          : '⚠️ 已 ' + since + ' 天没备份，建议现在备份'), 1800);
+      }
+    })();
+  } catch (e) { errs.push(e); }
+  if (errs.length) showFatal(errs[0]);
 }
+boot();
 
 /* 全局错误兜底：出问题要看得见，而不是静默失效 */
 function showFatal(err){
   const msg = (err && (err.message || err.reason && err.reason.message)) || String(err);
+  if (typeof __dshTestHook === 'function') __dshTestHook('fatal', msg);   // 测试探针
   try {
     const t = $('toast');
     t.textContent = '出错了：' + msg;
@@ -1361,14 +1365,6 @@ function ringLayout(textW, goalW, canvasR, stroke, gap, innerMin){
 let dashDate = todayKey();
 let dashView = 'day';                        // day | week | month
 
-const shiftDay = (k, n) => {
-  const [y, m, d] = k.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + n);
-  return dt.toLocaleDateString('sv-SE');
-};
-const dayBack = n => shiftDay(todayKey(), -n);
-
 /* 汇总某天：总数 + 三大营养素各自折合的热量 */
 function summarize(dayKey){
   const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(dayKey)[k] || []), []));
@@ -1567,14 +1563,19 @@ $('dashNext').addEventListener('click', () => {
   if (dashView === 'day'){ const n = shiftDay(dashDate, 1); if (n <= todayKey()) dashDate = n; }
   renderDash();
 });
+function switchDashView(v){
+  if (['day', 'week', 'month'].indexOf(v) === -1) return;
+  dashView = v;
+  renderDash();
+}
 document.querySelectorAll('#dashTabs .tab').forEach(b => {
-  b.addEventListener('click', () => { dashView = b.dataset.view; renderDash(); });
+  b.addEventListener('click', () => switchDashView(b.dataset.view));
 });
 
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.3';
+const APP_VERSION = '2026-10-03.4';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
