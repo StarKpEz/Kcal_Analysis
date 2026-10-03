@@ -542,8 +542,12 @@ const LABELS = '食物名称|菜品名称|食品名称|名称|菜品|食物|重�
 const FIELD_RE = '蛋\\s*白\\s*质|蛋\\s*白|protein|pro|脂\\s*肪|fat|碳\\s*水\\s*化\\s*合\\s*物|碳\\s*水|糖\\s*类|carb(?:ohydrate)?s?|热\\s*量|能\\s*量|卡\\s*路\\s*里|kcal|千\\s*卡|大\\s*卡';
 
 function parseLine(raw){
-  let s = raw.replace(/\*\*/g, '').replace(/^\s*[-*•\d.、)）]+\s*/, '').trim();
-  if (!s || /^(合计|总计|小计|total|合\s*计)/i.test(s)) return null;
+  let s = String(raw).replace(/\*\*/g, '').trim();
+  // 先判断合计行，再去列表符号 —— 否则"合"会被字符集吃掉（合计 → 计）而漏过过滤
+  if (!s || /^(合计|总计|小计|总共|total|合\s*计)/i.test(s)) return null;
+  s = s.replace(/^\s*[-*•·\d]+[.、)）]?\s*/, '').trim();
+  if (!s) return null;
+  if (/^(合计|总计|小计|总共|total)/i.test(s)) return null;      // 去符号后再兜一次
   if (!/\d/.test(s)) return null;
   if (!/(kcal|千卡|大卡|卡路里|能量|热量)/i.test(s)) return null;
 
@@ -584,9 +588,13 @@ function parseLine(raw){
       if (m && m[1]) name = m[1];
     }
   }
-  name = name.replace(/[（(][^）)]*[)）]/g, '')
-             .replace(new RegExp('\\s*(?:' + LABELS + ')\\s*[:：=]?\\s*$', 'i'), '')
-             .replace(/[\s\-–—|]+$/, '').trim();
+  // 名称清洗：只剥掉「含数字或重量单位」的括号（如（200克）），
+  // 保留描述性括号（如 鸡胸肉（去皮）），否则会误删菜名信息
+  name = String(name)
+    .replace(/[（(][^）)]*\d[^）)]*[)）]/g, '')
+    .replace(/[（(][^）)]*(?:kcal|千卡|大卡|克|kg|ml|毫升)[^）)]*[)）]/gi, '')
+    .replace(new RegExp('\\s*(?:' + LABELS + ')\\s*[:：=]?\\s*$', 'i'), '')
+    .replace(/[\s\-–—|]+$/, '').trim();
   if (!name) name = '未命名';
 
   return { name, grams, kcal, protein, fat, carbs };
@@ -1574,7 +1582,7 @@ document.querySelectorAll('#dashTabs .tab').forEach(b => {
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.4';
+const APP_VERSION = '2026-10-03.5';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
