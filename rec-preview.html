@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>预览 · 记录一餐弹窗</title>
+<title>热量记账 · 拍照算热量</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <!-- PNG 图标：安卓 Chrome 不接受 SVG 作主屏幕图标，iOS 也不支持 SVG 的 apple-touch-icon -->
 <link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
@@ -132,19 +132,6 @@
     opacity:0;pointer-events:none;transition:.25s;z-index:99;
     -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-  /* ===== 统计面板（圆环 + 周/月） ===== */
-  .statbtn{flex:0 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;
-    min-width:0;background:var(--card2);border:none;color:var(--fg);
-    border-radius:99px;height:38px;padding:0 16px;font:inherit;font-size:14px;
-    font-weight:600;cursor:pointer}
-  .tabs{display:flex;gap:4px;background:var(--card2);padding:3px;border-radius:11px;margin-bottom:16px}
-  .tab{flex:1;border:none;background:transparent;color:var(--dim);font:inherit;font-size:13.5px;
-    font-weight:600;padding:8px 0;border-radius:9px;cursor:pointer;transition:background .15s}
-  .tab.on{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.25)}
-  .dashhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
-  .dashhead .dtitle{display:flex;flex-direction:column;align-items:center;min-width:0}
-  .dashhead .dtitle b{font-size:16px;font-weight:700;white-space:nowrap}
-  .dashhead .dtitle small{color:var(--dim);font-size:11px}
   .navbtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;background:var(--card2);
     border:none;color:var(--fg);font-size:17px;cursor:pointer}
   /* 圆环与图例：默认上下排列（窄屏下并排会把图例文字挤成竖排） */
@@ -162,14 +149,9 @@
     .ringbox{flex-direction:row;gap:20px;align-items:center}
     .legend{flex:1;width:auto}
   }
-  .hist{display:flex;align-items:flex-end;gap:5px;height:132px;margin:6px 0 6px}
-  .hcol{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
   .htrack{flex:1;width:100%;display:flex;flex-direction:column;justify-content:flex-end}
   .hfill{width:100%;background:var(--acc);border-radius:7px 7px 4px 4px;min-height:3px;
     transition:height .35s cubic-bezier(.25,.8,.35,1)}
-  .hcol small{font-size:9.5px;color:var(--dim);margin-top:6px;white-space:nowrap}
-  .hcol.today small{color:var(--fg);font-weight:600}
-  .dashsum{font-size:12px;color:var(--dim);line-height:1.7;margin-top:6px}
   /* iOS 风格选择弹窗 */
   .alert{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
     width:min(84vw,300px);background:#2c2c2e;border-radius:20px;overflow:hidden;
@@ -186,9 +168,6 @@
   .alert button:active{background:rgba(127,127,127,.18)}
   .alert button.strong{font-weight:700}
   .alert button.danger{color:#ff453a}
-  /* 可点击的柱状图 */
-  .hcol:active .hfill{opacity:.65}
-  .hcol.active .hfill{box-shadow:0 0 0 2.5px var(--fg)}
   /* 记录日期选择 */
   .daterow{display:flex;align-items:center;gap:7px;margin-bottom:11px;font-size:12.5px;color:var(--dim)}
   .daterow input[type=date]{flex:1;min-width:0;background:var(--card2);border:none;color:var(--fg);
@@ -219,11 +198,16 @@
   .dayhead{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 14px;position:relative}
   .daybtn{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;
     color:var(--fg);font:inherit;cursor:pointer;padding:4px 6px;border-radius:10px}
-  .daybtn b{font-size:19px;font-weight:700;letter-spacing:-.02em}
-  .daybtn .chev{font-size:11px;color:var(--dim)}
+  .daybtn b{font-size:22px;font-weight:700;letter-spacing:-.02em}
+  .daybtn .chev{font-size:12px;color:var(--dim);transition:transform .2s ease;display:inline-block}
+  .dayhead.open .daybtn .chev{transform:rotate(180deg)}
   .hidden-date{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;left:50%}
   .dayhead .todaybtn{position:absolute;right:0}
-  /* 一周圆环条 */
+  /* 月视图的月份导航 */
+  .calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .calnav b{font-size:15px;font-weight:700}
+  .calnav .navbtn{width:32px;height:32px}
+  /* 周视图（折叠态） */
   .weekstrip{display:flex;gap:4px;background:var(--card);border-radius:var(--radius);
     padding:12px 8px;margin-bottom:14px;box-shadow:var(--shadow)}
   .wk{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;
@@ -232,6 +216,20 @@
   .wk.sel small,.wk.today small{color:var(--fg);font-weight:700}
   .wknum{font-size:12px;color:var(--dim);line-height:1}
   .wk.sel .wknum,.wk.today .wknum{color:var(--fg);font-weight:700}
+  /* 月视图（展开态） */
+  .moncal{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:14px 12px;margin-bottom:14px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px 4px}
+  .cal .cwd{text-align:center;font-size:11.5px;color:var(--dim)}
+  .cal .cday{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;
+    border:none;padding:2px 0;cursor:pointer;border-radius:12px}
+  .cal .cday .cn{font-size:15px;color:var(--fg);line-height:1;font-weight:500}
+  .cal .cday.today .cn{color:var(--f);font-weight:700}
+  .cal .cday.sel .cn{color:var(--fg);font-weight:700}
+  .cal .cday.future .cn{color:var(--card2)}
+  .cal .cday.empty{visibility:hidden}
+  .cal .cday svg{display:block}
+  .cal .cday.future svg{opacity:.35}
   /* 摄入热量卡 */
   .kcal-hd{display:flex;justify-content:space-between;align-items:baseline;
     font-size:14px;font-weight:600;color:var(--fg);margin-bottom:2px}
@@ -273,22 +271,22 @@
 <body>
 
 <div class="top">
-  <h1>🔥 热量记账</h1>
-  <button class="statbtn" id="btnStats" aria-label="查看统计"><span>📊</span><span>统计</span></button>
+  <h1>🍽️ 饮食</h1>
   <button class="iconbtn" id="btnSet" title="设置" aria-label="设置"><span>&#9881;&#65038;</span></button>
 </div>
 
 <!-- ===== 日期标题（点开选日期） ===== -->
-<div class="dayhead">
-  <button class="daybtn" id="btnDayPicker">
-    <b id="dayTitle">10月3日</b><span class="chev">▾</span>
+<!-- ===== 顶部日期：点击在「周视图 / 整月日历」之间切换 ===== -->
+<div class="dayhead" id="dayHead">
+  <button class="daybtn" id="btnDayPicker" aria-label="切换日历">
+    <b id="dayTitle">今天</b><span class="chev">▾</span>
   </button>
   <input type="date" id="dayPick" class="hidden-date">
   <button class="todaybtn" id="btnToday">今天</button>
 </div>
 
-<!-- ===== 一周圆环（最近 7 天，点某天切换） ===== -->
-<div class="weekstrip" id="weekStrip"></div>
+<!-- 周视图（折叠态）/ 整月日历（展开态）都渲染在这里 -->
+<div id="calArea"></div>
 
 <!-- ===== 摄入热量 ===== -->
 <div class="card">
@@ -311,12 +309,11 @@
   <div class="hint" id="mealTotals"></div>
 </div>
 
-<!-- 供脚本使用的隐藏占位（保留旧逻辑的挂载点） -->
+<!-- 供脚本写入的隐藏数据出口（不显示，仅供导出/调试读取） -->
 <div style="display:none">
   <b id="gKcal">2000</b>
   <span id="tP"></span><span id="tF"></span><span id="tC"></span>
-  <span id="recTitle"></span><span id="todayLabel"></span>
-  <div id="list"></div><div id="mealBar"></div>
+  <span id="todayLabel"></span>
 </div>
 
 <!-- ===== 记录一餐（弹出窗口） ===== -->
@@ -454,34 +451,6 @@
   </div>
 </div>
 
-<!-- ===== 统计面板：周趋势 / 月历（圆环在主页面，避免重复 id） ===== -->
-<div class="modal" id="dash">
-  <div class="panel" style="max-width:460px">
-    <h2>
-      <span>摄入统计</span>
-      <button class="iconbtn" id="btnDashClose" title="关闭" aria-label="关闭"
-        style="width:30px;height:30px;font-size:15px"><span>&#10005;</span></button>
-    </h2>
-
-    <div class="tabs" id="dashTabs">
-      <button class="tab on" data-view="week">周趋势</button>
-      <button class="tab" data-view="month">月历</button>
-    </div>
-
-    <div class="dashhead">
-      <button class="navbtn" id="dashPrev" aria-label="上一段">‹</button>
-      <span class="dtitle"><b id="dashTitle"></b><small id="dashSub"></small></span>
-      <button class="navbtn" id="dashNext" aria-label="下一段">›</button>
-    </div>
-
-    <div id="dashTrend"></div>
-    <div class="dashsum" id="dashSum"></div>
-
-    <div class="row" style="margin-top:16px">
-      <button class="wide ghost" id="btnDashToday">回到今天</button>
-    </div>
-  </div>
-</div>
 
 <script>
 'use strict';
@@ -899,28 +868,76 @@ function calColour(kcal){
 let dashMonth = todayKey().slice(0, 7);      // 月历当前浏览的月份 YYYY-MM
 let dashView = 'week';                       // week | month（每日详情已移到主页面）
 let dashWeekOffset = 0;                      // 周趋势往回翻的天数（0 = 最近 7 天）
+let calMonth = todayKey().slice(0, 7);       // 顶部日历展开时的月份
 
 /* ---------------- 渲染 ---------------- */
-/* 一周圆环条：最近 7 天（含今天），每格一个小圆环 + 星期 + 日期号 */
+/* 顶部日历的展开状态：折叠＝周视图，展开＝整月日历 */
+let calOpen = false;
+
+/* 一周圆环条（折叠态）：最近 7 天（含今天），每格一个小圆环 + 星期 + 日期号 */
 function renderWeekStrip(){
-  const box = $('weekStrip');
-  if (!box) return;
   const WD = '日一二三四五六';
-  box.innerHTML = '';
+  let h = '<div class="weekstrip">';
   for (let i = 6; i >= 0; i--){
     const k = dayBack(i);
     const wd = new Date(k + 'T00:00:00').getDay();
     const kcal = summarize(k).kcal;
-    const el = document.createElement('button');
     const cls = 'wk' + (k === todayKey() ? ' today' : '') + (k === editDate ? ' sel' : '');
-    el.className = cls;
-    el.dataset.date = k;
-    el.innerHTML = '<small>' + (i === 0 ? '今天' : '周' + WD[wd]) + '</small>' +
-                   calRing(settings.kcal ? kcal / settings.kcal : 0, calColour(kcal)) +
-                   '<span class="wknum">' + (+k.slice(8)) + '</span>';
-    el.addEventListener('click', () => setEditDate(k));
-    box.appendChild(el);
+    h += '<button class="' + cls + '" data-date="' + k + '">' +
+           '<small>' + (i === 0 ? '今天' : '周' + WD[wd]) + '</small>' +
+           calRing(settings.kcal ? kcal / settings.kcal : 0, calColour(kcal)) +
+           '<span class="wknum">' + (+k.slice(8)) + '</span>' +
+         '</button>';
   }
+  return h + '</div>';
+}
+
+/* 顶部日历区：按展开状态渲染周视图或整月日历 */
+function renderCalArea(){
+  const box = $('calArea');
+  if (!box) return;
+  const head = $('dayHead');
+  if (head) head.classList.toggle('open', calOpen);
+
+  if (!calOpen){
+    box.innerHTML = renderWeekStrip();
+    Array.prototype.forEach.call(box.querySelectorAll('.wk[data-date]'), el => {
+      el.addEventListener('click', () => setEditDate(el.dataset.date));
+    });
+    return;
+  }
+
+  const cur = todayKey().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(calMonth)) calMonth = todayKey().slice(0, 7);
+  if (calMonth > cur) calMonth = cur;                 // 不能翻到未来月份
+  const [y, m] = calMonth.split('-').map(Number);
+  box.innerHTML = '<div class="moncal">' +
+    '<div class="calnav">' +
+      '<button class="navbtn" data-cal="prev" aria-label="上个月">‹</button>' +
+      '<b>' + y + '年' + m + '月</b>' +
+      '<button class="navbtn" data-cal="next" aria-label="下个月">›</button>' +
+    '</div>' + renderCalendar(calMonth) + '</div>';
+
+  const prev = box.querySelector('[data-cal="prev"]');
+  const next = box.querySelector('[data-cal="next"]');
+  if (prev) prev.addEventListener('click', () => shiftCalMonth(-1));
+  if (next) next.addEventListener('click', () => shiftCalMonth(1));
+  Array.prototype.forEach.call(box.querySelectorAll('.cday[data-date]'), el => {
+    el.addEventListener('click', () => {
+      setEditDate(el.dataset.date);
+      calOpen = false;                                 // 选完收起，回到周视图
+      render();
+    });
+  });
+}
+
+function shiftCalMonth(delta){
+  const [y, m] = calMonth.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  const nxt = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  if (delta > 0 && nxt > todayKey().slice(0, 7)) return;   // 不允许翻到未来
+  calMonth = nxt;
+  renderCalArea();
 }
 
 /* 餐次选择按钮（记录弹窗里用） */
@@ -1040,8 +1057,9 @@ function renderDateRow(){
   const isToday = editDate === todayKey();
   const [, mm, dd] = editDate.split('-');
 
+  // 顶部大标题：今天 / 具体日期
   const dt = $('dayTitle');
-  if (dt) dt.textContent = (+mm) + '月' + (+dd) + '日';
+  if (dt) dt.textContent = isToday ? '今天' : ((+mm) + '月' + (+dd) + '日');
   const g = $('gKcalTxt');
   if (g) g.textContent = '目标 ' + settings.kcal;
 
@@ -1092,7 +1110,7 @@ function render(){
   $('mealTotals').textContent = '各餐热量：' + parts.join(' · ') + ' kcal';
 
   renderMealBar();
-  renderWeekStrip();
+  renderCalArea();
   renderMeals();
 }
 
@@ -1203,10 +1221,11 @@ $('btnManual').addEventListener('click', () => {
   addItems([{ name, grams, kcal, protein, fat, carbs }]);
 });
 
-/* ---- 记录日期切换（日期标题 + 系统日期选择器） ---- */
+/* ---- 顶部日期：点击在「周视图 / 整月日历」之间切换 ---- */
 $('btnDayPicker').addEventListener('click', () => {
-  const inp = $('dayPick');
-  try { inp.showPicker ? inp.showPicker() : inp.click(); } catch (e) { inp.click(); }
+  calOpen = !calOpen;
+  if (calOpen) calMonth = editDate.slice(0, 7);      // 展开时定位到当前所选月份
+  render();
 });
 $('dayPick').addEventListener('change', e => setEditDate(e.target.value));
 
@@ -1638,36 +1657,6 @@ function allItemsOf(dateKey){
 /* TEST-EXTRACT-B */                       // 测试用提取标记，勿删
 
 
-/* ================= 统计面板：周趋势 / 月历 ================= */
-function histChart(cells){
-  const max = Math.max(settings.kcal || 2000, ...cells.map(c => c.kcal), 1);
-  const avg = Math.round(cells.reduce((a, c) => a + c.kcal, 0) / Math.max(1, cells.length));
-  let h = '<div class="hist">';
-  cells.forEach((c, i) => {
-    const pct = Math.max(2, Math.round(c.kcal / max * 100));
-    const over = c.kcal > (settings.kcal || 2000);
-    const colour = c.future ? '#2a2f3a' : (c.kcal === 0 ? '#2a2f3a' : (over ? '#ff5c5c' : 'var(--acc)'));
-    const active = editDate === c.key ? ' active' : '';
-    h += '<div class="hcol' + (c.today ? ' today' : '') + active + '" data-i="' + i + '">' +
-           '<div class="htrack"><div class="hfill" style="height:' + pct + '%;background:' + colour + '"' +
-             (c.kcal ? ' title="' + c.label + ' ' + Math.round(c.kcal) + ' kcal"' : '') + '></div></div>' +
-           '<small>' + c.label + '</small>' +
-         '</div>';
-  });
-  h += '</div>';
-  h += '<div class="dashsum">' + cells.length + ' 段平均 <b>' + avg + ' kcal</b>／天' +
-       (dashView === 'month' ? '（每段为 3 天）' : '') + '<br>' +
-       '<span style="color:var(--dim)">点柱子可跳到那天看圆环明细</span></div>';
-  return h;
-}
-
-/* 从柱状图/月历跳到某一天：切换主页面的日期并关闭统计面板 */
-function gotoDay(dateKey){
-  if (!dateKey) return;
-  setEditDate(dateKey > todayKey() ? todayKey() : dateKey);
-  closeDash();
-}
-
 /* 月历：整月网格，每格一个小圆环 */
 function renderCalendar(ym){
   const [y, m] = ym.split('-').map(Number);
@@ -1696,121 +1685,13 @@ function renderCalendar(ym){
   return { html: h, sumKcal: sumKcal, recorded: recorded };
 }
 
-function renderDash(){
-  const tabs = document.querySelectorAll('#dashTabs .tab');
-  Array.prototype.forEach.call(tabs, b => b.classList.toggle('on', b.dataset.view === dashView));
-
-  const todayK = todayKey();
-  const isFuture = k => k > todayK;
-
-  if (dashView === 'week'){
-    // 最近 7 天（含今天），可用 ‹ 往回翻
-    const off = Math.max(0, dashWeekOffset);
-    const cells = [];
-    const WD = '日一二三四五六';
-    for (let i = 6; i >= 0; i--){
-      const k = dayBack(i + off);
-      const wd = new Date(k + 'T00:00:00').getDay();
-      cells.push({ key: k, label: '周' + WD[wd], kcal: summarize(k).kcal,
-                   today: k === todayK, future: isFuture(k) });
-    }
-    const total = cells.reduce((a, c) => a + c.kcal, 0);
-    const avg = Math.round(total / cells.length);
-    const goal = settings.kcal || 2000;
-    const hit = cells.filter(c => c.kcal > 0 && c.kcal <= goal).length;
-    const over = cells.filter(c => c.kcal > goal).length;
-    const empty = cells.filter(c => c.kcal === 0).length;
-
-    const a = cells[0].key.split('-'), b2 = cells[6].key.split('-');
-    $('dashTitle').textContent = off === 0 ? '最近 7 天' : '往前第 ' + (off / 7 + 1) + ' 周';
-    $('dashSub').textContent = (+a[1]) + '月' + (+a[2]) + '日 – ' + (+b2[1]) + '月' + (+b2[2]) + '日';
-    $('dashTrend').innerHTML = histChart(cells);
-    Array.prototype.forEach.call($('dashTrend').querySelectorAll('.hcol'), el => {
-      const c = cells[+el.dataset.i];
-      if (c) el.addEventListener('click', () => gotoDay(c.key));
-    });
-    $('dashSum').innerHTML =
-      '合计 <b>' + Math.round(total) + ' kcal</b>，日均 <b>' + avg + ' kcal</b><br>' +
-      '达标 <b>' + hit + '</b> 天 · 超标 <b>' + over + '</b> · 未记录 <b>' + empty + '</b><br>' +
-      '<span style="color:var(--dim)">点柱子可切到那天</span>';
-    return;
-  }
-
-  // 月历
-  if (!/^\d{4}-\d{2}$/.test(dashMonth)) dashMonth = todayK.slice(0, 7);
-  // 不允许翻到未来月份
-  const cur = todayK.slice(0, 7);
-  if (dashMonth > cur) dashMonth = cur;
-
-  const cal = renderCalendar(dashMonth);
-  const [y, m] = dashMonth.split('-').map(Number);
-  $('dashTitle').textContent = y + '年' + m + '月';
-  $('dashSub').textContent = '每格圆环＝当天热量完成度';
-  $('dashTrend').innerHTML = cal.html;
-  Array.prototype.forEach.call($('dashTrend').querySelectorAll('.cday[data-date]'), el => {
-    el.addEventListener('click', () => gotoDay(el.dataset.date));
-  });
-  const goal = settings.kcal || 2000;
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const past = Math.min(daysInMonth, (dashMonth === cur) ? +todayK.slice(8) : daysInMonth);
-  $('dashSum').innerHTML =
-    '本月有记录 <b>' + cal.recorded + '</b> 天（已过 ' + past + ' 天）<br>' +
-    '日均 <b>' + (cal.recorded ? Math.round(cal.sumKcal / cal.recorded) : 0) + ' kcal</b>' +
-    '（按有记录的天数）<br>' +
-    '<span style="color:var(--dim)">🔴 超标 · 🟢 达标 · 🟠 偏少 · 🟡 很少 · 点某天可切过去</span>';
-}
-
-function openDash(){
-  dashView = 'week';
-  dashMonth = todayKey().slice(0, 7);
-  $('dash').classList.add('on');
-  renderDash();
-}
-const closeDash = () => $('dash').classList.remove('on');
-
-$('btnStats').addEventListener('click', openDash);
-$('btnDashClose').addEventListener('click', closeDash);
-$('dash').addEventListener('click', e => { if (e.target === $('dash')) closeDash(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDash(); });
-$('btnDashToday').addEventListener('click', () => gotoDay(todayKey()));
-/* 周视图：‹ 往前推一周（仅用于看趋势，不改变浏览窗口）；月视图：翻月份 */
-$('dashPrev').addEventListener('click', () => {
-  if (dashView === 'month'){
-    const [y, m] = dashMonth.split('-').map(Number);
-    const d = new Date(y, m - 2, 1);
-    dashMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-  } else {
-    dashWeekOffset -= 7;
-  }
-  renderDash();
-});
-$('dashNext').addEventListener('click', () => {
-  if (dashView === 'month'){
-    const [y, m] = dashMonth.split('-').map(Number);
-    const d = new Date(y, m, 1);
-    const nxt = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-    if (nxt <= todayKey().slice(0, 7)) dashMonth = nxt;
-  } else {
-    dashWeekOffset = Math.min(0, dashWeekOffset + 7);
-  }
-  renderDash();
-});
-function switchDashView(v){
-  if (['week', 'month'].indexOf(v) === -1) return;
-  dashView = v;
-  renderDash();
-}
-document.querySelectorAll('#dashTabs .tab').forEach(b => {
-  b.addEventListener('click', () => switchDashView(b.dataset.view));
-});
-
 /* ---- 「回到今天」按钮 ---- */
 $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.8';
+const APP_VERSION = '2026-10-04.0';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
