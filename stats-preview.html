@@ -168,18 +168,20 @@
   .dashhead .dtitle small{color:var(--dim);font-size:11px}
   .navbtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;background:var(--card2);
     border:none;color:var(--fg);font-size:17px;cursor:pointer}
-  /* 圆环与图例：窄屏自动改为上下排列，避免挤在一起 */
-  .ringbox{display:flex;gap:14px;align-items:center;margin:2px 0 16px}
+  /* 圆环与图例：默认上下排列（窄屏下并排会把图例文字挤成竖排） */
+  .ringbox{display:flex;flex-direction:column;gap:16px;align-items:center;margin:2px 0 16px}
   .ringbox svg{flex:0 0 auto;width:196px;height:196px}
-  .legend{flex:1;min-width:0;padding-left:4px}
-  .lrow{display:flex;align-items:center;gap:8px;font-size:13.5px;margin-bottom:11px}
+  .legend{width:100%;min-width:0;padding:0}
+  .lrow{display:flex;align-items:center;gap:9px;font-size:14px;margin-bottom:9px}
+  .lrow:last-child{margin-bottom:0}
   .lrow .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
-  .lrow .nm{flex:1;color:var(--dim);min-width:0}
-  .lrow b{font-weight:700;white-space:nowrap}
-  @media (max-width:379px){
-    .ringbox{flex-direction:column;gap:10px}
-    .legend{width:100%}
-    .lrow{margin-bottom:8px}
+  .lrow .nm{color:var(--dim);white-space:nowrap}
+  .lrow .val{flex:1;text-align:right;font-weight:700;white-space:nowrap}
+  .lrow .pct{flex:0 0 54px;text-align:right;color:var(--dim);font-size:13px;white-space:nowrap}
+  /* 只有足够宽（iPad 等）才并排显示 */
+  @media (min-width:520px){
+    .ringbox{flex-direction:row;gap:20px;align-items:center}
+    .legend{flex:1;width:auto}
   }
   .hist{display:flex;align-items:flex-end;gap:5px;height:132px;margin:6px 0 6px}
   .hcol{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
@@ -189,7 +191,25 @@
   .hcol small{font-size:9.5px;color:var(--dim);margin-top:6px;white-space:nowrap}
   .hcol.today small{color:var(--fg);font-weight:600}
   .dashsum{font-size:12px;color:var(--dim);line-height:1.7;margin-top:6px}
-  .dashsum b{color:var(--fg)}
+  /* iOS 风格选择弹窗 */
+  .alert{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(84vw,300px);background:#2c2c2e;border-radius:20px;overflow:hidden;
+    text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  @media (prefers-color-scheme: light){ .alert{background:#f7f7f8} }
+  .alert .ahead{padding:20px 20px 16px}
+  .alert .atitle{font-size:16.5px;font-weight:700;margin-bottom:6px;color:var(--fg)}
+  .alert .amsg{font-size:13px;line-height:1.55;color:var(--dim);white-space:pre-line}
+  .alert .abody{border-top:1px solid var(--line)}
+  .alert button{display:block;width:100%;padding:14px;background:transparent;border:none;
+    border-top:1px solid var(--line);border-radius:0;font:inherit;font-size:16px;
+    color:var(--p);cursor:pointer;font-weight:500}
+  .alert button:first-child{border-top:none}
+  .alert button:active{background:rgba(127,127,127,.18)}
+  .alert button.strong{font-weight:700}
+  .alert button.danger{color:#ff453a}
+  /* 可点击的柱状图 */
+  .hcol:active .hfill{opacity:.65}
+  .hcol.active .hfill{box-shadow:0 0 0 2.5px var(--fg)}
   /* 记录日期选择 */
   .daterow{display:flex;align-items:center;gap:7px;margin-bottom:11px;font-size:12.5px;color:var(--dim)}
   .daterow input[type=date]{flex:1;min-width:0;background:var(--card2);border:none;color:var(--fg);
@@ -372,6 +392,17 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- ===== iOS 风格选择弹窗（不使用原生 confirm） ===== -->
+<div class="modal" id="alert">
+  <div class="alert">
+    <div class="ahead">
+      <div class="atitle" id="alertTitle"></div>
+      <div class="amsg" id="alertMsg"></div>
+    </div>
+    <div class="abody" id="alertBtns"></div>
+  </div>
+</div>
+
 <!-- ===== 统计面板：圆环（蛋白质/脂肪/碳水）+ 周/月趋势 ===== -->
 <div class="modal" id="dash">
   <div class="panel" style="max-width:460px">
@@ -543,8 +574,12 @@ const LABELS = '食物名称|菜品名称|食品名称|名称|菜品|食物|重�
 const FIELD_RE = '蛋\\s*白\\s*质|蛋\\s*白|protein|pro|脂\\s*肪|fat|碳\\s*水\\s*化\\s*合\\s*物|碳\\s*水|糖\\s*类|carb(?:ohydrate)?s?|热\\s*量|能\\s*量|卡\\s*路\\s*里|kcal|千\\s*卡|大\\s*卡';
 
 function parseLine(raw){
-  let s = raw.replace(/\*\*/g, '').replace(/^\s*[-*•\d.、)）]+\s*/, '').trim();
-  if (!s || /^(合计|总计|小计|total|合\s*计)/i.test(s)) return null;
+  let s = String(raw).replace(/\*\*/g, '').trim();
+  // 先判断合计行，再去列表符号 —— 否则"合"会被字符集吃掉（合计 → 计）而漏过过滤
+  if (!s || /^(合计|总计|小计|总共|total|合\s*计)/i.test(s)) return null;
+  s = s.replace(/^\s*[-*•·\d]+[.、)）]?\s*/, '').trim();
+  if (!s) return null;
+  if (/^(合计|总计|小计|总共|total)/i.test(s)) return null;      // 去符号后再兜一次
   if (!/\d/.test(s)) return null;
   if (!/(kcal|千卡|大卡|卡路里|能量|热量)/i.test(s)) return null;
 
@@ -585,9 +620,13 @@ function parseLine(raw){
       if (m && m[1]) name = m[1];
     }
   }
-  name = name.replace(/[（(][^）)]*[)）]/g, '')
-             .replace(new RegExp('\\s*(?:' + LABELS + ')\\s*[:：=]?\\s*$', 'i'), '')
-             .replace(/[\s\-–—|]+$/, '').trim();
+  // 名称清洗：只剥掉「含数字或重量单位」的括号（如（200克）），
+  // 保留描述性括号（如 鸡胸肉（去皮）），否则会误删菜名信息
+  name = String(name)
+    .replace(/[（(][^）)]*\d[^）)]*[)）]/g, '')
+    .replace(/[（(][^）)]*(?:kcal|千卡|大卡|克|kg|ml|毫升)[^）)]*[)）]/gi, '')
+    .replace(new RegExp('\\s*(?:' + LABELS + ')\\s*[:：=]?\\s*$', 'i'), '')
+    .replace(/[\s\-–—|]+$/, '').trim();
   if (!name) name = '未命名';
 
   return { name, grams, kcal, protein, fat, carbs };
@@ -1142,6 +1181,42 @@ function countParsed(days){
   return { dates: dates, total: total };
 }
 
+/* ================= iOS 风格选择弹窗 =================
+   原生 confirm() 在 iOS 上只显示「取消 / 好」，用户无法知道"好"代表什么，
+   对"合并 vs 覆盖"这种有数据风险的选项尤其危险，所以自绘。 */
+function askChoice(opts){
+  return new Promise(resolve => {
+    const box = $('alert');
+    const btns = $('alertBtns');
+    $('alertTitle').textContent = opts.title || '';
+    $('alertMsg').textContent = opts.message || '';
+    btns.innerHTML = '';
+    let done = false;
+    const finish = v => { if (done) return; done = true; box.classList.remove('on'); resolve(v); };
+
+    for (const b of opts.buttons){
+      const el = document.createElement('button');
+      el.textContent = b.label;
+      if (b.strong) el.className = 'strong';
+      if (b.danger) el.className = (el.className ? el.className + ' ' : '') + 'danger';
+      el.addEventListener('click', () => finish(b.value));
+      btns.appendChild(el);
+    }
+    box.classList.add('on');
+  });
+}
+
+/* 「合并 / 覆盖 / 取消」三选一；默认动作放最上面且加粗 */
+function askMergeOrReplace(headline, detail){
+  const merge = { label: '合并（保留现有数据）', value: 'merge', strong: true };
+  const replace = { label: '覆盖（清空后写入）', value: 'replace', danger: true };
+  return askChoice({
+    title: '导入方式',
+    message: headline + (detail ? '\n' + detail : ''),
+    buttons: [merge, replace, { label: '取消', value: null }]
+  });
+}
+
 /* ================= 备份与恢复 ================= */
 /* TEST-EXTRACT-A */                       // 测试用提取标记，勿删
 function buildBackup(){
@@ -1217,33 +1292,40 @@ function applyImport(text){
 
   const stat = countParsed(entries);
   const range = stat.dates.length ? (stat.dates[0] + ' ~ ' + stat.dates[stat.dates.length - 1]) : '';
-  const mode = window.confirm(
-    (fromDoc ? '从文本解析到 ' : '备份包含 ') + days + ' 天、共 ' + stat.total + ' 条记录\n' +
-    (range ? '日期范围：' + range + '\n\n' : '\n') +
-    '【确定】合并 —— 保留现有数据，把导入的日期并入（自动跳过重复条目）\n' +
-    '【取消】覆盖 —— 用导入内容完全替换现有数据'
-  ) ? 'merge' : 'replace';
+  const headline = (fromDoc ? '解析到 ' : '备份包含 ') + days + ' 天、共 ' + stat.total + ' 条记录';
+  const existing = Object.keys(store).length;
 
-  if (mode === 'replace'){
-    store = entries;
-  } else {
-    for (const date of Object.keys(entries)){
-      const cur = store[date] || {};
-      for (const meal of Object.keys(entries[date])){
-        const existing = cur[meal] || [];
-        if (!existing.length){ cur[meal] = entries[date][meal].slice(); continue; }
-        // 同名+同热量的视为同一条，避免重复导入
-        for (const it of entries[date][meal]){
-          const dup = existing.some(o => o.name === it.name && Math.abs((+o.kcal || 0) - (+it.kcal || 0)) < 0.01);
-          if (!dup) existing.push(it);
+  askMergeOrReplace(headline, range ? '日期范围：' + range : '').then(mode => {
+    if (!mode) return;                                  // 取消
+
+    if (mode === 'replace'){
+      store = entries;
+    } else {
+      for (const date of Object.keys(entries)){
+        const cur = store[date] || {};
+        for (const meal of Object.keys(entries[date])){
+          const ex = cur[meal] || [];
+          if (!ex.length){ cur[meal] = entries[date][meal].slice(); continue; }
+          // 同名+同热量的视为同一条，避免重复导入
+          for (const it of entries[date][meal]){
+            const dup = ex.some(o => o.name === it.name && Math.abs((+o.kcal || 0) - (+it.kcal || 0)) < 0.01);
+            if (!dup) ex.push(it);
+          }
+          cur[meal] = ex;
         }
-        cur[meal] = existing;
+        store[date] = cur;
       }
-      store[date] = cur;
     }
-  }
-  save(); render(); refreshRisk();
-  toast('已' + (mode === 'replace' ? '覆盖' : '合并') + '导入 ' + days + ' 天、' + stat.total + ' 条');
+    save(); render(); refreshRisk();
+    const after = Object.keys(store).length;
+    const done = '已' + (mode === 'replace' ? '覆盖' : '合并') + '：' + days + ' 天、' + stat.total + ' 条（现有 ' + after + ' 天）';
+    toast(done);
+    if (typeof __dshTestHook === 'function') __dshTestHook('importDone', { mode: mode, days: days });
+  }).catch(err => {
+    // 不能静默失败：导入过程中的任何异常都要让用户看见
+    toast('导入失败：' + ((err && err.message) || err));
+    if (typeof __dshTestHook === 'function') __dshTestHook('importError', String((err && err.message) || err));
+  });
 }
 
 /* ---- 从对话/文档导入的弹窗 ---- */
@@ -1434,14 +1516,19 @@ function ringLegend(dayKey){
   let h = '';
   for (const r of rows){
     const pct = r.goal > 0 ? Math.round(r.kcal / r.goal * 100) : 0;
-    h += '<div class="lrow"><span class="dot" style="background:' + r.color + '"></span>' +
-         '<span class="nm">' + r.name + '</span>' +
-         '<b>' + N(r.grams) + ' g</b>' +
-         '<span class="nm" style="flex:0 0 auto">' + pct + '%</span></div>';
+    h += '<div class="lrow">' +
+           '<span class="dot" style="background:' + r.color + '"></span>' +
+           '<span class="nm">' + r.name + '</span>' +
+           '<span class="val">' + N(r.grams) + ' g</span>' +
+           '<span class="pct">' + pct + '%</span>' +
+         '</div>';
   }
-  h += '<div class="lrow" style="margin-bottom:0"><span class="nm">目标</span><b>' +
-       settings.kcal + ' kcal</b><span class="nm" style="flex:0 0 auto">' +
-       Math.round(s.kcal / Math.max(1, settings.kcal) * 100) + '%</span></div>';
+  h += '<div class="lrow">' +
+         '<span class="dot" style="background:var(--dim)"></span>' +
+         '<span class="nm">目标</span>' +
+         '<span class="val">' + settings.kcal + ' kcal</span>' +
+         '<span class="pct">' + Math.round(s.kcal / Math.max(1, settings.kcal) * 100) + '%</span>' +
+       '</div>';
   return h;
 }
 
@@ -1449,19 +1536,30 @@ function histChart(cells){
   const max = Math.max(settings.kcal || 2000, ...cells.map(c => c.kcal), 1);
   const avg = Math.round(cells.reduce((a, c) => a + c.kcal, 0) / Math.max(1, cells.length));
   let h = '<div class="hist">';
-  for (const c of cells){
+  cells.forEach((c, i) => {
     const pct = Math.max(2, Math.round(c.kcal / max * 100));
     const over = c.kcal > (settings.kcal || 2000);
     const colour = c.future ? '#2a2f3a' : (c.kcal === 0 ? '#2a2f3a' : (over ? '#ff5c5c' : 'var(--acc)'));
-    h += '<div class="hcol' + (c.today ? ' today' : '') + '">' +
+    const active = dashDate === c.key ? ' active' : '';
+    h += '<div class="hcol' + (c.today ? ' today' : '') + active + '" data-i="' + i + '">' +
            '<div class="htrack"><div class="hfill" style="height:' + pct + '%;background:' + colour + '"' +
              (c.kcal ? ' title="' + c.label + ' ' + Math.round(c.kcal) + ' kcal"' : '') + '></div></div>' +
            '<small>' + c.label + '</small>' +
          '</div>';
-  }
+  });
   h += '</div>';
-  h += '<div class="dashsum">' + cells.length + ' 天平均 <b>' + avg + ' kcal</b>／天</div>';
+  h += '<div class="dashsum">' + cells.length + ' 段平均 <b>' + avg + ' kcal</b>／天' +
+       (dashView === 'month' ? '（每段为 3 天）' : '') + '<br>' +
+       '<span style="color:var(--dim)">点柱子可跳到那天看圆环明细</span></div>';
   return h;
+}
+
+/* 从柱状图跳到某一天的圆环明细 */
+function gotoDay(dateKey){
+  if (!dateKey) return;
+  dashDate = dateKey > todayKey() ? todayKey() : dateKey;
+  dashView = 'day';
+  renderDash();
 }
 
 function renderDash(){
@@ -1537,6 +1635,12 @@ function renderDash(){
   $('ringSvg').style.display = 'none';
   $('ringLegend').innerHTML = '';
   $('dashTrend').innerHTML = histChart(cells);
+  // 给每根柱子绑点击：跳到那天的圆环明细
+  Array.prototype.forEach.call($('dashTrend').querySelectorAll('.hcol'), el => {
+    const c = cells[+el.dataset.i];
+    if (!c) return;
+    el.addEventListener('click', () => gotoDay(c.key));
+  });
   $('dashSum').innerHTML =
     (dashView === 'week' ? '本周' : '近 30 天') + '共 <b>' + Math.round(total) + ' kcal</b>，平均 <b>' + avg + ' kcal</b>／天<br>' +
     '达标（不超目标）<b>' + hit + '</b> ' + (dashView === 'week' ? '天' : '段') +
@@ -1575,7 +1679,7 @@ document.querySelectorAll('#dashTabs .tab').forEach(b => {
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.4';
+const APP_VERSION = '2026-10-03.6';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
