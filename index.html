@@ -126,6 +126,10 @@
   .fld input{width:112px;min-width:0;flex:0 1 auto;background:var(--card2);border:none;
     color:var(--fg);border-radius:11px;padding:9px 11px;font:inherit;text-align:right}
   .fld input:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
+  .fld .pick{width:190px;min-width:0;flex:0 1 auto;background:var(--card2);border:none;
+    color:var(--fg);border-radius:11px;padding:9px 11px;font:inherit;
+    -webkit-appearance:none;appearance:none;text-align:right}
+  .fld .pick:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
   .toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));
     transform:translateX(-50%) translateY(20px);
     background:rgba(28,28,30,.92);color:#fff;padding:11px 18px;border-radius:99px;font-size:13.5px;
@@ -264,6 +268,65 @@
   .mlist .item{border-top:1px solid var(--line)}
   .mlist .item:first-child{border-top:none}
   .mempty{color:var(--dim);font-size:13px;padding:10px 0 4px}
+  /* ===== 第二屏：代谢与消耗 ===== */
+  #burn{position:fixed;top:0;left:0;right:0;bottom:0;z-index:80;display:none;
+    background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #burn.on{display:block}
+  .scrwrap{max-width:640px;margin:0 auto;
+    padding:calc(12px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom))}
+  .scrhead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .scrhead h1{font-size:22px;margin:0;flex:1;text-align:center}
+  .backbtn{flex:0 0 auto;width:38px;height:38px;border-radius:50%;background:var(--card2);
+    border:none;color:var(--fg);font-size:20px;line-height:1;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;padding:0}
+  /* 主屏上的入口小卡 */
+  .balcard{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:15px 16px;margin-top:14px;cursor:pointer;border:none;color:var(--fg);
+    font:inherit;text-align:left;width:100%}
+  .balcard .bl{min-width:0}
+  .balcard .bl b{display:block;font-size:16px;font-weight:700}
+  .balcard .bl small{color:var(--dim);font-size:12.5px}
+  .balcard .bchev{flex:0 0 auto;color:var(--dim);font-size:15px}
+  .bnum{font-size:26px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+  .bnum.neg{color:var(--acc)}
+  .bnum.pos{color:#ff453a}
+  /* 能量平衡分解 */
+  .brow{display:flex;align-items:center;justify-content:space-between;
+    font-size:14px;padding:9px 0;border-top:1px solid var(--line)}
+  .brow:first-child{border-top:none}
+  .brow .bk{color:var(--dim);display:flex;align-items:center;gap:7px;min-width:0}
+  .brow .bv{font-weight:600;white-space:nowrap}
+  .brow .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .brow .bnote{font-size:11px;color:var(--dim);font-weight:400}
+  /* 双色趋势条 */
+  .duo{display:flex;align-items:flex-end;gap:4px;height:130px;margin:6px 0 4px}
+  .dcol{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%;min-width:0}
+  .dbar{flex:1;max-width:9px;border-radius:4px 4px 2px 2px;min-height:2px;
+    transition:height .3s cubic-bezier(.25,.8,.35,1)}
+  .dbar.in{background:var(--p)}
+  .dbar.out{background:var(--c)}
+  .duo-x{display:flex;gap:4px;font-size:9.5px;color:var(--dim)}
+  .duo-x span{flex:1;text-align:center;white-space:nowrap}
+  .legend-inline{display:flex;gap:14px;font-size:12px;color:var(--dim);margin-top:10px}
+  .legend-inline i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
+  /* 体重趋势 */
+  .wchart{display:flex;align-items:flex-end;gap:3px;height:84px;margin:8px 0 2px}
+  .wcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+    height:100%;min-width:0}
+  .wdot{width:100%;max-width:14px;background:var(--acc);border-radius:4px;min-height:3px}
+  .winline{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .winline input{flex:1;min-width:0;background:var(--card2);border:none;color:var(--fg);
+    border-radius:12px;padding:12px;font:inherit;font-size:17px;text-align:center}
+  .winline input:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
+  .wstats{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:13px}
+  .wstats div{flex:1;text-align:center}
+  .wstats b{display:block;font-size:17px;font-weight:700}
+  .wstats small{color:var(--dim);font-size:11px}
+  .empty2{color:var(--dim);font-size:13.5px;text-align:center;padding:22px 0}
+  .formula{background:var(--card2);border-radius:var(--radius-sm);padding:10px 12px;
+    font-size:12px;color:var(--dim);line-height:1.6;margin-top:10px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   /* 数据风险提示与备份 */
   .alertbox{background:rgba(255,159,10,.14);border:1px solid rgba(255,159,10,.45);
     border-radius:var(--radius-sm);padding:12px 13px;margin-bottom:14px;
@@ -315,6 +378,58 @@
     <div class="legend" id="ringLegend"></div>
   </div>
   <div class="hint" id="mealTotals"></div>
+</div>
+
+<!-- ===== 代谢与消耗（入口卡，详情在第二屏） ===== -->
+<button class="balcard" id="btnBurn">
+  <span class="bl"><b>代谢与消耗</b><small id="balSub">设置身体数据后计算</small></span>
+  <span class="bnum" id="balNum">—</span>
+  <span class="bchev">›</span>
+</button>
+
+<!-- ===== 第二屏：代谢与消耗 ===== -->
+<div id="burn">
+  <div class="scrwrap">
+    <div class="scrhead">
+      <button class="backbtn" id="btnBurnBack" aria-label="返回">‹</button>
+      <h1>代谢与消耗</h1>
+      <span style="width:38px;flex:0 0 auto"></span>
+    </div>
+
+    <div class="sechd" style="margin-top:0">身体数据</div>
+    <div class="card">
+      <div id="bodySummary"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="wide ghost" id="btnEditBody">编辑身体数据</button>
+      </div>
+      <div class="formula" id="bmrFormula"></div>
+    </div>
+
+    <div class="sechd">能量平衡</div>
+    <div class="card">
+      <div id="balanceBox"></div>
+    </div>
+
+    <div class="sechd">近 14 天：摄入 vs 消耗</div>
+    <div class="card">
+      <div id="duoBox"></div>
+    </div>
+
+    <div class="sechd">体重</div>
+    <div class="card">
+      <div class="winline">
+        <input type="number" inputmode="decimal" step="0.1" id="wInput" placeholder="体重 kg">
+        <button id="btnSaveWeight">记录</button>
+      </div>
+      <div id="weightBox"></div>
+    </div>
+
+    <div class="hint" style="margin-top:16px">
+      说明：BMR 是公式算出的基础代谢；TDEE 是估算的每日总消耗。
+      「实际 TDEE」由你的饮食记录与体重变化反推（需至少 7 天数据 + 两次体重记录），
+      比公式更准，可在设置里用它来校正热量目标。
+    </div>
+  </div>
 </div>
 
 <!-- 供脚本写入的隐藏数据出口（不显示，仅供导出/调试读取） -->
@@ -381,6 +496,27 @@
     <div class="row" style="margin-top:14px">
       <button class="wide primary" id="btnSaveSet">保存</button>
       <button class="wide ghost" id="btnCloseSet">取消</button>
+    </div>
+
+    <div class="sec-h">身体数据</div>
+    <div class="fld"><label>性别</label>
+      <select id="bSex" class="pick">
+        <option value="male">男</option>
+        <option value="female">女</option>
+      </select>
+    </div>
+    <div class="fld"><label>出生年份</label><input id="bYear" type="number" inputmode="numeric" placeholder="例 1995"></div>
+    <div class="fld"><label>身高 cm</label><input id="bHeight" type="number" inputmode="decimal" placeholder="例 175"></div>
+    <div class="fld"><label>体脂率 %（可选）</label><input id="bFat" type="number" inputmode="decimal" placeholder="填了更准"></div>
+    <div class="fld" style="align-items:flex-start;flex-direction:column;gap:4px">
+      <label style="font-size:13px">日常活动水平（用于估算总消耗）</label>
+      <select id="bActivity" class="pick" style="width:100%">
+        <option value="1.2">久坐：办公室，几乎不运动</option>
+        <option value="1.375">轻度：每周 1–3 次轻运动</option>
+        <option value="1.55">中度：每周 3–5 次中等运动</option>
+        <option value="1.725">高度：每周 6–7 次高强度</option>
+        <option value="1.9">极高：体力劳动或一天两练</option>
+      </select>
     </div>
 
     <div class="sec-h">数据与备份</div>
@@ -467,6 +603,7 @@ const N = v => Number.isFinite(v) ? Math.round(v * 10) / 10 : 0;
 
 /* ---------------- 存储（全部本地，file:// 也能用） ---------------- */
 const LSK = 'kcal.entries.v1', LSS = 'kcal.settings.v1', LSM = 'kcal.meta.v1';
+const LSB = 'kcal.body.v1', LSW = 'kcal.weight.v1';
 const todayKey = () => new Date().toLocaleDateString('sv-SE');   // YYYY-MM-DD 本地时区
 
 /* 日期加减：必须定义在记录/渲染之前 —— render() 会用到它，
@@ -503,14 +640,26 @@ let currentMeal = guessMeal();
 let store = {};
 let settings = { kcal: 2000, p: 120, f: 60, c: 250 };
 let lastBackup = '';                       // 上次备份日期 YYYY-MM-DD
+/* 身体档案（身高/性别/出生年/体脂率/活动水平）——用于估算 BMR/TDEE */
+let body = { sex: 'male', birthYear: '', heightCm: '', bodyFat: '', activity: 1.375,
+             weightKg: '', preferHarris: false };
+/* 体重记录：{ 'YYYY-MM-DD': kg } */
+let weight = {};
 
 try { store = JSON.parse(localStorage.getItem(LSK) || '{}') || {}; } catch (e) { store = {}; }
 try { Object.assign(settings, JSON.parse(localStorage.getItem(LSS) || '{}')); } catch (e) {}
+try { Object.assign(body, JSON.parse(localStorage.getItem(LSB) || '{}')); } catch (e) {}
+try {
+  const w = JSON.parse(localStorage.getItem(LSW) || '{}') || {};
+  for (const k of Object.keys(w)){ const v = +w[k]; if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v > 0) weight[k] = v; }
+} catch (e) { weight = {}; }
 try {
   const meta = JSON.parse(localStorage.getItem(LSM) || '{}') || {};
   if (meta.lastBackup) lastBackup = String(meta.lastBackup);
 } catch (e) {}
 const saveMeta = () => { try { localStorage.setItem(LSM, JSON.stringify({ lastBackup: lastBackup })); } catch (e) {} };
+const saveBody = () => { try { localStorage.setItem(LSB, JSON.stringify(body)); } catch (e) {} };
+const saveWeight = () => { try { localStorage.setItem(LSW, JSON.stringify(weight)); } catch (e) {} };
 
 /* 旧版每条记录没有 meal 字段（整日一个列表）——
    迁移时统一归到「晚餐」桶之外的一个兼容桶 __legacy，展示时归入"未分餐"，
@@ -1120,6 +1269,7 @@ function render(){
   renderMealBar();
   renderCalArea();
   renderMeals();
+  try { renderBurn(); } catch (e) { /* 第二屏渲染失败不影响主屏 */ }
 }
 
 function addItems(items){
@@ -1130,6 +1280,219 @@ function addItems(items){
   toast('已记入' + mealName(currentMeal) + ' ' + items.length + ' 项，共 ' + Math.round(sum(items).kcal) + ' kcal');
   return items.length;
 }
+
+/* ================= 第二屏：代谢与消耗 ================= */
+function bodyReady(){
+  return !!body.sex && +body.heightCm > 0 && ageFrom(body) > 0 && currentWeight() > 0;
+}
+/* 当前体重：优先最近一次体重记录，其次身体档案里的值 */
+function currentWeight(){
+  const ws = Object.keys(weight).filter(k => +weight[k] > 0).sort();
+  if (ws.length) return +weight[ws[ws.length - 1]];
+  return +body.weightKg || 0;
+}
+
+function renderBurn(){
+  const isToday = editDate === todayKey();
+  const eb = energyBalance(editDate, body, weight, null);
+  const hasBody = eb.hasBody;
+
+  // ---- 身体数据摘要 ----
+  const bs = $('bodySummary');
+  if (bs){
+    if (!hasBody){
+      bs.innerHTML = '<div class="empty2">还没有身体数据<br>点下面的按钮填写身高、性别、出生年份</div>';
+    } else {
+      const w = currentWeight();
+      const bmrR = calcBMR({ sex: body.sex, birthYear: body.birthYear, heightCm: body.heightCm,
+                             weightKg: w, bodyFat: body.bodyFat });
+      const tdee = calcTDEE(bmrR.value, body.activity);
+      const lvl = (ACTIVITY_LEVELS.find(a => Math.abs(a.v - (+body.activity || 1.2)) < 0.001) || {}).label || '';
+      let h = '';
+      h += '<div class="brow"><span class="bk">体重</span><span class="bv">' +
+           N(w) + ' kg' + (weight[todayKey()] ? '' : '<span class="bnote">（档案值）</span>') + '</span></div>';
+      h += '<div class="brow"><span class="bk">身高 / 年龄 / 性别</span><span class="bv">' +
+           N(+body.heightCm) + ' cm · ' + ageFrom(body) + ' 岁 · ' + (normSex(body.sex) === 'female' ? '女' : '男') + '</span></div>';
+      if (+body.bodyFat > 0) h += '<div class="brow"><span class="bk">体脂率</span><span class="bv">' + N(+body.bodyFat) + ' %</span></div>';
+      h += '<div class="brow"><span class="bk">活动水平</span><span class="bv">' + lvl + '（×' + (+body.activity || 1.2) + '）</span></div>';
+      h += '<div class="brow"><span class="bk">基础代谢 BMR</span><span class="bv">' + Math.round(bmrR.value) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk">估算总消耗 TDEE</span><span class="bv">' + Math.round(tdee) + ' kcal</span></div>';
+      bs.innerHTML = h;
+    }
+  }
+  const f = $('bmrFormula');
+  if (f){
+    if (!hasBody){ f.style.display = 'none'; }
+    else {
+      f.style.display = '';
+      const w = currentWeight();
+      const bmrR = calcBMR({ sex: body.sex, birthYear: body.birthYear, heightCm: body.heightCm,
+                             weightKg: w, bodyFat: body.bodyFat });
+      let txt = '当前使用：' + bmrR.formula + '\n';
+      if (bmrR.key === 'katch'){
+        txt += '370 + 21.6 × 去脂体重(' + N(bmrR.lbm) + ' kg)';
+      } else if (bmrR.key === 'mifflin'){
+        txt += normSex(body.sex) === 'female'
+          ? '10×体重 + 6.25×身高 − 5×年龄 − 161'
+          : '10×体重 + 6.25×身高 − 5×年龄 + 5';
+        txt += '\n（填上体脂率会自动改用更准的 Katch-McArdle）';
+      } else {
+        txt += 'Harris-Benedict 修订式';
+      }
+      f.textContent = txt;
+    }
+  }
+
+  // ---- 能量平衡 ----
+  const bb = $('balanceBox');
+  if (bb){
+    if (!hasBody){
+      bb.innerHTML = '<div class="empty2">填写身体数据后显示</div>';
+    } else {
+      const intake = eb.intake;
+      const burn = eb.burn;
+      const gap = eb.deficit;
+      const sug = suggestTarget(burn, body.sex);
+      let h = '';
+      h += '<div class="kcal"><b>' + (gap >= 0 ? '−' : '+') + Math.abs(Math.round(gap)) + '</b>' +
+           '<span>' + (gap >= 0 ? 'kcal 缺口' : 'kcal 盈余') + '</span></div>';
+      if (gap > 0){
+        const perWeek = gap * 7 / KCAL_PER_KG_FAT;
+        h += '<div class="hint" style="margin-top:2px">按此节奏，预计每周约 <b>' + perWeek.toFixed(2) + ' kg</b></div>';
+      }
+      h += '<div style="margin-top:12px">';
+      h += '<div class="brow"><span class="bk">饮食摄入</span><span class="bv">' + Math.round(intake) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk">总消耗（估算）</span><span class="bv">' + Math.round(burn) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--p)"></span>基础代谢</span><span class="bv">' + Math.round(eb.rest) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--c)"></span>日常与运动</span><span class="bv">' + Math.round(eb.active) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--f)"></span>食物热效应</span><span class="bv">' + Math.round(eb.tef) + ' kcal</span></div>';
+      h += '</div>';
+      if (sug.ok){
+        h += '<div class="hint" style="margin-top:12px">按估算消耗，建议每日摄入 <b>' + sug.target +
+             ' kcal</b>（缺口 ' + sug.gap + '，约每周 −' + sug.weeklyKg.toFixed(2) + ' kg）' +
+             (sug.clipped ? '<br>⚠️ 已按安全下限 ' + sug.floor + ' kcal 抬高，不建议再低' : '') + '</div>';
+      }
+      bb.innerHTML = h;
+    }
+  }
+
+  // ---- 近 14 天 摄入 vs 消耗 ----
+  const db = $('duoBox');
+  if (db){
+    if (!hasBody){
+      db.innerHTML = '<div class="empty2">填写身体数据后显示</div>';
+    } else {
+      const cells = [];
+      for (let i = 13; i >= 0; i--){
+        const k = dayBack(i);
+        const e = energyBalance(k, body, weight, null);
+        cells.push({ key: k, intake: e.intake, burn: e.burn });
+      }
+      const max = Math.max(1, ...cells.map(c => Math.max(c.intake, c.burn)));
+      let h = '<div class="duo">';
+      for (const c of cells){
+        const hi = Math.max(2, Math.round(c.intake / max * 100));
+        const ho = Math.max(2, Math.round(c.burn / max * 100));
+        h += '<div class="dcol">' +
+               '<div class="dbar in" style="height:' + hi + '%"></div>' +
+               '<div class="dbar out" style="height:' + ho + '%"></div>' +
+             '</div>';
+      }
+      h += '</div><div class="duo-x">';
+      cells.forEach((c, i) => {
+        h += '<span>' + (i % 2 === 0 ? (+c.key.slice(8)) : '') + '</span>';
+      });
+      h += '</div>';
+      const withIn = cells.filter(c => c.intake > 0);
+      const avgIn = withIn.length ? withIn.reduce((a, c) => a + c.intake, 0) / withIn.length : 0;
+      const avgOut = cells.reduce((a, c) => a + c.burn, 0) / cells.length;
+      h += '<div class="legend-inline"><span><i style="background:var(--p)"></i>摄入</span>' +
+           '<span><i style="background:var(--c)"></i>消耗</span></div>';
+      h += '<div class="hint">14 天平均：摄入 <b>' + Math.round(avgIn) + '</b> / 消耗 <b>' +
+           Math.round(avgOut) + '</b> kcal</div>';
+      db.innerHTML = h;
+    }
+  }
+
+  // ---- 体重 ----
+  const wb = $('weightBox');
+  if (wb){
+    const keys = Object.keys(weight).filter(k => +weight[k] > 0).sort();
+    const last14 = [];
+    for (let i = 13; i >= 0; i--){
+      const k = dayBack(i);
+      if (+weight[k] > 0) last14.push({ k: k, kg: +weight[k] });
+    }
+    let h = '';
+    if (!keys.length){
+      h += '<div class="empty2">还没有体重记录<br>填在今天，坚持记录才能看出趋势</div>';
+    } else {
+      const first = +weight[keys[0]], last = +weight[keys[keys.length - 1]];
+      const delta = last - first;
+      h += '<div class="wstats">' +
+             '<div><b>' + N(last) + '</b><small>最新 kg</small></div>' +
+             '<div><b style="color:' + (delta <= 0 ? 'var(--acc)' : '#ff453a') + '">' +
+               (delta > 0 ? '+' : '') + N(delta) + '</b><small>较首次 kg</small></div>' +
+             '<div><b>' + keys.length + '</b><small>已记录天数</small></div>' +
+           '</div>';
+      if (last14.length >= 2){
+        const vals = last14.map(o => o.kg);
+        const lo = Math.min(...vals), hi = Math.max(...vals);
+        const span = Math.max(1, hi - lo);
+        h += '<div class="wchart">';
+        for (const o of last14){
+          const pct = 25 + (o.kg - lo) / span * 75;      // 压缩到 25%~100%，放大差异
+          h += '<div class="wcol" title="' + o.k + ' ' + N(o.kg) + 'kg">' +
+                 '<div class="wdot" style="height:' + pct.toFixed(0) + '%"></div></div>';
+        }
+        h += '</div>';
+        h += '<div class="duo-x">';
+        last14.forEach((o, i) => { h += '<span>' + (i % 2 === 0 ? (+o.k.slice(8)) : '') + '</span>'; });
+        h += '</div>';
+      }
+      // 反推实际 TDEE
+      const rev = reverseTDEE(store, weight, {});
+      if (rev.ok){
+        const diff = rev.value - eb.burn;
+        h += '<div class="hint" style="margin-top:14px">实际 TDEE（按 ' + rev.days + ' 天、' +
+             rev.logged + ' 天有记录反推）：<b>' + Math.round(rev.value) + ' kcal</b>' +
+             '<br>比估算的 ' + Math.round(eb.burn) + ' kcal ' +
+             (diff >= 0 ? '高 ' : '低 ') + Math.abs(Math.round(diff)) + ' kcal' +
+             (Math.abs(diff) > 200 ? '，说明活动水平设置可调整' : '') + '</div>';
+      } else {
+        const why = { noWeight: '至少需要两次体重记录', tooShort: '记录跨度不足 7 天',
+                      tooLong: '跨度超过 42 天，参考性下降', fewLogs: '饮食记录太少' }[rev.reason] || '数据不足';
+        h += '<div class="hint" style="margin-top:14px">暂时无法反推实际 TDEE：' + why + '</div>';
+      }
+    }
+    wb.innerHTML = h;
+    const wi = $('wInput');
+    if (wi && !wi.value && +weight[editDate] > 0) wi.value = weight[editDate];
+  }
+
+  // ---- 主屏入口卡 ----
+  const bn = $('balNum'), bsub = $('balSub');
+  if (bn && bsub){
+    if (!hasBody){
+      bn.textContent = '—';
+      bn.className = 'bnum';
+      bsub.textContent = '点击设置身体数据';
+    } else {
+      const gap = eb.deficit;
+      bn.textContent = (gap >= 0 ? '−' : '+') + Math.abs(Math.round(gap));
+      bn.className = 'bnum ' + (gap >= 0 ? 'neg' : 'pos');
+      bsub.textContent = (isToday ? '今日' : editDate.slice(5) + ' ') +
+        (gap >= 0 ? '热量缺口' : '热量盈余') + ' kcal';
+    }
+  }
+}
+
+function openBurn(){
+  $('burn').classList.add('on');
+  $('burn').scrollTop = 0;
+  renderBurn();
+}
+const closeBurn = () => $('burn').classList.remove('on');
 
 /* 把某条记录移动到另一餐（也用于把「未分餐」的旧记录归位）。
    按对象引用查找而不是按下标，避免重渲染后下标失效移错条目。 */
@@ -1143,6 +1506,169 @@ function moveItem(fromKey, item, toKey){
   save(); render();
   toast('已移动到' + (toKey === LEGACY ? '未分餐' : mealName(toKey)));
 }
+
+/* ================= 代谢与消耗模型（纯计算，便于测试） ================= */
+/* TEST-EXTRACT-BURN-A */                   // 测试用提取标记，勿删
+const KCAL_PER_KG_FAT = 7700;               // 1 kg 脂肪 ≈ 7700 kcal（业界通用近似）
+const ACTIVITY_LEVELS = [
+  { v: 1.2,   label: '久坐' },
+  { v: 1.375, label: '轻度' },
+  { v: 1.55,  label: '中度' },
+  { v: 1.725, label: '高度' },
+  { v: 1.9,   label: '极高' }
+];
+const BMR_FORMULAS = {
+  mifflin: 'Mifflin-St Jeor',
+  katch:   'Katch-McArdle',
+  harris:  'Harris-Benedict'
+};
+
+/* 性别归一：兼容男女各种写法 */
+const normSex = s => (String(s || '').toLowerCase().indexOf('f') === 0 || s === '女') ? 'female' : 'male';
+
+/* 年龄：优先用出生年份推算 */
+function ageFrom(body){
+  const y = +body.birthYear;
+  if (y > 1900 && y < 2200){
+    const a = new Date().getFullYear() - y;
+    if (a > 0 && a < 130) return a;
+  }
+  const a2 = +body.age;
+  return (a2 > 0 && a2 < 130) ? a2 : 0;
+}
+
+/* 三个 BMR 公式。返回 {value, formula, key, lBM?}；缺数据时 value=0 */
+function calcBMR(body){
+  const w = +body.weightKg, h = +body.heightCm, age = ageFrom(body);
+  const sex = normSex(body.sex);
+  const bf = +body.bodyFat;                       // 体脂率 %
+
+  // 需要体重；Katch 还需要体脂率
+  if (w > 0 && bf > 0 && bf < 70){
+    const lbm = w * (1 - bf / 100);
+    return { key: 'katch', formula: BMR_FORMULAS.katch,
+             value: 370 + 21.6 * lbm, lbm: lbm };
+  }
+  if (body.preferHarris && w > 0 && h > 0 && age > 0){
+    const v = sex === 'female'
+      ? 655.1 + 9.563 * w + 1.850 * h - 4.676 * age
+      : 66.5 + 13.75 * w + 5.003 * h - 6.775 * age;
+    return { key: 'harris', formula: BMR_FORMULAS.harris, value: v };
+  }
+  if (w > 0 && h > 0 && age > 0){
+    const v = sex === 'female'
+      ? 10 * w + 6.25 * h - 5 * age - 161
+      : 10 * w + 6.25 * h - 5 * age + 5;
+    return { key: 'mifflin', formula: BMR_FORMULAS.mifflin, value: v };
+  }
+  return { key: null, formula: null, value: 0 };
+}
+
+/* 估算总消耗：BMR × 活动系数。真实数据（Apple 健康）接入后可替换 */
+function calcTDEE(bmr, activity){
+  const f = +activity || 1.2;
+  return bmr > 0 ? bmr * f : 0;
+}
+
+/* 由体重变化反推「实际 TDEE」：
+   实际消耗 = 期间平均摄入 + 减掉的体重×7700/天数
+   需要 ≥7 天数据，且首尾各有一条体重记录 */
+function reverseTDEE(store, weight, opts){
+  const o = opts || {};
+  const minDays = o.minDays || 7;
+  const maxDays = o.maxDays || 42;
+  const dates = Object.keys(weight || {})
+    .filter(k => +weight[k] > 0)
+    .sort();
+  if (dates.length < 2) return { ok: false, reason: 'noWeight' };
+
+  const first = dates[0], last = dates[dates.length - 1];
+  const days = Math.round((new Date(last) - new Date(first)) / 86400000);
+  if (days < minDays) return { ok: false, reason: 'tooShort', days: days };
+  if (days > maxDays) return { ok: false, reason: 'tooLong', days: days };
+
+  // 注意：累加器不能命名成 sum —— 那会遮蔽上面的 sum() 汇总函数（曾经真的踩过）
+  let intakeSum = 0, n = 0;
+  const end = new Date(last);
+  for (const d of Object.keys(store || {})){
+    if (d >= first && d <= last){
+      const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(d)[k] || []), []));
+      if (t.kcal > 0){ intakeSum += t.kcal; n++; }
+    }
+  }
+  // 摄入记录太少 → 结果不可信
+  if (n < Math.max(5, Math.floor(days * 0.5))){
+    return { ok: false, reason: 'fewLogs', days: days, logged: n };
+  }
+
+  const avgIntake = intakeSum / n;
+  const dw = (+weight[last]) - (+weight[first]);        // 负值＝掉秤
+  const dailyDelta = -dw * KCAL_PER_KG_FAT / days;      // 正数＝净消耗
+  return {
+    ok: true, days: days, logged: n,
+    from: first, to: last,
+    weightFrom: +weight[first], weightTo: +weight[last],
+    avgIntake: avgIntake,
+    value: avgIntake + dailyDelta,
+    weeklyChangeKg: dw / days * 7
+  };
+}
+
+/* 目标摄入建议：缺口取 TDEE 的 20%，限制在 300~750，且不低于安全下限 */
+const SAFE_MIN_INTAKE = { male: 1500, female: 1200 };
+function suggestTarget(tdee, sex){
+  if (!(tdee > 0)) return { ok: false };
+  const gap = Math.min(750, Math.max(300, tdee * 0.20));
+  const floor = SAFE_MIN_INTAKE[normSex(sex)] || 1200;
+  const raw = tdee - gap;
+  const target = Math.max(raw, floor);
+  return {
+    ok: true, tdee: tdee, gap: Math.round(gap), target: Math.round(target),
+    clipped: target > raw,                       // 被安全下限抬高过
+    floor: floor,
+    weeklyKg: gap * 7 / KCAL_PER_KG_FAT
+  };
+}
+
+/* 某天的能量平衡：摄入 / 消耗 / 缺口 */
+function energyBalance(dateKey, body, weight, burnByDay){
+  const b = body || {};
+  const wOn = (weight && +weight[dateKey] > 0) ? +weight[dateKey] : +b.weightKg;
+  const bmrR = calcBMR({ sex: b.sex, birthYear: b.birthYear, heightCm: b.heightCm,
+                         weightKg: wOn, bodyFat: (weight && weight[dateKey + '|bf']) || b.bodyFat,
+                         preferHarris: b.preferHarris });
+  const real = burnByDay && burnByDay[dateKey];
+  const active = real && +real.active > 0 ? +real.active : 0;
+  const basal  = real && +real.basal  > 0 ? +real.basal  : 0;
+
+  const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(dateKey)[k] || []), []));
+  const intake = t.kcal;
+
+  // 有真实数据：总消耗 = 静息 + 活动 + 食物热效应
+  // 无真实数据：总消耗 = BMR × 活动系数 + 食物热效应
+  let rest, act, source;
+  if (basal > 0 || active > 0){
+    rest = basal > 0 ? basal : bmrR.value;
+    act = active;
+    source = 'real';
+  } else {
+    rest = bmrR.value;
+    act = rest * ((+b.activity || 1.2) - 1);
+    source = 'estimate';
+  }
+  const tef = intake * 0.10;
+  const burn = rest + act + tef;
+  const balance = intake - burn;                 // 负值＝缺口
+  return {
+    date: dateKey, intake: intake, burn: burn,
+    rest: rest, active: act, tef: tef,
+    balance: balance, deficit: -balance,
+    source: source,
+    bmr: bmrR.value, formula: bmrR.formula, formulaKey: bmrR.key,
+    hasBody: bmrR.value > 0
+  };
+}
+/* TEST-EXTRACT-BURN-B */                   // 测试用提取标记，勿删
 
 /* ---------------- 交互 ---------------- */
 function toast(msg){
@@ -1275,6 +1801,12 @@ const openSet = () => {
   $('sKcal').value = settings.kcal; $('sP').value = settings.p;
   $('sF').value = settings.f; $('sC').value = settings.c;
   $('sScheme').value = settings.dsScheme || '';
+  // 身体数据
+  $('bSex').value = normSex(body.sex);
+  $('bYear').value = body.birthYear || '';
+  $('bHeight').value = body.heightCm || '';
+  $('bFat').value = body.bodyFat || '';
+  $('bActivity').value = String(body.activity || 1.375);
   refreshRisk();
   $('dlg').classList.add('on');
 };
@@ -1293,7 +1825,30 @@ $('btnSaveSet').addEventListener('click', () => {
   settings.f = parseFloat($('sF').value) || 0;
   settings.c = parseFloat($('sC').value) || 0;
   settings.dsScheme = $('sScheme').value.trim();
-  saveSet(); render(); closeSet(); toast('目标已保存');
+  // 身体数据一并保存
+  body.sex = $('bSex').value;
+  body.birthYear = parseFloat($('bYear').value) || '';
+  body.heightCm = parseFloat($('bHeight').value) || '';
+  body.bodyFat = parseFloat($('bFat').value) || '';
+  body.activity = parseFloat($('bActivity').value) || 1.375;
+  saveSet(); saveBody(); render(); closeSet(); toast('已保存');
+});
+
+/* ---- 身体数据 & 体重 ---- */
+$('btnEditBody').addEventListener('click', openSet);
+$('btnBurn').addEventListener('click', openBurn);
+$('btnBurnBack').addEventListener('click', closeBurn);
+$('btnSaveWeight').addEventListener('click', () => {
+  const v = parseFloat($('wInput').value);
+  if (!(v > 0) || v > 400){ toast('请输入有效的体重（kg）'); return; }
+  weight[editDate] = Math.round(v * 10) / 10;
+  saveWeight();
+  $('wInput').value = '';
+  render();
+  toast('已记录 ' + editDate + ' 体重 ' + weight[editDate] + ' kg');
+});
+$('wInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('btnSaveWeight').click();
 });
 
 /* 启动：分步容错 —— 任何一步失败都不该让整个界面变成"全 0 且点不动" */
@@ -1508,8 +2063,11 @@ function askMergeOrReplace(headline, detail){
 /* TEST-EXTRACT-A */                       // 测试用提取标记，勿删
 function buildBackup(){
   return JSON.stringify({
-    app: 'kcal', version: 2, exportedAt: new Date().toISOString(),
-    settings: settings, entries: store
+    app: 'kcal', version: 3, exportedAt: new Date().toISOString(),
+    settings: settings,
+    body: body,            // 身体档案（v3 新增）
+    weight: weight,        // 体重记录（v3 新增）
+    entries: store
   }, null, 2);
 }
 
@@ -1568,18 +2126,44 @@ function applyImport(text){
   }
 
   const days = Object.keys(entries).length;
-  if (!days){ toast(fromDoc ? '没解析出带日期的记录，请确认有日期行' : '备份或文档里没有可识别的记录'); return; }
+  // 备份里可能只有体重/身体数据而没有饮食记录，这种情况也要允许导入
+  const hasExtra = !fromDoc && ((data.body && Object.keys(data.body).length) ||
+                                (data.weight && Object.keys(data.weight).length));
+  if (!days && !hasExtra){
+    toast(fromDoc ? '没解析出带日期的记录，请确认有日期行' : '备份或文档里没有可识别的记录');
+    return;
+  }
 
-  // 备份里的目标设置一并恢复
+  // 备份里的目标设置、身体档案、体重一并恢复
   if (!fromDoc && data.settings && typeof data.settings === 'object'){
     for (const k of ['kcal', 'p', 'f', 'c']) if (data.settings[k] != null) settings[k] = +data.settings[k] || 0;
+    if (data.settings.dsScheme != null) settings.dsScheme = String(data.settings.dsScheme);
     saveSet();
+  }
+  if (!fromDoc && data.body && typeof data.body === 'object'){
+    for (const k of Object.keys(body)) if (data.body[k] != null && data.body[k] !== '') body[k] = data.body[k];
+    saveBody();
+  }
+  if (!fromDoc && data.weight && typeof data.weight === 'object'){
+    for (const k of Object.keys(data.weight)){
+      const v = +data.weight[k];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v > 0 && v < 400) weight[k] = v;   // 覆盖式合并
+    }
+    saveWeight();
   }
 
   const stat = countParsed(entries);
   const range = stat.dates.length ? (stat.dates[0] + ' ~ ' + stat.dates[stat.dates.length - 1]) : '';
+
+  // 只有身体/体重数据（没有饮食记录）时不需要问合并还是覆盖
+  if (!days){
+    save(); render(); refreshRisk();
+    toast('已恢复身体数据与 ' + Object.keys(weight).length + ' 条体重记录');
+    if (typeof __dshTestHook === 'function') __dshTestHook('importDone', { mode: 'extra', days: 0 });
+    return;
+  }
+
   const headline = (fromDoc ? '解析到 ' : '备份包含 ') + days + ' 天、共 ' + stat.total + ' 条记录';
-  const existing = Object.keys(store).length;
 
   askMergeOrReplace(headline, range ? '日期范围：' + range : '').then(mode => {
     if (!mode) return;                                  // 取消
@@ -1701,7 +2285,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-04.1';
+const APP_VERSION = '2026-10-04.2';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
