@@ -190,6 +190,12 @@
   .hcol.today small{color:var(--fg);font-weight:600}
   .dashsum{font-size:12px;color:var(--dim);line-height:1.7;margin-top:6px}
   .dashsum b{color:var(--fg)}
+  /* 数据风险提示与备份 */
+  .alertbox{background:rgba(255,159,10,.14);border:1px solid rgba(255,159,10,.45);
+    border-radius:var(--radius-sm);padding:12px 13px;margin-bottom:14px;
+    font-size:12.5px;line-height:1.6;color:var(--fg)}
+  .alertbox b{color:var(--f)}
+  .alertbox small{display:block;color:var(--dim);font-size:11px;margin-top:6px}
   @media (prefers-color-scheme: light){.toast{background:#1a1f2bdd}}
 .modal{display:flex !important;align-items:center;justify-content:center}
 .modal .panel{outline:2px dashed #ff3d2e}
@@ -215,8 +221,22 @@
   </div>
   <div class="hint" id="mealTotals" style="margin-top:12px"></div>
   <div class="row">
-    <button class="wide ghost" id="btnExport">导出今日记录</button>
+    <button class="wide ghost" id="btnExport">导出今日 CSV</button>
     <button class="wide ghost" id="btnReset">清空今日</button>
+  </div>
+</div>
+
+<!-- ===== 数据安全 ===== -->
+<div class="card">
+  <h2>数据与备份</h2>
+  <div class="alertbox" id="riskBox"></div>
+  <div class="row" style="margin-top:0">
+    <button class="wide" id="btnBackup">⬇️ 备份全部数据</button>
+    <button class="wide" id="btnRestore">⬆️ 恢复备份</button>
+  </div>
+  <div class="hint">
+    备份是一个 JSON 文件，包含全部历史记录与目标设置。建议存到「文件」App 或发给自己，
+    换手机、清理浏览器数据、重装主屏幕图标后都能一键还原。
   </div>
 </div>
 
@@ -290,6 +310,11 @@
     <div class="row">
       <button class="wide ghost" id="btnUpdate">🔄 检查更新</button>
     </div>
+    <div class="alertbox" style="margin-top:14px">
+      <b>⚠️ 数据只存在这台手机的浏览器里</b>
+      <small id="setRisk">与账号无关、不上云。删除主屏幕图标、清理浏览器数据、换手机都会丢失，请定期用「备份全部数据」。</small>
+      <small id="lastBackup"></small>
+    </div>
     <div class="hint">参考：轻体力活动成年人约 1800–2200 kcal；减脂期常见 1200–1600 kcal，
       蛋白质建议 1.2–1.6 g/kg 体重。</div>
   </div>
@@ -338,7 +363,7 @@ const $ = id => document.getElementById(id);
 const N = v => Number.isFinite(v) ? Math.round(v * 10) / 10 : 0;
 
 /* ---------------- 存储（全部本地，file:// 也能用） ---------------- */
-const LSK = 'kcal.entries.v1', LSS = 'kcal.settings.v1';
+const LSK = 'kcal.entries.v1', LSS = 'kcal.settings.v1', LSM = 'kcal.meta.v1';
 const todayKey = () => new Date().toLocaleDateString('sv-SE');   // YYYY-MM-DD 本地时区
 
 /* 餐次定义：顺序即界面顺序 */
@@ -365,14 +390,21 @@ let currentMeal = guessMeal();
 let collapsedGroups = {};
 let store = {};
 let settings = { kcal: 2000, p: 120, f: 60, c: 250 };
+let lastBackup = '';                       // 上次备份日期 YYYY-MM-DD
 
 try { store = JSON.parse(localStorage.getItem(LSK) || '{}') || {}; } catch (e) { store = {}; }
 try { Object.assign(settings, JSON.parse(localStorage.getItem(LSS) || '{}')); } catch (e) {}
+try {
+  const meta = JSON.parse(localStorage.getItem(LSM) || '{}') || {};
+  if (meta.lastBackup) lastBackup = String(meta.lastBackup);
+} catch (e) {}
+const saveMeta = () => { try { localStorage.setItem(LSM, JSON.stringify({ lastBackup: lastBackup })); } catch (e) {} };
 
 /* 旧版每条记录没有 meal 字段（整日一个列表）——
    迁移时统一归到「晚餐」桶之外的一个兼容桶 __legacy，展示时归入"未分餐"，
    这样历史数据不会丢，也不会被胡乱塞进早/午餐。 */
 const LEGACY = '__legacy';
+const asList = v => Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : []);
 function normalizeDay(d){
   if (Array.isArray(d)){                       // v1：整日扁平数组
     return d.length ? { [LEGACY]: d } : {};
@@ -380,14 +412,27 @@ function normalizeDay(d){
   if (d && typeof d === 'object'){
     const out = {};
     for (const k of Object.keys(d)){
+      const items = asList(d[k]).filter(it => it && typeof it === 'object' && (it.name || it.kcal));
+      if (!items.length) continue;
       const key = (MEAL_KEYS.indexOf(k) !== -1 || k === LEGACY) ? k : LEGACY;
-      if (Array.isArray(d[k]) && d[k].length) out[key] = (out[key] || []).concat(d[k]);
+      out[key] = (out[key] || []).concat(items);
     }
     return out;
   }
   return {};
 }
-for (const date of Object.keys(store)) store[date] = normalizeDay(store[date]);
+/* 兼容各种历史/外来格式：{date:{meal:[...]}}、{date:{meal:{id:item}}}、{date:[...]} */
+function normalizeStore(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const date of Object.keys(raw)){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const d = normalizeDay(raw[date]);
+    if (Object.keys(d).length) out[date] = d;
+  }
+  return out;
+}
+store = normalizeStore(store);
 
 // 只保留最近 30 天
 (function prune(){
@@ -790,6 +835,7 @@ const openSet = () => {
   $('sKcal').value = settings.kcal; $('sP').value = settings.p;
   $('sF').value = settings.f; $('sC').value = settings.c;
   $('sScheme').value = settings.dsScheme || '';
+  refreshRisk();
   $('dlg').classList.add('on');
 };
 function onBackdrop(e){
@@ -814,6 +860,17 @@ $('btnSaveSet').addEventListener('click', () => {
 try {
   $('todayLabel').textContent = '今日总计 · ' + todayKey();
   render();
+  refreshRisk();
+  // 超过 7 天没备份就提醒一次；若备份文件还没生成过则在首次提醒里说明
+  (function backupReminder(){
+    if (!Object.keys(store).length) return;
+    const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
+    if (since === null || since > 7){
+      setTimeout(() => toast(since === null
+        ? '⚠️ 还没备份过，点「备份全部数据」存档'
+        : '⚠️ 已 ' + since + ' 天没备份，建议现在备份'), 1800);
+    }
+  })();
 } catch (err) {
   showFatal(err);
 }
@@ -830,6 +887,122 @@ function showFatal(err){
 }
 window.addEventListener('error', e => showFatal(e.error || e.message));
 window.addEventListener('unhandledrejection', e => showFatal(e.reason));
+
+/* ================= 备份与恢复 ================= */
+/* TEST-EXTRACT-A */                       // 测试用提取标记，勿删
+function buildBackup(){
+  return JSON.stringify({
+    app: 'kcal', version: 2, exportedAt: new Date().toISOString(),
+    settings: settings, entries: store
+  }, null, 2);
+}
+
+function refreshRisk(){
+  const days = Object.keys(store).length;
+  const total = Object.keys(store).reduce((a, k) => a + allItemsOf(k).length, 0);
+  const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
+
+  let msg = '共 <b>' + days + '</b> 天、<b>' + total + '</b> 条记录，只保存在这台手机的浏览器里。';
+  msg += '删除主屏幕图标、清理浏览器数据、换手机都会丢失。';
+  $('riskBox').innerHTML = msg + '<small>' + backupHint(since) + '</small>';
+
+  const lb = $('lastBackup');
+  if (lb) lb.textContent = backupHint(since);
+}
+
+function backupHint(since){
+  if (since === null) return '⚠️ 还没有备份过，建议现在备份一次';
+  if (since <= 0) return '✅ 今天已备份（' + lastBackup + '）';
+  if (since <= 7) return '上次备份：' + lastBackup + '（' + since + ' 天前）';
+  return '⚠️ 已有 ' + since + ' 天没备份，建议现在备份';
+}
+
+function doBackup(){
+  const json = buildBackup();
+  lastBackup = todayKey(); saveMeta();
+  try {
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'kcal-backup-' + todayKey() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast('已导出备份文件，请存到「文件」App 或发给自己');
+  } catch (e) {
+    // 兜底：把 JSON 放进输入框让用户手动复制保存
+    $('desc').value = json;
+    $('desc').focus(); $('desc').select();
+    toast('已填入输入框，请长按全选复制并保存');
+  }
+  refreshRisk();
+}
+
+function applyImport(text){
+  let data;
+  try { data = JSON.parse(text); }
+  catch (e) { toast('不是有效的备份内容（JSON 解析失败）'); return; }
+  if (!data || typeof data !== 'object'){ toast('备份内容为空'); return; }
+
+  const rawEntries = data.entries || data.store || data;
+  const entries = normalizeStore(rawEntries);
+  const days = Object.keys(entries).length;
+  if (!days){ toast('备份里没有可识别的记录'); return; }
+
+  if (data.settings && typeof data.settings === 'object'){
+    for (const k of ['kcal', 'p', 'f', 'c']) if (data.settings[k] != null) settings[k] = +data.settings[k] || 0;
+    saveSet();
+  }
+
+  const mode = window.confirm(
+    '备份包含 ' + days + ' 天记录。\n\n' +
+    '【确定】合并 —— 保留现有数据，把备份里的日期并入\n' +
+    '【取消】覆盖 —— 用备份完全替换现有数据'
+  ) ? 'merge' : 'replace';
+
+  if (mode === 'replace'){
+    store = entries;
+  } else {
+    for (const date of Object.keys(entries)){
+      const cur = store[date] || {};
+      for (const meal of Object.keys(entries[date])){
+        const existing = cur[meal] || [];
+        if (!existing.length){ cur[meal] = entries[date][meal].slice(); continue; }
+        // 同名+同热量的视为同一条，避免重复导入
+        for (const it of entries[date][meal]){
+          const dup = existing.some(o => o.name === it.name && Math.abs((+o.kcal || 0) - (+it.kcal || 0)) < 0.01);
+          if (!dup) existing.push(it);
+        }
+        cur[meal] = existing;
+      }
+      store[date] = cur;
+    }
+  }
+  save(); render(); refreshRisk();
+  toast('已' + (mode === 'replace' ? '覆盖' : '合并') + '导入 ' + days + ' 天记录');
+}
+
+$('btnBackup').addEventListener('click', doBackup);
+$('btnRestore').addEventListener('click', () => {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json,application/json,text/plain';
+  inp.addEventListener('change', () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => applyImport(String(rd.result || ''));
+    rd.onerror = () => toast('读取文件失败');
+    rd.readAsText(f, 'utf-8');
+  });
+  inp.click();
+});
+
+/* 按日期取某天全部条目（含未分餐桶），供备份统计使用 */
+function allItemsOf(dateKey){
+  return MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(dateKey)[k] || []), []);
+}
+/* TEST-EXTRACT-B */                       // 测试用提取标记，勿删
 
 /* ================= 统计面板：圆环 + 周/月 ================= */
 /* 三大营养素产能：蛋白质 4 kcal/g，碳水 4 kcal/g，脂肪 9 kcal/g。
@@ -1113,7 +1286,7 @@ document.querySelectorAll('#dashTabs .tab').forEach(b => {
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.1';
+const APP_VERSION = '2026-10-03.2';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
