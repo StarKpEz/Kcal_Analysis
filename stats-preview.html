@@ -190,12 +190,23 @@
   .hcol.today small{color:var(--fg);font-weight:600}
   .dashsum{font-size:12px;color:var(--dim);line-height:1.7;margin-top:6px}
   .dashsum b{color:var(--fg)}
+  /* 记录日期选择 */
+  .daterow{display:flex;align-items:center;gap:7px;margin-bottom:11px;font-size:12.5px;color:var(--dim)}
+  .daterow input[type=date]{flex:1;min-width:0;background:var(--card2);border:none;color:var(--fg);
+    border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;-webkit-appearance:none;appearance:none}
+  .daterow input[type=date]:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
+  .dnav{width:32px;height:32px;flex:0 0 auto;border-radius:50%;background:var(--card2);border:none;
+    color:var(--fg);font-size:15px;cursor:pointer;padding:0}
+  .dlabel{flex:0 0 auto;font-size:12px;color:var(--acc);font-weight:600;min-width:52px;text-align:right}
   /* 数据风险提示与备份 */
   .alertbox{background:rgba(255,159,10,.14);border:1px solid rgba(255,159,10,.45);
     border-radius:var(--radius-sm);padding:12px 13px;margin-bottom:14px;
     font-size:12.5px;line-height:1.6;color:var(--fg)}
   .alertbox b{color:var(--f)}
   .alertbox small{display:block;color:var(--dim);font-size:11px;margin-top:6px}
+  .sample{background:var(--card2);border-radius:var(--radius-sm);padding:10px 12px;
+    font-size:11px;line-height:1.6;color:var(--dim);overflow:auto;margin:0 0 10px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre}
   @media (prefers-color-scheme: light){.toast{background:#1a1f2bdd}}
 #dash{display:flex !important;align-items:center;justify-content:center}
 </style>
@@ -233,15 +244,28 @@
     <button class="wide" id="btnBackup">⬇️ 备份全部数据</button>
     <button class="wide" id="btnRestore">⬆️ 恢复备份</button>
   </div>
+  <div class="row">
+    <button class="wide ghost" id="btnImport">📋 从对话/文档导入记录</button>
+  </div>
   <div class="hint">
     备份是一个 JSON 文件，包含全部历史记录与目标设置。建议存到「文件」App 或发给自己，
-    换手机、清理浏览器数据、重装主屏幕图标后都能一键还原。
+    换手机、清理浏览器数据、重装主屏幕图标后都能一键还原。<br>
+    「从对话/文档导入」可粘贴 **含日期的多条记录**（例如 DeepSeek 对话里整理出来的文本），
+    自动按日期拆开写入。
   </div>
 </div>
 
 <!-- ===== 记录一餐 ===== -->
 <div class="card">
-  <h2>记录一餐</h2>
+  <h2 id="recTitle">记录一餐</h2>
+
+  <div class="daterow">
+    <span>记到</span>
+    <button class="dnav" id="dayPrev" aria-label="前一天">‹</button>
+    <input type="date" id="dayPick">
+    <button class="dnav" id="dayNext" aria-label="后一天">›</button>
+    <span class="dlabel" id="dayLabel"></span>
+  </div>
 
   <div class="hint" style="margin:0 0 10px">
     📷 <b>照片直接在 DeepSeek 里上传</b> —— 本应用不需要也不接触照片，更不需要相机权限。
@@ -316,6 +340,33 @@
     </div>
     <div class="hint">参考：轻体力活动成年人约 1800–2200 kcal；减脂期常见 1200–1600 kcal，
       蛋白质建议 1.2–1.6 g/kg 体重。</div>
+  </div>
+</div>
+
+<!-- ===== 从对话/文档导入 ===== -->
+<div class="modal" id="impor">
+  <div class="panel" style="max-width:460px">
+    <h2>
+      <span>导入记录</span>
+      <button class="iconbtn" id="btnImportClose" title="关闭" aria-label="关闭"
+        style="width:30px;height:30px;font-size:15px"><span>&#10005;</span></button>
+    </h2>
+    <div class="hint" style="margin:0 0 10px">
+      把含日期的记录整段粘贴进来，会自动按日期和餐次拆开。<br>
+      支持这种写法（每行一条食物，日期单独一行）：
+    </div>
+    <pre class="sample">2026-10-01
+早餐：鸡蛋 50g 78kcal 蛋白质6g 脂肪5g 碳水1g
+午餐 | 牛肉面 | 450g | 680kcal | 蛋白质28g | 脂肪22g | 碳水88g
+2026-10-02
+米饭 200g 232kcal 蛋白质5g 脂肪0.6g 碳水51g</pre>
+    <textarea id="importText" style="min-height:170px;font-size:12.5px"
+      placeholder="在这里粘贴记录…"></textarea>
+    <div class="hint" id="importPreview" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="wide ghost" id="btnImportCheck">先检查</button>
+      <button class="wide primary" id="btnImportGo">导入</button>
+    </div>
   </div>
 </div>
 
@@ -451,13 +502,19 @@ store = normalizeStore(store);
 
 const save = () => { try { localStorage.setItem(LSK, JSON.stringify(store)); } catch (e) {} };
 const saveSet = () => { try { localStorage.setItem(LSS, JSON.stringify(settings)); } catch (e) {} };
-const today = () => (store[todayKey()] = store[todayKey()] || {});
-/* 读任意日期的数据：注意不是 today()，不能顺手创建空日期（否则浏览历史会塞满空记录） */
+/* 确保某日期存在并返回其数据对象 */
+const ensureDay = k => (store[k] = store[k] || {});
+const today = () => ensureDay(todayKey());
+/* 读任意日期的数据：注意不是 ensureDay，不能顺手创建空日期（否则浏览历史会塞满空记录） */
 const dateFor = k => store[k] || {};
-const mealList = k => (today()[k] = today()[k] || []);
+/* 「记录一餐」写入哪天：默认今天，可切到过去某天补记 */
+let editDate = todayKey();
+const activeDate = () => editDate;
+const mealListOn = (dateKey, k) => (ensureDay(dateKey)[k] = ensureDay(dateKey)[k] || []);
+const mealList = k => mealListOn(activeDate(), k);          // 记录目标日的某餐
 /* 当餐列表；兼容桶里的旧数据不参与新记录 */
 const day = () => mealList(currentMeal);
-const allItems = () => MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(today()[k] || []), []);
+const allItems = () => MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(activeDate())[k] || []), []);
 const sum = arr => arr.reduce((a, o) => ({
   kcal: a.kcal + (+o.kcal || 0), p: a.p + (+o.protein || 0),
   f: a.f + (+o.fat || 0), c: a.c + (+o.carbs || 0)
@@ -586,7 +643,7 @@ function renderMealBar(){
   const bar = $('mealBar');
   bar.innerHTML = '';
   for (const m of MEALS){
-    const t = sum(today()[m.k] || []);
+    const t = sum(dateFor(editDate)[m.k] || []);
     const b = document.createElement('button');
     b.className = 'mealchip' + (m.k === currentMeal ? ' on' : '');
     b.innerHTML = '<b></b><small></small>';
@@ -600,20 +657,61 @@ function renderMealBar(){
   }
 }
 
+/* 记录日期的显示与切换 */
+function renderDateRow(){
+  const inp = $('dayPick');
+  if (inp){
+    inp.value = editDate;
+    inp.max = todayKey();
+    inp.min = shiftDay(todayKey(), -29);
+  }
+  const diff = Math.round((new Date(todayKey()) - new Date(editDate)) / 86400000);
+  const isToday = editDate === todayKey();
+  let label;
+  if (isToday) label = '今天';
+  else if (diff === 1) label = '昨天';
+  else if (diff === 2) label = '前天';
+  else {
+    const [, mm, dd] = editDate.split('-');
+    label = (+mm) + '/' + (+dd);
+  }
+  const lb = $('dayLabel');
+  if (lb){
+    lb.textContent = label;
+    lb.style.color = isToday ? 'var(--acc)' : 'var(--f)';
+  }
+  const ttl = $('recTitle');
+  if (ttl) ttl.textContent = isToday ? '记录一餐' : '补记 · ' + label;
+  const nx = $('dayNext');
+  if (nx) nx.disabled = isToday;                 // 不能记到未来
+}
+
+function setEditDate(k){
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+  if (k > todayKey()) k = todayKey();            // clamp 未来
+  if (k < shiftDay(todayKey(), -29)) k = shiftDay(todayKey(), -29);
+  editDate = k;
+  // 切到历史日期时默认选中午餐（按当前时间猜只对今天有意义）
+  if (k !== todayKey() && MEAL_KEYS.indexOf(currentMeal) === -1) currentMeal = 'lunch';
+  render();
+}
+
 function render(){
-  const t = sum(allItems());                     // 今天全部（含各餐）
+  const list0 = dateFor(editDate);
+  const t = sum(MEALS.concat([{ k: LEGACY }]).reduce((a, m) => a.concat(list0[m.k] || []), []));
   $('tKcal').textContent = Math.round(t.kcal);
   $('gKcal').textContent = settings.kcal;
   $('barKcal').style.width = Math.min(100, settings.kcal ? t.kcal / settings.kcal * 100 : 0) + '%';
   $('barKcal').style.background = t.kcal > settings.kcal ? '#ff5c5c' : 'var(--acc)';
   $('tP').textContent = N(t.p); $('tF').textContent = N(t.f); $('tC').textContent = N(t.c);
+  renderDateRow();
 
   // 各餐热量小结
   const parts = MEALS.map(m => {
-    const s = sum(today()[m.k] || []);
+    const s = sum(list0[m.k] || []);
     return m.icon + ' ' + m.name + ' ' + Math.round(s.kcal);
   });
-  const legacy = sum(today()[LEGACY] || []);
+  const legacy = sum(list0[LEGACY] || []);
   if (legacy.kcal) parts.push('未分餐 ' + Math.round(legacy.kcal));
   $('mealTotals').textContent = '各餐热量：' + parts.join(' · ') + ' kcal';
 
@@ -625,10 +723,10 @@ function render(){
   let any = false;
 
   const groups = MEALS.map(m => ({ k: m.k, title: m.icon + ' ' + m.name }));
-  if ((today()[LEGACY] || []).length) groups.push({ k: LEGACY, title: '📋 未分餐（旧记录）' });
+  if ((list0[LEGACY] || []).length) groups.push({ k: LEGACY, title: '📋 未分餐（旧记录）' });
 
   for (const g of groups){
-    const list = today()[g.k] || [];
+    const list = list0[g.k] || [];
     if (!list.length) continue;
     any = true;
     const gs = sum(list);
@@ -708,7 +806,7 @@ function addItems(items){
    按对象引用查找而不是按下标，避免重渲染后下标失效移错条目。 */
 function moveItem(fromKey, item, toKey){
   if (!toKey || toKey === fromKey) return;
-  const from = today()[fromKey] || [];
+  const from = mealListOn(activeDate(), fromKey);
   const idx = from.indexOf(item);
   if (idx === -1) return;
   from.splice(idx, 1);
@@ -806,6 +904,12 @@ $('btnAgain').addEventListener('click', () => {
   $('desc').focus();
 });
 
+/* ---- 记录日期切换 ---- */
+$('dayPrev').addEventListener('click', () => setEditDate(shiftDay(editDate, -1)));
+$('dayNext').addEventListener('click', () => setEditDate(shiftDay(editDate, 1)));
+$('dayPick').addEventListener('change', e => setEditDate(e.target.value));
+$('dayPick').addEventListener('blur', e => { e.target.value = editDate; });
+
 $('btnReset').addEventListener('click', () => {
   if (!allItems().length) return;
   if (window.confirm('清空今天的全部记录（含各餐）？')){ store[todayKey()] = {}; save(); render(); }
@@ -813,11 +917,11 @@ $('btnReset').addEventListener('click', () => {
 
 $('btnExport').addEventListener('click', () => {
   const t = sum(allItems());
-  if (!allItems().length){ toast('今天还没有记录'); return; }
-  let s = '日期：' + todayKey() + '\n\n餐次\t食物\t重量(g)\t热量(kcal)\t蛋白质(g)\t脂肪(g)\t碳水(g)\n';
+  if (!allItems().length){ toast('这一天还没有记录'); return; }
+  let s = '日期：' + editDate + '\n\n餐次\t食物\t重量(g)\t热量(kcal)\t蛋白质(g)\t脂肪(g)\t碳水(g)\n';
   const groups = MEALS.map(m => ({ k: m.k, name: m.name })).concat([{ k: LEGACY, name: '未分餐' }]);
   for (const g of groups){
-    const list = today()[g.k] || [];
+    const list = dateFor(editDate)[g.k] || [];
     if (!list.length) continue;
     for (const it of list)
       s += [g.name, it.name, it.grams || '', Math.round(it.kcal), N(it.protein), N(it.fat), N(it.carbs)].join('\t') + '\n';
@@ -830,7 +934,7 @@ $('btnExport').addEventListener('click', () => {
     const blob = new Blob(['\ufeff' + s], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'kcal-' + todayKey() + '.csv';
+    a.download = 'kcal-' + editDate + '.csv';
     a.click();
     toast('已导出 CSV（含各餐小计）');
   } catch (e) {
@@ -897,6 +1001,143 @@ function showFatal(err){
 window.addEventListener('error', e => showFatal(e.error || e.message));
 window.addEventListener('unhandledrejection', e => showFatal(e.reason));
 
+/* ================= 从「对话/文档」解析多日记录 =================
+   典型输入（从 DeepSeek 对话里整理出来的）：
+     2026-10-01
+     早餐：鸡蛋 50g 78kcal 蛋白质6g 脂肪5g 碳水1g
+     午餐：牛肉面 450g 680kcal 蛋白质28g 脂肪22g 碳水88g
+     2026-10-02
+     米饭 | 200g | 232kcal | 蛋白质5g | 脂肪0.6g | 碳水51g
+   返回 { 'YYYY-MM-DD': { meal: [item,...] } }，可直接喂给 normalizeStore */
+const MEAL_ALIASES = [
+  { k: 'breakfast', words: ['早餐', '早饭', '早点', 'breakfast'] },
+  { k: 'lunch',     words: ['午餐', '午饭', '中餐', 'lunch'] },
+  { k: 'dinner',    words: ['晚餐', '晚饭', 'dinner'] },
+  { k: 'snack',     words: ['加餐', '夜宵', '零食', '下午茶', 'snack'] }
+];
+
+/* 从一行里识别日期；返回 {key, rest} 或 null */
+function detectDate(line, carryYear){
+  let m = line.match(/^\s*(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})日?/);
+  if (m) return mkDate(+m[1], +m[2], +m[3], line.slice(m[0].length));
+  m = line.match(/^\s*(\d{1,2})\s*[月/-]\s*(\d{1,2})\s*日?/);
+  if (m && carryYear) return mkDate(carryYear, +m[1], +m[2], line.slice(m[0].length));
+  return null;
+
+  function mkDate(y, mo, d, rest){
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    const dt = new Date(y, mo - 1, d);
+    if (dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;   // 2月30日 之类
+    const key = dt.toLocaleDateString('sv-SE');
+    return { key: key, year: y, rest: String(rest || '').replace(/^[\s:：,，、\-–—]+/, '') };
+  }
+}
+
+/* 识别一行里是否标了餐次；返回 {k, word} —— word 是实际命中的那个词，
+   便于准确地把「早餐」「午餐 |」这类前缀剥掉（不能只靠冒号，竖线/空格都要认） */
+function detectMeal(line){
+  const s = String(line || '');
+  for (const a of MEAL_ALIASES){
+    for (const w of a.words){
+      if (new RegExp('^\\s*[\\[【(（]?\\s*' + w + '\\s*[\\]】)）]?\\s*[:：|｜,，、\\-–—\\s]', 'i').test(s) ||
+          new RegExp('^\\s*' + w + '\\s*$', 'i').test(s)){
+        return { k: a.k, word: w };
+      }
+    }
+  }
+  // 兜底：行首出现餐次词（不分隔符形式，如「早餐：…」已被上面覆盖，这里处理「早餐吃了…」）
+  for (const a of MEAL_ALIASES){
+    for (const w of a.words){
+      if (new RegExp('^\\s*' + w, 'i').test(s)) return { k: a.k, word: w };
+    }
+  }
+  return null;
+}
+
+/* 把行首的餐次标签及其后的分隔符剥掉，返回剩余的食物文本 */
+function stripMealLabel(line, word){
+  let s = String(line || '');
+  const i = s.search(new RegExp(word, 'i'));
+  if (i >= 0) s = s.slice(i + word.length);
+  return s.replace(/^[\s:：|｜,，、\-–—）)】\]]+/, '');
+}
+
+function parseChatDoc(text){
+  const out = {};
+  const lines = String(text || '').split(/\r?\n/);
+  let curDate = null, curMeal = null, carryYear = null;
+
+  const push = (item) => {
+    if (!curDate || !item) return;
+    out[curDate] = out[curDate] || {};
+    const meal = curMeal || LEGACY;
+    (out[curDate][meal] = out[curDate][meal] || []).push(item);
+  };
+
+  for (let raw of lines){
+    const line = raw.trim();
+    if (!line) continue;
+
+    // 1) 日期行
+    const d = detectDate(line, carryYear);
+    if (d){
+      curDate = d.key;
+      carryYear = d.year;
+      curMeal = null;
+      out[curDate] = out[curDate] || {};
+      if (d.rest){
+        const mi = detectMeal(d.rest);
+        if (mi){
+          curMeal = mi.k;
+          const it = parseLine(stripMealLabel(d.rest, mi.word));
+          if (it) push(it);
+        } else {
+          const it = parseLine(d.rest);
+          if (it) push(it);
+        }
+      }
+      continue;
+    }
+
+    // 2) 日期在正文里（如 "今天 2026-10-02 吃了…"）
+    const inline = line.match(/(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})日?/);
+    if (inline && !curDate){
+      const dd = detectDate(inline[0], carryYear);
+      if (dd){ curDate = dd.key; carryYear = dd.year; out[curDate] = out[curDate] || {}; }
+    }
+
+    // 3) 餐次标记（可能是「早餐：xxx」也可能是「早餐 | xxx | …」）
+    const mi = detectMeal(line);
+    if (mi){
+      curMeal = mi.k;
+      const rest = stripMealLabel(line, mi.word);
+      if (rest && rest !== line){
+        const it = parseLine(rest);
+        if (it && curDate) push(it);
+      } else {
+        const it2 = parseLine(line);
+        if (it2 && curDate) push(it2);
+      }
+      continue;
+    }
+
+    // 4) 普通食物行
+    if (curDate){
+      const it = parseLine(line);
+      if (it) push(it);
+    }
+  }
+  return out;
+}
+
+/* 统计解析结果，用于给用户确认 */
+function countParsed(days){
+  const dates = Object.keys(days).sort();
+  let total = 0;
+  for (const d of dates) for (const m of Object.keys(days[d])) total += days[d][m].length;
+  return { dates: dates, total: total };
+}
+
 /* ================= 备份与恢复 ================= */
 /* TEST-EXTRACT-A */                       // 测试用提取标记，勿删
 function buildBackup(){
@@ -948,25 +1189,35 @@ function doBackup(){
 }
 
 function applyImport(text){
-  let data;
-  try { data = JSON.parse(text); }
-  catch (e) { toast('不是有效的备份内容（JSON 解析失败）'); return; }
-  if (!data || typeof data !== 'object'){ toast('备份内容为空'); return; }
+  let data = null, entries = null, fromDoc = false;
 
-  const rawEntries = data.entries || data.store || data;
-  const entries = normalizeStore(rawEntries);
+  // 先按 JSON 备份解析；不是 JSON 就当成「对话/文档文本」按日期解析
+  try { data = JSON.parse(text); } catch (e) { data = null; }
+
+  if (data && typeof data === 'object'){
+    const rawEntries = data.entries || data.store || data;
+    entries = normalizeStore(rawEntries);
+  } else {
+    entries = normalizeStore(parseChatDoc(text));
+    fromDoc = true;
+  }
+
   const days = Object.keys(entries).length;
-  if (!days){ toast('备份里没有可识别的记录'); return; }
+  if (!days){ toast(fromDoc ? '没解析出带日期的记录，请确认有日期行' : '备份或文档里没有可识别的记录'); return; }
 
-  if (data.settings && typeof data.settings === 'object'){
+  // 备份里的目标设置一并恢复
+  if (!fromDoc && data.settings && typeof data.settings === 'object'){
     for (const k of ['kcal', 'p', 'f', 'c']) if (data.settings[k] != null) settings[k] = +data.settings[k] || 0;
     saveSet();
   }
 
+  const stat = countParsed(entries);
+  const range = stat.dates.length ? (stat.dates[0] + ' ~ ' + stat.dates[stat.dates.length - 1]) : '';
   const mode = window.confirm(
-    '备份包含 ' + days + ' 天记录。\n\n' +
-    '【确定】合并 —— 保留现有数据，把备份里的日期并入\n' +
-    '【取消】覆盖 —— 用备份完全替换现有数据'
+    (fromDoc ? '从文本解析到 ' : '备份包含 ') + days + ' 天、共 ' + stat.total + ' 条记录\n' +
+    (range ? '日期范围：' + range + '\n\n' : '\n') +
+    '【确定】合并 —— 保留现有数据，把导入的日期并入（自动跳过重复条目）\n' +
+    '【取消】覆盖 —— 用导入内容完全替换现有数据'
   ) ? 'merge' : 'replace';
 
   if (mode === 'replace'){
@@ -988,8 +1239,36 @@ function applyImport(text){
     }
   }
   save(); render(); refreshRisk();
-  toast('已' + (mode === 'replace' ? '覆盖' : '合并') + '导入 ' + days + ' 天记录');
+  toast('已' + (mode === 'replace' ? '覆盖' : '合并') + '导入 ' + days + ' 天、' + stat.total + ' 条');
 }
+
+/* ---- 从对话/文档导入的弹窗 ---- */
+function importPreview(){
+  const txt = $('importText').value;
+  if (!txt.trim()){ $('importPreview').textContent = '（还没有内容）'; return null; }
+  const days = normalizeStore(parseChatDoc(txt));
+  const stat = countParsed(days);
+  if (!stat.total){
+    $('importPreview').textContent = '⚠️ 没解析出记录。请确认：① 有日期行（如 2026-10-01 或 10月1日）② 每条食物有热量（kcal）';
+    return null;
+  }
+  const range = stat.dates[0] + ' ~ ' + stat.dates[stat.dates.length - 1];
+  $('importPreview').innerHTML = '✅ 解析到 <b>' + stat.dates.length + '</b> 天、<b>' + stat.total + '</b> 条记录<br>日期：' + range;
+  return days;
+}
+const openImport = () => { $('importPreview').textContent = ''; $('impor').classList.add('on'); };
+const closeImport = () => $('impor').classList.remove('on');
+$('btnImport').addEventListener('click', openImport);
+$('btnImportClose').addEventListener('click', closeImport);
+$('impor').addEventListener('click', e => { if (e.target === $('impor')) closeImport(); });
+$('btnImportCheck').addEventListener('click', importPreview);
+$('btnImportGo').addEventListener('click', () => {
+  const txt = $('importText').value;
+  if (!txt.trim()){ toast('请先粘贴内容'); return; }
+  if (!importPreview()) return;
+  closeImport();
+  applyImport(txt);
+});
 
 $('btnBackup').addEventListener('click', doBackup);
 $('btnRestore').addEventListener('click', () => {
@@ -1295,7 +1574,7 @@ document.querySelectorAll('#dashTabs .tab').forEach(b => {
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.2';
+const APP_VERSION = '2026-10-03.3';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
