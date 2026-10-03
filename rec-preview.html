@@ -195,18 +195,27 @@
   .sec-h{font-size:12px;font-weight:700;color:var(--dim);letter-spacing:.03em;margin:16px 0 9px}
   .sec-h:first-of-type{margin-top:2px}
   /* ===== 参考 iOS 饮食 App 的主页面布局 ===== */
-  .dayhead{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 14px;position:relative}
-  .daybtn{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;
-    color:var(--fg);font:inherit;cursor:pointer;padding:4px 6px;border-radius:10px}
-  .daybtn b{font-size:22px;font-weight:700;letter-spacing:-.02em}
-  .daybtn .chev{font-size:12px;color:var(--dim);transition:transform .2s ease;display:inline-block}
+  .dayhead{display:flex;align-items:center;justify-content:center;gap:10px;
+    margin:2px 0 14px;position:relative;min-height:40px}
+  /* 可点元素禁用文字选择与长按菜单：iOS 长按会触发选择/放大镜，从而吞掉 click */
+  .daybtn,.wk,.calnav,.cal,.todaybtn,.mrow,.addbtn,.meals,.weekstrip{
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .daybtn{display:inline-flex;align-items:center;gap:7px;background:transparent;border:none;
+    color:var(--fg);font:inherit;cursor:pointer;padding:8px 10px;border-radius:12px}
+  .daybtn b{font-size:22px;font-weight:700;letter-spacing:-.02em;pointer-events:none}
+  .daybtn .chev{font-size:12px;color:var(--dim);transition:transform .2s ease;
+    display:inline-block;pointer-events:none}
   .dayhead.open .daybtn .chev{transform:rotate(180deg)}
   .hidden-date{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;left:50%}
   .dayhead .todaybtn{position:absolute;right:0}
-  /* 月视图的月份导航 */
-  .calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  /* 月视图的月份导航：只要箭头，不要圆形底 */
+  .calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
   .calnav b{font-size:15px;font-weight:700}
-  .calnav .navbtn{width:32px;height:32px}
+  .calnav .navbtn{width:40px;height:36px;background:transparent;border:none;color:var(--fg);
+    font-size:22px;font-weight:800;line-height:1;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center}
+  .calnav .navbtn:active{opacity:.5}
+  .calnav .navbtn[disabled]{opacity:.25}
   /* 周视图（折叠态） */
   .weekstrip{display:flex;gap:4px;background:var(--card);border-radius:var(--radius);
     padding:12px 8px;margin-bottom:14px;box-shadow:var(--shadow)}
@@ -266,6 +275,7 @@
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre}
   @media (prefers-color-scheme: light){.toast{background:#1a1f2bdd}}
 #rec{display:flex !important;align-items:center;justify-content:center}
+.calOpen{display:block}
 </style>
 </head>
 <body>
@@ -1675,14 +1685,16 @@ function renderCalendar(ym){
     const isFuture = key > todayKey();
     const kcal = isFuture ? 0 : summarize(key).kcal;
     if (kcal > 0){ sumKcal += kcal; recorded++; }
-    const cls = 'cday' + (key === todayKey() ? ' today' : '') + (key === editDate ? ' sel' : '');
+    const cls = 'cday' + (key === todayKey() ? ' today' : '') +
+                (key === editDate ? ' sel' : '') + (isFuture ? ' future' : '');
     h += '<button class="' + cls + '" data-date="' + key + '"' + (isFuture ? ' disabled' : '') + '>' +
            '<span class="cn">' + d + '</span>' +
            calRing(settings.kcal ? kcal / settings.kcal : 0, isFuture ? 'var(--card2)' : calColour(kcal)) +
          '</button>';
   }
   h += '</div>';
-  return { html: h, sumKcal: sumKcal, recorded: recorded };
+  // 必须返回字符串：调用方直接用字符串拼接，返回对象会变成 "[object Object]"
+  return h;
 }
 
 /* ---- 「回到今天」按钮 ---- */
@@ -1691,7 +1703,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-04.0';
+const APP_VERSION = '2026-10-04.1';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
