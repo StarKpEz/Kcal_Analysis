@@ -216,8 +216,26 @@
     border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;-webkit-appearance:none;appearance:none}
   .daterow input[type=date]:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
   .dnav{width:32px;height:32px;flex:0 0 auto;border-radius:50%;background:var(--card2);border:none;
-    color:var(--fg);font-size:15px;cursor:pointer;padding:0}
-  .dlabel{flex:0 0 auto;font-size:12px;color:var(--acc);font-weight:600;min-width:52px;text-align:right}
+    color:var(--fg);font-size:15px;cursor:pointer;padding:0;
+    display:inline-flex;align-items:center;justify-content:center;line-height:1}
+  /* 「回到今天」做成真按钮 */
+  .todaybtn{flex:0 0 auto;padding:0 12px;height:32px;border-radius:99px;border:none;
+    background:var(--card2);color:var(--fg);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+  .todaybtn.on{background:var(--acc);color:#04240f}
+  /* 日历（参考 iOS 健身 App 的圆环日历） */
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:7px 6px;margin-bottom:4px}
+  .cal .cwd{text-align:center;font-size:11px;color:var(--dim);padding-bottom:2px}
+  .cal .cday{display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;
+    border:none;padding:2px 0;cursor:pointer;border-radius:12px}
+  .cal .cday .cn{font-size:11.5px;color:var(--dim);line-height:1}
+  .cal .cday.today .cn{color:var(--f);font-weight:700}
+  .cal .cday.sel .cn{color:var(--fg);font-weight:700}
+  .cal .cday.empty{visibility:hidden}
+  .cal .cday svg{display:block}
+  /* 选择弹窗内的小节标题 */
+  .sec-h{font-size:12px;font-weight:700;color:var(--dim);letter-spacing:.03em;margin:16px 0 9px}
+  .sec-h:first-of-type{margin-top:2px}
   /* 数据风险提示与备份 */
   .alertbox{background:rgba(255,159,10,.14);border:1px solid rgba(255,159,10,.45);
     border-radius:var(--radius-sm);padding:12px 13px;margin-bottom:14px;
@@ -249,28 +267,13 @@
     <div><b id="tC" style="color:var(--c)">0</b><small>碳水 g</small></div>
   </div>
   <div class="hint" id="mealTotals" style="margin-top:12px"></div>
+  <div class="ringbox" style="margin-top:14px">
+    <svg id="ringSvg" width="196" height="196" viewBox="0 0 196 196" aria-label="营养素圆环"></svg>
+    <div class="legend" id="ringLegend"></div>
+  </div>
   <div class="row">
     <button class="wide ghost" id="btnExport">导出今日 CSV</button>
     <button class="wide ghost" id="btnReset">清空今日</button>
-  </div>
-</div>
-
-<!-- ===== 数据安全 ===== -->
-<div class="card">
-  <h2>数据与备份</h2>
-  <div class="alertbox" id="riskBox"></div>
-  <div class="row" style="margin-top:0">
-    <button class="wide" id="btnBackup">⬇️ 备份全部数据</button>
-    <button class="wide" id="btnRestore">⬆️ 恢复备份</button>
-  </div>
-  <div class="row">
-    <button class="wide ghost" id="btnImport">📋 从对话/文档导入记录</button>
-  </div>
-  <div class="hint">
-    备份是一个 JSON 文件，包含全部历史记录与目标设置。建议存到「文件」App 或发给自己，
-    换手机、清理浏览器数据、重装主屏幕图标后都能一键还原。<br>
-    「从对话/文档导入」可粘贴 **含日期的多条记录**（例如 DeepSeek 对话里整理出来的文本），
-    自动按日期拆开写入。
   </div>
 </div>
 
@@ -279,11 +282,10 @@
   <h2 id="recTitle">记录一餐</h2>
 
   <div class="daterow">
-    <span>记到</span>
     <button class="dnav" id="dayPrev" aria-label="前一天">‹</button>
     <input type="date" id="dayPick">
     <button class="dnav" id="dayNext" aria-label="后一天">›</button>
-    <span class="dlabel" id="dayLabel"></span>
+    <button class="todaybtn" id="btnToday">今天</button>
   </div>
 
   <div class="hint" style="margin:0 0 10px">
@@ -325,17 +327,38 @@
 <div class="modal" id="dlg">
   <div class="panel">
     <h2>
-      <span>每日目标</span>
+      <span>设置</span>
       <span style="display:flex;align-items:center;gap:10px">
         <small id="verLabel" style="color:var(--dim);font-size:11px;font-weight:400"></small>
         <button class="iconbtn" id="btnCloseX" title="关闭" aria-label="关闭"
           style="width:30px;height:30px;font-size:15px"><span>&#10005;</span></button>
       </span>
     </h2>
+    <div class="sec-h">每日目标</div>
     <div class="fld"><label>热量 kcal</label><input id="sKcal" type="number" inputmode="numeric"></div>
     <div class="fld"><label>蛋白质 g</label><input id="sP" type="number" inputmode="numeric"></div>
     <div class="fld"><label>脂肪 g</label><input id="sF" type="number" inputmode="numeric"></div>
     <div class="fld"><label>碳水 g</label><input id="sC" type="number" inputmode="numeric"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="wide primary" id="btnSaveSet">保存</button>
+      <button class="wide ghost" id="btnCloseSet">取消</button>
+    </div>
+
+    <div class="sec-h">数据与备份</div>
+    <div class="alertbox" id="riskBox"></div>
+    <div class="row" style="margin-top:0">
+      <button class="wide" id="btnBackup">⬇️ 备份全部数据</button>
+      <button class="wide" id="btnRestore">⬆️ 恢复备份</button>
+    </div>
+    <div class="row">
+      <button class="wide ghost" id="btnImport">📋 从对话/文档导入记录</button>
+    </div>
+    <div class="hint">
+      备份是 JSON 文件，含全部历史记录与目标设置；换手机、清理数据、重装图标后都能还原。<br>
+      「从对话/文档导入」可粘贴含日期的多条记录，自动按日期拆开写入。
+    </div>
+
+    <div class="sec-h">其他</div>
     <div class="fld" style="align-items:flex-start;flex-direction:column;gap:4px">
       <label style="font-size:13px">DeepSeek 唤起链接（可选）</label>
       <input id="sScheme" type="text" inputmode="url" placeholder="例：deepseek:// 或 shortcuts://run-shortcut?name=记热量"
@@ -345,17 +368,8 @@
         填在这里会优先使用；没有就留空。
       </div>
     </div>
-    <div class="row" style="margin-top:16px">
-      <button class="wide primary" id="btnSaveSet">保存</button>
-      <button class="wide ghost" id="btnCloseSet">取消</button>
-    </div>
     <div class="row">
       <button class="wide ghost" id="btnUpdate">🔄 检查更新</button>
-    </div>
-    <div class="alertbox" style="margin-top:14px">
-      <b>⚠️ 数据只存在这台手机的浏览器里</b>
-      <small id="setRisk">与账号无关、不上云。删除主屏幕图标、清理浏览器数据、换手机都会丢失，请定期用「备份全部数据」。</small>
-      <small id="lastBackup"></small>
     </div>
     <div class="hint">参考：轻体力活动成年人约 1800–2200 kcal；减脂期常见 1200–1600 kcal，
       蛋白质建议 1.2–1.6 g/kg 体重。</div>
@@ -402,7 +416,7 @@
   </div>
 </div>
 
-<!-- ===== 统计面板：圆环（蛋白质/脂肪/碳水）+ 周/月趋势 ===== -->
+<!-- ===== 统计面板：周趋势 / 月历（圆环在主页面，避免重复 id） ===== -->
 <div class="modal" id="dash">
   <div class="panel" style="max-width:460px">
     <h2>
@@ -412,20 +426,14 @@
     </h2>
 
     <div class="tabs" id="dashTabs">
-      <button class="tab on" data-view="day">每日</button>
-      <button class="tab" data-view="week">周</button>
-      <button class="tab" data-view="month">月</button>
+      <button class="tab on" data-view="week">周趋势</button>
+      <button class="tab" data-view="month">月历</button>
     </div>
 
     <div class="dashhead">
       <button class="navbtn" id="dashPrev" aria-label="上一段">‹</button>
       <span class="dtitle"><b id="dashTitle"></b><small id="dashSub"></small></span>
       <button class="navbtn" id="dashNext" aria-label="下一段">›</button>
-    </div>
-
-    <div class="ringbox">
-      <svg id="ringSvg" width="196" height="196" viewBox="0 0 196 196" aria-label="营养素圆环"></svg>
-      <div class="legend" id="ringLegend"></div>
     </div>
 
     <div id="dashTrend"></div>
@@ -676,6 +684,163 @@ function parseText(text){
   return out;
 }
 
+/* ================= 圆环模型（主页面与统计面板共用） ================= */
+/* TEST-EXTRACT-RING-A */                   // 测试用提取标记，勿删
+/* 三大营养素产能：蛋白质 4 kcal/g，碳水 4 kcal/g，脂肪 9 kcal/g。
+   圆环按"占各自目标的比例"画三段弧，所以一眼能看出哪一项超标/不足。 */
+const KCAL_PER_G = { p: 4, c: 4, f: 9 };
+/* 画布 196×196，中心 (98,98)。
+   几何不能用"字数×系数"猜文字宽度 —— 不同字体/字距会偏，之前就是这么翻车的。
+   做法：先用浏览器把中心文字真实量出来（getBBox），再反推环半径：
+     · 内孔半径 = max(文字半宽 + 间隙, 下限)，【不设硬上限】
+       上限由画布约束自动反推（见 ringLayout 的 innerMax）
+     · 三环半径由内孔向外等距排布，间距 = 描边宽 + 与环的空隙 → 环之间不粘连
+     · 若文字仍宽于上限（位数太多），再按比例缩小字号（下限 15px） */
+const RING_CENTER = 98, RING_STROKE = 15, RING_GAP = 16;
+const RING_INNER_MIN = 30, RING_FONT_MIN = 15;
+/* 图例要用真实色值画小圆点，不能用 var() */
+const RING_COLOURS = { p: '#0a84ff', f: '#ffd60a', c: '#ff9f0a' };
+const RING_KEYS = [
+  { key: 'p', name: '蛋白质', color: 'var(--p)' },
+  { key: 'f', name: '脂肪',   color: 'var(--f)' },
+  { key: 'c', name: '碳水',   color: 'var(--c)' }
+];
+
+/* 用隐藏 SVG 真实测量一段文字的像素宽度；失败时回退到保守估计 */
+let _measureSvg = null;
+function measureText(text, fontPx, bold){
+  try {
+    if (!_measureSvg){
+      _measureSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      _measureSvg.setAttribute('width', '0');
+      _measureSvg.setAttribute('height', '0');
+      _measureSvg.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;overflow:hidden';
+      document.body.appendChild(_measureSvg);
+    }
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('font-size', String(fontPx));
+    if (bold) t.setAttribute('font-weight', '700');
+    t.setAttribute('letter-spacing', bold ? '-1' : '0');
+    t.textContent = text;
+    _measureSvg.appendChild(t);
+    const w = t.getBBox().width;
+    _measureSvg.removeChild(t);
+    if (w > 0) return w;
+  } catch (e) { /* 环境不支持测量，走回退 */ }
+  return text.length * fontPx * 0.62;          // 保守回退
+}
+
+/* 纯函数：给定文字宽度与字号，算出中心与三环的半径。测试直接喂宽度即可。
+   内孔半径只设下限、不设硬上限；上限由画布约束反推，保证外沿不越界。
+   若文字实在放不下（宽度 > 2×(innerMax-间隙)），返回 shrink 让调用方缩小字号。 */
+function ringLayout(textW, goalW, canvasR, stroke, gap, innerMin){
+  const step = stroke + 4;                       // 相邻环中心距
+  const innerMax = canvasR - stroke / 2 - step * 2;   // 外沿恰好贴住画布内沿
+  const needed = Math.max(textW, goalW) / 2 + gap;
+  const inner = Math.max(innerMin, Math.min(innerMax, needed));
+  const fitWidth = 2 * (innerMax - gap);         // 这个字号下允许的最大文字宽度
+  return {
+    inner: inner,
+    radii: [inner + step * 2, inner + step, inner],   // 外 → 内（与 RING_KEYS 同序）
+    outerEdge: inner + step * 2 + stroke / 2,
+    canvasR: canvasR,
+    textHalf: textW / 2,
+    clearance: inner - textW / 2,
+    innerMax: innerMax,
+    shrink: Math.max(textW, goalW) > fitWidth ? fitWidth / Math.max(textW, goalW) : 1
+  };
+}
+
+/* 汇总某天：总数 + 三大营养素各自折合的热量 */
+function summarize(dayKey){
+  const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(dayKey)[k] || []), []));
+  return { kcal: t.kcal, p: t.p, f: t.f, c: t.c,
+           pk: t.p * KCAL_PER_G.p, fk: t.f * KCAL_PER_G.f, ck: t.c * KCAL_PER_G.c };
+}
+
+function ringSVG(dayKey){
+  const s = summarize(dayKey);
+  const goalKcal = Math.max(1, settings.kcal);
+  const targets = {
+    p: Math.max(1, settings.p * KCAL_PER_G.p),
+    f: Math.max(1, settings.f * KCAL_PER_G.f),
+    c: Math.max(1, settings.c * KCAL_PER_G.c)
+  };
+  const val = { p: s.pk, f: s.fk, c: s.ck };
+  const C = RING_CENTER;
+  const txt = String(Math.round(s.kcal));
+  const goalTxt = '／ ' + Math.round(goalKcal) + ' kcal';
+
+  // 真实量出文字宽度，再据此决定字号与环半径
+  let size = txt.length <= 3 ? 34 : (txt.length === 4 ? 26 : 21);
+  let textW = measureText(txt, size, true);
+  const goalW = measureText(goalTxt, 12, false);
+  let L = ringLayout(textW, goalW, C, RING_STROKE, RING_GAP, RING_INNER_MIN);
+
+  // 若这个字号放不下（位数太多），按比例缩字号重量一次
+  if (L.shrink < 1){
+    size = Math.max(RING_FONT_MIN, Math.floor(size * L.shrink));
+    textW = measureText(txt, size, true);
+    L = ringLayout(textW, goalW, C, RING_STROKE, RING_GAP, RING_INNER_MIN);
+  }
+
+  let out = '';
+  RING_KEYS.forEach((d, i) => {
+    const r = L.radii[i];
+    const circ = +(2 * Math.PI * r).toFixed(1);
+    const pct = Math.max(0, Math.min(1, val[d.key] / targets[d.key]));
+    out += '<circle cx="' + C + '" cy="' + C + '" r="' + r +
+           '" fill="none" stroke="var(--card2)" stroke-width="' + RING_STROKE + '"/>';
+    if (pct > 0){
+      out += '<circle cx="' + C + '" cy="' + C + '" r="' + r +
+             '" fill="none" stroke="' + d.color +
+             '" stroke-width="' + RING_STROKE + '" stroke-linecap="round" stroke-dasharray="' + circ +
+             '" stroke-dashoffset="' + (circ * (1 - pct)).toFixed(1) +
+             '" transform="rotate(-90 ' + C + ' ' + C + ')"/>';
+    }
+  });
+
+  // 数字与目标两行整体垂直居中：
+  // 数字基线 = 中心 + 0.35×字号，目标行基线 = 数字基线 + 19
+  const numY = Math.round(C + size * 0.35 - 8);
+  out += '<text x="' + C + '" y="' + numY + '" text-anchor="middle" font-size="' + size +
+         '" font-weight="700" fill="var(--fg)" letter-spacing="-1">' + txt + '</text>';
+  out += '<text x="' + C + '" y="' + (numY + 19) + '" text-anchor="middle" font-size="12" fill="var(--dim)">' +
+         goalTxt + '</text>';
+  return out;
+}
+
+function ringLegend(dayKey){
+  const s = summarize(dayKey);
+  const rows = [
+    { name: '蛋白质', color: RING_COLOURS.p, grams: s.p, kcal: s.pk, goal: settings.p * KCAL_PER_G.p },
+    { name: '脂肪',   color: RING_COLOURS.f, grams: s.f, kcal: s.fk, goal: settings.f * KCAL_PER_G.f },
+    { name: '碳水',   color: RING_COLOURS.c, grams: s.c, kcal: s.ck, goal: settings.c * KCAL_PER_G.c }
+  ];
+  let h = '';
+  for (const r of rows){
+    const pct = r.goal > 0 ? Math.round(r.kcal / r.goal * 100) : 0;
+    h += '<div class="lrow">' +
+           '<span class="dot" style="background:' + r.color + '"></span>' +
+           '<span class="nm">' + r.name + '</span>' +
+           '<span class="val">' + N(r.grams) + ' g</span>' +
+           '<span class="pct">' + pct + '%</span>' +
+         '</div>';
+  }
+  h += '<div class="lrow">' +
+         '<span class="dot" style="background:var(--dim)"></span>' +
+         '<span class="nm">目标</span>' +
+         '<span class="val">' + settings.kcal + ' kcal</span>' +
+         '<span class="pct">' + Math.round(s.kcal / Math.max(1, settings.kcal) * 100) + '%</span>' +
+       '</div>';
+  return h;
+}
+/* TEST-EXTRACT-RING-B */                   // 测试用提取标记：圆环模型到此为止，勿删
+/* 统计面板的浏览状态（放在标记之后，避免被测试当成圆环模型执行） */
+let dashMonth = todayKey().slice(0, 7);      // 月历当前浏览的月份 YYYY-MM
+let dashView = 'week';                       // week | month（每日详情已移到主页面）
+let dashWeekOffset = 0;                      // 周趋势往回翻的天数（0 = 最近 7 天）
+
 /* ---------------- 渲染 ---------------- */
 function renderMealBar(){
   const bar = $('mealBar');
@@ -703,23 +868,26 @@ function renderDateRow(){
     inp.max = todayKey();
     inp.min = shiftDay(todayKey(), -29);
   }
-  const diff = Math.round((new Date(todayKey()) - new Date(editDate)) / 86400000);
   const isToday = editDate === todayKey();
-  let label;
-  if (isToday) label = '今天';
-  else if (diff === 1) label = '昨天';
-  else if (diff === 2) label = '前天';
-  else {
-    const [, mm, dd] = editDate.split('-');
-    label = (+mm) + '/' + (+dd);
-  }
-  const lb = $('dayLabel');
-  if (lb){
-    lb.textContent = label;
-    lb.style.color = isToday ? 'var(--acc)' : 'var(--f)';
-  }
+
   const ttl = $('recTitle');
-  if (ttl) ttl.textContent = isToday ? '记录一餐' : '补记 · ' + label;
+  if (ttl){
+    if (isToday) ttl.textContent = '记录一餐';
+    else {
+      const [, mm, dd] = editDate.split('-');
+      ttl.textContent = '补记 · ' + (+mm) + '月' + (+dd) + '日';
+    }
+  }
+  // 「回到今天」按钮：已经是今天时显示选中态
+  const tb = $('btnToday');
+  if (tb){
+    tb.textContent = isToday ? '今天 · 已选' : '回到今天';
+    tb.classList.toggle('on', isToday);
+  }
+  // 汇总卡标题反映正在看的日期
+  const tl = $('todayLabel');
+  if (tl) tl.textContent = '今日总计 · ' + editDate + (isToday ? '' : '（补记）');
+
   const nx = $('dayNext');
   if (nx) nx.disabled = isToday;                 // 不能记到未来
 }
@@ -743,6 +911,12 @@ function render(){
   $('barKcal').style.background = t.kcal > settings.kcal ? '#ff5c5c' : 'var(--acc)';
   $('tP').textContent = N(t.p); $('tF').textContent = N(t.f); $('tC').textContent = N(t.c);
   renderDateRow();
+
+  // 主页面上的圆环：跟随所选日期，随记录实时更新
+  const svg = $('ringSvg');
+  if (svg) svg.innerHTML = ringSVG(editDate);
+  const lg = $('ringLegend');
+  if (lg) lg.innerHTML = ringLegend(editDate);
 
   // 各餐热量小结
   const parts = MEALS.map(m => {
@@ -1229,13 +1403,12 @@ function refreshRisk(){
   const days = Object.keys(store).length;
   const total = Object.keys(store).reduce((a, k) => a + allItemsOf(k).length, 0);
   const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
-
-  let msg = '共 <b>' + days + '</b> 天、<b>' + total + '</b> 条记录，只保存在这台手机的浏览器里。';
-  msg += '删除主屏幕图标、清理浏览器数据、换手机都会丢失。';
-  $('riskBox').innerHTML = msg + '<small>' + backupHint(since) + '</small>';
-
-  const lb = $('lastBackup');
-  if (lb) lb.textContent = backupHint(since);
+  const rb = $('riskBox');
+  if (!rb) return;
+  rb.innerHTML = '⚠️ <b>数据只存在这台手机的浏览器里</b><br>' +
+    '共 <b>' + days + '</b> 天、<b>' + total + '</b> 条记录，与账号无关、不上云。<br>' +
+    '删除主屏幕图标、清理浏览器数据、换手机都会丢失。' +
+    '<small>' + backupHint(since) + '</small>';
 }
 
 function backupHint(since){
@@ -1377,160 +1550,8 @@ function allItemsOf(dateKey){
 }
 /* TEST-EXTRACT-B */                       // 测试用提取标记，勿删
 
-/* ================= 统计面板：圆环 + 周/月 ================= */
-/* 三大营养素产能：蛋白质 4 kcal/g，碳水 4 kcal/g，脂肪 9 kcal/g。
-   圆环按"占各自目标的比例"画三段弧，所以一眼能看出哪一项超标/不足。 */
-const KCAL_PER_G = { p: 4, c: 4, f: 9 };
-/* 画布 196×196，中心 (98,98)。
-   几何不能用"字数×系数"猜文字宽度 —— 不同字体/字距会偏，之前就是这么翻车的。
-   做法：先用浏览器把中心文字真实量出来（getBBox），再反推环半径：
-     · 内孔半径 = max(文字半宽 + 间隙, 下限)，【不设硬上限】
-       上限由画布约束自动反推（见 ringLayout 的 innerMax）
-     · 三环半径由内孔向外等距排布，间距 = 描边宽 + 与环的空隙 → 环之间不粘连
-     · 若文字仍宽于上限（位数太多），再按比例缩小字号（下限 15px） */
-const RING_CENTER = 98, RING_STROKE = 15, RING_GAP = 16;
-const RING_INNER_MIN = 30, RING_FONT_MIN = 15;
-/* 图例要用真实色值画小圆点，不能用 var() */
-const RING_COLOURS = { p: '#0a84ff', f: '#ffd60a', c: '#ff9f0a' };
-const RING_KEYS = [
-  { key: 'p', name: '蛋白质', color: 'var(--p)' },
-  { key: 'f', name: '脂肪',   color: 'var(--f)' },
-  { key: 'c', name: '碳水',   color: 'var(--c)' }
-];
 
-/* 用隐藏 SVG 真实测量一段文字的像素宽度；失败时回退到保守估计 */
-let _measureSvg = null;
-function measureText(text, fontPx, bold){
-  try {
-    if (!_measureSvg){
-      _measureSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      _measureSvg.setAttribute('width', '0');
-      _measureSvg.setAttribute('height', '0');
-      _measureSvg.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;overflow:hidden';
-      document.body.appendChild(_measureSvg);
-    }
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('font-size', String(fontPx));
-    if (bold) t.setAttribute('font-weight', '700');
-    t.setAttribute('letter-spacing', bold ? '-1' : '0');
-    t.textContent = text;
-    _measureSvg.appendChild(t);
-    const w = t.getBBox().width;
-    _measureSvg.removeChild(t);
-    if (w > 0) return w;
-  } catch (e) { /* 环境不支持测量，走回退 */ }
-  return text.length * fontPx * 0.62;          // 保守回退
-}
-
-/* 纯函数：给定文字宽度与字号，算出中心与三环的半径。测试直接喂宽度即可。
-   内孔半径只设下限、不设硬上限；上限由画布约束反推，保证外沿不越界。
-   若文字实在放不下（宽度 > 2×(innerMax-间隙)），返回 shrink 让调用方缩小字号。 */
-function ringLayout(textW, goalW, canvasR, stroke, gap, innerMin){
-  const step = stroke + 4;                       // 相邻环中心距
-  const innerMax = canvasR - stroke / 2 - step * 2;   // 外沿恰好贴住画布内沿
-  const needed = Math.max(textW, goalW) / 2 + gap;
-  const inner = Math.max(innerMin, Math.min(innerMax, needed));
-  const fitWidth = 2 * (innerMax - gap);         // 这个字号下允许的最大文字宽度
-  return {
-    inner: inner,
-    radii: [inner + step * 2, inner + step, inner],   // 外 → 内（与 RING_KEYS 同序）
-    outerEdge: inner + step * 2 + stroke / 2,
-    canvasR: canvasR,
-    textHalf: textW / 2,
-    clearance: inner - textW / 2,
-    innerMax: innerMax,
-    shrink: Math.max(textW, goalW) > fitWidth ? fitWidth / Math.max(textW, goalW) : 1
-  };
-}
-
-let dashDate = todayKey();
-let dashView = 'day';                        // day | week | month
-
-/* 汇总某天：总数 + 三大营养素各自折合的热量 */
-function summarize(dayKey){
-  const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(dayKey)[k] || []), []));
-  return { kcal: t.kcal, p: t.p, f: t.f, c: t.c,
-           pk: t.p * KCAL_PER_G.p, fk: t.f * KCAL_PER_G.f, ck: t.c * KCAL_PER_G.c };
-}
-
-function ringSVG(dayKey){
-  const s = summarize(dayKey);
-  const goalKcal = Math.max(1, settings.kcal);
-  const targets = {
-    p: Math.max(1, settings.p * KCAL_PER_G.p),
-    f: Math.max(1, settings.f * KCAL_PER_G.f),
-    c: Math.max(1, settings.c * KCAL_PER_G.c)
-  };
-  const val = { p: s.pk, f: s.fk, c: s.ck };
-  const C = RING_CENTER;
-  const txt = String(Math.round(s.kcal));
-  const goalTxt = '／ ' + Math.round(goalKcal) + ' kcal';
-
-  // 真实量出文字宽度，再据此决定字号与环半径
-  let size = txt.length <= 3 ? 34 : (txt.length === 4 ? 26 : 21);
-  let textW = measureText(txt, size, true);
-  const goalW = measureText(goalTxt, 12, false);
-  let L = ringLayout(textW, goalW, C, RING_STROKE, RING_GAP, RING_INNER_MIN);
-
-  // 若这个字号放不下（位数太多），按比例缩字号重量一次
-  if (L.shrink < 1){
-    size = Math.max(RING_FONT_MIN, Math.floor(size * L.shrink));
-    textW = measureText(txt, size, true);
-    L = ringLayout(textW, goalW, C, RING_STROKE, RING_GAP, RING_INNER_MIN);
-  }
-
-  let out = '';
-  RING_KEYS.forEach((d, i) => {
-    const r = L.radii[i];
-    const circ = +(2 * Math.PI * r).toFixed(1);
-    const pct = Math.max(0, Math.min(1, val[d.key] / targets[d.key]));
-    out += '<circle cx="' + C + '" cy="' + C + '" r="' + r +
-           '" fill="none" stroke="var(--card2)" stroke-width="' + RING_STROKE + '"/>';
-    if (pct > 0){
-      out += '<circle cx="' + C + '" cy="' + C + '" r="' + r +
-             '" fill="none" stroke="' + d.color +
-             '" stroke-width="' + RING_STROKE + '" stroke-linecap="round" stroke-dasharray="' + circ +
-             '" stroke-dashoffset="' + (circ * (1 - pct)).toFixed(1) +
-             '" transform="rotate(-90 ' + C + ' ' + C + ')"/>';
-    }
-  });
-
-  // 数字与目标两行整体垂直居中：
-  // 数字基线 = 中心 + 0.35×字号，目标行基线 = 数字基线 + 19
-  const numY = Math.round(C + size * 0.35 - 8);
-  out += '<text x="' + C + '" y="' + numY + '" text-anchor="middle" font-size="' + size +
-         '" font-weight="700" fill="var(--fg)" letter-spacing="-1">' + txt + '</text>';
-  out += '<text x="' + C + '" y="' + (numY + 19) + '" text-anchor="middle" font-size="12" fill="var(--dim)">' +
-         goalTxt + '</text>';
-  return out;
-}
-
-function ringLegend(dayKey){
-  const s = summarize(dayKey);
-  const rows = [
-    { name: '蛋白质', color: RING_COLOURS.p, grams: s.p, kcal: s.pk, goal: settings.p * KCAL_PER_G.p },
-    { name: '脂肪',   color: RING_COLOURS.f, grams: s.f, kcal: s.fk, goal: settings.f * KCAL_PER_G.f },
-    { name: '碳水',   color: RING_COLOURS.c, grams: s.c, kcal: s.ck, goal: settings.c * KCAL_PER_G.c }
-  ];
-  let h = '';
-  for (const r of rows){
-    const pct = r.goal > 0 ? Math.round(r.kcal / r.goal * 100) : 0;
-    h += '<div class="lrow">' +
-           '<span class="dot" style="background:' + r.color + '"></span>' +
-           '<span class="nm">' + r.name + '</span>' +
-           '<span class="val">' + N(r.grams) + ' g</span>' +
-           '<span class="pct">' + pct + '%</span>' +
-         '</div>';
-  }
-  h += '<div class="lrow">' +
-         '<span class="dot" style="background:var(--dim)"></span>' +
-         '<span class="nm">目标</span>' +
-         '<span class="val">' + settings.kcal + ' kcal</span>' +
-         '<span class="pct">' + Math.round(s.kcal / Math.max(1, settings.kcal) * 100) + '%</span>' +
-       '</div>';
-  return h;
-}
-
+/* ================= 统计面板：周趋势 / 月历 ================= */
 function histChart(cells){
   const max = Math.max(settings.kcal || 2000, ...cells.map(c => c.kcal), 1);
   const avg = Math.round(cells.reduce((a, c) => a + c.kcal, 0) / Math.max(1, cells.length));
@@ -1539,7 +1560,7 @@ function histChart(cells){
     const pct = Math.max(2, Math.round(c.kcal / max * 100));
     const over = c.kcal > (settings.kcal || 2000);
     const colour = c.future ? '#2a2f3a' : (c.kcal === 0 ? '#2a2f3a' : (over ? '#ff5c5c' : 'var(--acc)'));
-    const active = dashDate === c.key ? ' active' : '';
+    const active = editDate === c.key ? ' active' : '';
     h += '<div class="hcol' + (c.today ? ' today' : '') + active + '" data-i="' + i + '">' +
            '<div class="htrack"><div class="hfill" style="height:' + pct + '%;background:' + colour + '"' +
              (c.kcal ? ' title="' + c.label + ' ' + Math.round(c.kcal) + ' kcal"' : '') + '></div></div>' +
@@ -1553,101 +1574,131 @@ function histChart(cells){
   return h;
 }
 
-/* 从柱状图跳到某一天的圆环明细 */
+/* 从柱状图/月历跳到某一天：切换主页面的日期并关闭统计面板 */
 function gotoDay(dateKey){
   if (!dateKey) return;
-  dashDate = dateKey > todayKey() ? todayKey() : dateKey;
-  dashView = 'day';
-  renderDash();
+  setEditDate(dateKey > todayKey() ? todayKey() : dateKey);
+  closeDash();
+}
+
+/* 月历用小圆环表示当天热量完成度（参考 iOS 健身 App 的活动圆环） */
+const CAL_R = 9, CAL_SW = 4.5;
+function calRing(ratio, colour){
+  const c = +(2 * Math.PI * CAL_R).toFixed(1);
+  const pct = Math.max(0, Math.min(1, ratio));
+  let s = '<svg width="24" height="24" viewBox="0 0 24 24">';
+  s += '<circle cx="12" cy="12" r="' + CAL_R + '" fill="none" stroke="var(--card2)" stroke-width="' + CAL_SW + '"/>';
+  if (pct > 0){
+    s += '<circle cx="12" cy="12" r="' + CAL_R + '" fill="none" stroke="' + colour +
+         '" stroke-width="' + CAL_SW + '" stroke-linecap="round" stroke-dasharray="' + c +
+         '" stroke-dashoffset="' + (c * (1 - pct)).toFixed(1) + '" transform="rotate(-90 12 12)"/>';
+  }
+  return s + '</svg>';
+}
+function calColour(kcal){
+  if (kcal <= 0) return 'var(--card2)';
+  const goal = settings.kcal || 2000;
+  if (kcal > goal) return '#ff453a';            // 超标
+  if (kcal >= goal * 0.6) return 'var(--acc)';  // 基本达标
+  if (kcal >= goal * 0.25) return 'var(--c)';   // 偏少
+  return 'var(--f)';                            // 很少
+}
+
+/* 月历：整月网格，每格一个小圆环 */
+function renderCalendar(ym){
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const startWd = first.getDay();                       // 0=周日
+  const WD = ['日', '一', '二', '三', '四', '五', '六'];
+
+  let h = '<div class="cal">';
+  for (const w of WD) h += '<div class="cwd">' + w + '</div>';
+  for (let i = 0; i < startWd; i++) h += '<div class="cday empty"></div>';
+
+  let sumKcal = 0, recorded = 0;
+  for (let d = 1; d <= daysInMonth; d++){
+    const key = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const isFuture = key > todayKey();
+    const kcal = isFuture ? 0 : summarize(key).kcal;
+    if (kcal > 0){ sumKcal += kcal; recorded++; }
+    const cls = 'cday' + (key === todayKey() ? ' today' : '') + (key === editDate ? ' sel' : '');
+    h += '<button class="' + cls + '" data-date="' + key + '"' + (isFuture ? ' disabled' : '') + '>' +
+           '<span class="cn">' + d + '</span>' +
+           calRing(settings.kcal ? kcal / settings.kcal : 0, isFuture ? 'var(--card2)' : calColour(kcal)) +
+         '</button>';
+  }
+  h += '</div>';
+  return { html: h, sumKcal: sumKcal, recorded: recorded };
 }
 
 function renderDash(){
-  document.querySelectorAll('#dashTabs .tab').forEach(b =>
-    b.classList.toggle('on', b.dataset.view === dashView));
+  const tabs = document.querySelectorAll('#dashTabs .tab');
+  Array.prototype.forEach.call(tabs, b => b.classList.toggle('on', b.dataset.view === dashView));
 
   const todayK = todayKey();
   const isFuture = k => k > todayK;
 
-  if (dashView === 'day'){
-    if (dashDate > todayK) dashDate = todayK;
-    const s = summarize(dashDate);
-    const [y, m, d] = dashDate.split('-');
-    $('dashTitle').textContent = y + '年' + (+m) + '月' + (+d) + '日';
-    $('dashSub').textContent = dashDate === todayK ? '今天' : (shiftDay(dashDate, 1) === todayK ? '昨天' : '历史记录');
-    $('ringSvg').innerHTML = ringSVG(dashDate);
-    $('ringSvg').style.display = '';
-    $('ringLegend').innerHTML = ringLegend(dashDate);
-    $('dashTrend').innerHTML = '';
-
-    // 当日还给出各餐分布
-    const parts = MEALS.map(mm => {
-      const t = sum(dateFor(dashDate)[mm.k] || []);
-      return t.kcal ? mm.icon + ' ' + mm.name + ' ' + Math.round(t.kcal) : '';
-    }).filter(Boolean);
-    const legacy = sum(dateFor(dashDate)[LEGACY] || []);
-    if (legacy.kcal) parts.push('未分餐 ' + Math.round(legacy.kcal));
-    const left = Math.round((settings.kcal || 0) - s.kcal);
-    $('dashSum').innerHTML = (parts.length ? '各餐：' + parts.join(' · ') + ' kcal<br>' : '') +
-      (left >= 0 ? '距目标还可摄入 <b>' + left + ' kcal</b>' : '已超出目标 <b>' + Math.abs(left) + ' kcal</b>');
-    return;
-  }
-
-  // 周 / 月：柱状趋势
-  const cells = [];
-  let caption = '';
-  const WD = '日一二三四五六';                        // getDay(): 0=周日
   if (dashView === 'week'){
+    // 最近 7 天（含今天），可用 ‹ 往回翻
+    const off = Math.max(0, dashWeekOffset);
+    const cells = [];
+    const WD = '日一二三四五六';
     for (let i = 6; i >= 0; i--){
-      const k = dayBack(i);
+      const k = dayBack(i + off);
       const wd = new Date(k + 'T00:00:00').getDay();
       cells.push({ key: k, label: '周' + WD[wd], kcal: summarize(k).kcal,
                    today: k === todayK, future: isFuture(k) });
     }
-    caption = cells[0].key + ' ~ ' + cells[6].key;
-  } else {
-    // 不重叠的 3 天一组，共 10 组 = 30 天（倒序铺满）
-    const buckets = [];
-    for (let start = 29; start >= 0; start -= 3){
-      const ks = [];
-      for (let j = 0; j < 3; j++){ const k = dayBack(start - j); if (k) ks.push(k); }
-      const valid = ks.filter(k => k <= todayK);
-      if (!valid.length) continue;
-      const avg = valid.reduce((a, k) => a + summarize(k).kcal, 0) / valid.length;
-      buckets.push({ key: valid[valid.length - 1], label: (function(){
-                       const [, mm, dd] = valid[valid.length - 1].split('-'); return (+mm) + '/' + (+dd);
-                     })(),
-                     kcal: avg, today: valid.indexOf(todayK) !== -1, future: false });
-    }
-    cells.push.apply(cells, buckets.reverse());        // 变成时间正序
-    caption = cells.length ? cells[0].key + ' ~ ' + todayK : todayK;
-  }
-  const total = cells.reduce((a, c) => a + c.kcal, 0);
-  const avg = Math.round(total / cells.length);
-  const goal = settings.kcal || 2000;
-  const hit = cells.filter(c => c.kcal > 0 && c.kcal <= goal).length;
-  const over = cells.filter(c => c.kcal > goal).length;
-  const empty = cells.filter(c => c.kcal === 0).length;
+    const total = cells.reduce((a, c) => a + c.kcal, 0);
+    const avg = Math.round(total / cells.length);
+    const goal = settings.kcal || 2000;
+    const hit = cells.filter(c => c.kcal > 0 && c.kcal <= goal).length;
+    const over = cells.filter(c => c.kcal > goal).length;
+    const empty = cells.filter(c => c.kcal === 0).length;
 
-  const [, m0, d0] = cells[0].key.split('-');
-  $('dashTitle').textContent = (+m0) + '月' + (+d0) + '日起 ' + cells.length + (dashView === 'week' ? ' 天' : ' 段');
-  $('dashSub').textContent = caption;
-  $('ringSvg').style.display = 'none';
-  $('ringLegend').innerHTML = '';
-  $('dashTrend').innerHTML = histChart(cells);
-  // 给每根柱子绑点击：跳到那天的圆环明细
-  Array.prototype.forEach.call($('dashTrend').querySelectorAll('.hcol'), el => {
-    const c = cells[+el.dataset.i];
-    if (!c) return;
-    el.addEventListener('click', () => gotoDay(c.key));
+    const a = cells[0].key.split('-'), b2 = cells[6].key.split('-');
+    $('dashTitle').textContent = off === 0 ? '最近 7 天' : '往前第 ' + (off / 7 + 1) + ' 周';
+    $('dashSub').textContent = (+a[1]) + '月' + (+a[2]) + '日 – ' + (+b2[1]) + '月' + (+b2[2]) + '日';
+    $('dashTrend').innerHTML = histChart(cells);
+    Array.prototype.forEach.call($('dashTrend').querySelectorAll('.hcol'), el => {
+      const c = cells[+el.dataset.i];
+      if (c) el.addEventListener('click', () => gotoDay(c.key));
+    });
+    $('dashSum').innerHTML =
+      '合计 <b>' + Math.round(total) + ' kcal</b>，日均 <b>' + avg + ' kcal</b><br>' +
+      '达标 <b>' + hit + '</b> 天 · 超标 <b>' + over + '</b> · 未记录 <b>' + empty + '</b><br>' +
+      '<span style="color:var(--dim)">点柱子可切到那天</span>';
+    return;
+  }
+
+  // 月历
+  if (!/^\d{4}-\d{2}$/.test(dashMonth)) dashMonth = todayK.slice(0, 7);
+  // 不允许翻到未来月份
+  const cur = todayK.slice(0, 7);
+  if (dashMonth > cur) dashMonth = cur;
+
+  const cal = renderCalendar(dashMonth);
+  const [y, m] = dashMonth.split('-').map(Number);
+  $('dashTitle').textContent = y + '年' + m + '月';
+  $('dashSub').textContent = '每格圆环＝当天热量完成度';
+  $('dashTrend').innerHTML = cal.html;
+  Array.prototype.forEach.call($('dashTrend').querySelectorAll('.cday[data-date]'), el => {
+    el.addEventListener('click', () => gotoDay(el.dataset.date));
   });
+  const goal = settings.kcal || 2000;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const past = Math.min(daysInMonth, (dashMonth === cur) ? +todayK.slice(8) : daysInMonth);
   $('dashSum').innerHTML =
-    (dashView === 'week' ? '本周' : '近 30 天') + '共 <b>' + Math.round(total) + ' kcal</b>，平均 <b>' + avg + ' kcal</b>／天<br>' +
-    '达标（不超目标）<b>' + hit + '</b> ' + (dashView === 'week' ? '天' : '段') +
-    ' · 超标 <b>' + over + '</b> · 未记录 <b>' + empty + '</b>';
+    '本月有记录 <b>' + cal.recorded + '</b> 天（已过 ' + past + ' 天）<br>' +
+    '日均 <b>' + (cal.recorded ? Math.round(cal.sumKcal / cal.recorded) : 0) + ' kcal</b>' +
+    '（按有记录的天数）<br>' +
+    '<span style="color:var(--dim)">🔴 超标 · 🟢 达标 · 🟠 偏少 · 🟡 很少 · 点某天可切过去</span>';
 }
 
 function openDash(){
-  dashDate = todayKey();
+  dashView = 'week';
+  dashMonth = todayKey().slice(0, 7);
   $('dash').classList.add('on');
   renderDash();
 }
@@ -1657,17 +1708,31 @@ $('btnStats').addEventListener('click', openDash);
 $('btnDashClose').addEventListener('click', closeDash);
 $('dash').addEventListener('click', e => { if (e.target === $('dash')) closeDash(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDash(); });
-$('btnDashToday').addEventListener('click', () => { dashDate = todayKey(); renderDash(); });
+$('btnDashToday').addEventListener('click', () => gotoDay(todayKey()));
+/* 周视图：‹ 往前推一周（仅用于看趋势，不改变浏览窗口）；月视图：翻月份 */
 $('dashPrev').addEventListener('click', () => {
-  if (dashView === 'day'){ dashDate = shiftDay(dashDate, -1); }
+  if (dashView === 'month'){
+    const [y, m] = dashMonth.split('-').map(Number);
+    const d = new Date(y, m - 2, 1);
+    dashMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  } else {
+    dashWeekOffset -= 7;
+  }
   renderDash();
 });
 $('dashNext').addEventListener('click', () => {
-  if (dashView === 'day'){ const n = shiftDay(dashDate, 1); if (n <= todayKey()) dashDate = n; }
+  if (dashView === 'month'){
+    const [y, m] = dashMonth.split('-').map(Number);
+    const d = new Date(y, m, 1);
+    const nxt = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    if (nxt <= todayKey().slice(0, 7)) dashMonth = nxt;
+  } else {
+    dashWeekOffset = Math.min(0, dashWeekOffset + 7);
+  }
   renderDash();
 });
 function switchDashView(v){
-  if (['day', 'week', 'month'].indexOf(v) === -1) return;
+  if (['week', 'month'].indexOf(v) === -1) return;
   dashView = v;
   renderDash();
 }
@@ -1675,10 +1740,13 @@ document.querySelectorAll('#dashTabs .tab').forEach(b => {
   b.addEventListener('click', () => switchDashView(b.dataset.view));
 });
 
+/* ---- 「回到今天」按钮 ---- */
+$('btnToday').addEventListener('click', () => setEditDate(todayKey()));
+
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-03.6';
+const APP_VERSION = '2026-10-03.7';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
