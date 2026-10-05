@@ -4,7 +4,7 @@
    2) 其他静态资源「缓存优先」，快且省流量
    3) install 时 skipWaiting + activate 时 clients.claim，新版立刻接管，不等所有窗口关闭
    4) 离线时回退缓存，所以断网依然可用 */
-const CACHE = 'kcal-v4';
+const CACHE = 'kcal-v5';
 
 /* 注意：index.html 故意不预缓存，避免"预缓存的旧版"把网络优先短路掉 */
 const SHELL = [

@@ -279,6 +279,20 @@
   .backbtn{flex:0 0 auto;width:38px;height:38px;border-radius:50%;background:var(--card2);
     border:none;color:var(--fg);font-size:20px;line-height:1;cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center;padding:0}
+  .energy-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .energy-date{font-size:14px;font-weight:600}
+  .energy-status{font-size:12px;color:var(--dim)}
+  .energy-row{display:flex;align-items:center;gap:10px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .energy-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;background:var(--card2)}
+  .energy-icon svg{width:20px;height:20px;fill:currentColor}
+  .energy-row label{font-size:16px;font-weight:600;flex:1;white-space:nowrap}
+  .energy-row input{width:98px;min-width:0;border:none;border-radius:10px;background:var(--card2);color:var(--fg);
+    font:inherit;font-size:20px;font-weight:600;text-align:right;padding:12px 8px;outline:none}
+  .energy-row input:focus{box-shadow:0 0 0 2px var(--acc)}
+  .energy-unit{font-size:12px;color:var(--dim)}
+  .energy-actions{display:flex;gap:10px;margin:16px 0 12px}
+  .energy-actions button{min-height:44px}
+  @media(max-width:360px){.energy-row{gap:7px}.energy-row input{width:76px}.energy-row label{font-size:15px}}
   /* 主屏上的入口小卡 */
   .balcard{display:flex;align-items:center;justify-content:space-between;gap:12px;
     background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
@@ -396,7 +410,26 @@
       <span style="width:38px;flex:0 0 auto"></span>
     </div>
 
-    <div class="sechd" style="margin-top:0">身体数据</div>
+    <div class="sechd" style="margin-top:0">健康能量</div>
+    <div class="card">
+      <div class="energy-head"><span class="energy-date" id="energyDate"></span><span class="energy-status" id="energyStatus" aria-live="polite"></span></div>
+      <div class="energy-row">
+        <span class="energy-icon" style="color:var(--c)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2c1 5-3 6-3 10 0 1 .4 2 1 2.6C9 14 8 12 8 10c-3 3-4 5-4 7a8 8 0 0 0 16 0c0-6-4-9-7-15z"/></svg></span>
+        <label for="energyActive">活动能量</label>
+        <input id="energyActive" type="number" inputmode="decimal" min="0" step="any" placeholder="未填写" aria-describedby="energyHint">
+        <span class="energy-unit">kcal</span>
+      </div>
+      <div class="energy-row">
+        <span class="energy-icon" style="color:var(--p)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21 3.5 12.7C-2 7.2 5.5.1 12 6.1 18.5.1 26 7.2 20.5 12.7z"/></svg></span>
+        <label for="energyBasal">静息能量</label>
+        <input id="energyBasal" type="number" inputmode="decimal" min="0" step="any" placeholder="未填写" aria-describedby="energyHint">
+        <span class="energy-unit">kcal</span>
+      </div>
+      <div class="energy-actions"><button class="primary wide" id="btnSaveEnergy">保存当日能量</button><button class="ghost" id="btnClearEnergy" hidden>清除录入</button></div>
+      <div class="hint" id="energyHint">填写 Apple 健康中同一天的两项累计能量，日期跟随首页选择。总消耗 = 活动 + 静息，不再另加运动热量或食物热效应。当天尚未结束时，数据也尚未完整。</div>
+    </div>
+
+    <div class="sechd">身体数据</div>
     <div class="card">
       <div id="bodySummary"></div>
       <div class="row" style="margin-top:12px">
@@ -603,7 +636,7 @@ const N = v => Number.isFinite(v) ? Math.round(v * 10) / 10 : 0;
 
 /* ---------------- 存储（全部本地，file:// 也能用） ---------------- */
 const LSK = 'kcal.entries.v1', LSS = 'kcal.settings.v1', LSM = 'kcal.meta.v1';
-const LSB = 'kcal.body.v1', LSW = 'kcal.weight.v1';
+const LSB = 'kcal.body.v1', LSW = 'kcal.weight.v1', LSE = 'kcal.burn.v1';
 const todayKey = () => new Date().toLocaleDateString('sv-SE');   // YYYY-MM-DD 本地时区
 
 /* 日期加减：必须定义在记录/渲染之前 —— render() 会用到它，
@@ -645,6 +678,41 @@ let body = { sex: 'male', birthYear: '', heightCm: '', bodyFat: '', activity: 1.
              weightKg: '', preferHarris: false };
 /* 体重记录：{ 'YYYY-MM-DD': kg } */
 let weight = {};
+/* 每日手动录入的 Apple 健康能量；独立存储，不改动饮食记录。 */
+let burnByDay = {};
+function validEnergy(v){ return typeof v === 'number' && Number.isFinite(v) && v >= 0; }
+function normalizeBurn(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const k of Object.keys(raw)){
+    const v = raw[k];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k) && shiftDay(k, 0) === k && v && validEnergy(v.active) && validEnergy(v.basal)){
+      out[k] = { active: v.active, basal: v.basal };
+    }
+  }
+  return out;
+}
+try { burnByDay = normalizeBurn(JSON.parse(localStorage.getItem(LSE) || '{}')); } catch (e) {}
+function saveBurn(next){
+  try { localStorage.setItem(LSE, JSON.stringify(next)); burnByDay = next; return true; }
+  catch (e) { toast('保存失败，请先备份并检查浏览器存储空间'); return false; }
+}
+let energyEditDate = '';
+function renderEnergyInputs(){
+  const saved = burnByDay[editDate];
+  $('energyDate').textContent = (editDate === todayKey() ? '今天 · ' : '') + editDate;
+  $('energyStatus').textContent = saved ? '已保存 · 手动录入' : '未录入';
+  $('btnClearEnergy').hidden = !saved;
+  if (energyEditDate !== editDate){
+    $('energyActive').value = saved ? saved.active : '';
+    $('energyBasal').value = saved ? saved.basal : '';
+    energyEditDate = editDate;
+  }
+  const active = String($('energyActive').value), basal = String($('energyBasal').value);
+  if (saved ? active !== String(saved.active) || basal !== String(saved.basal) : active || basal){
+    $('energyStatus').textContent = '未保存';
+  }
+}
 
 try { store = JSON.parse(localStorage.getItem(LSK) || '{}') || {}; } catch (e) { store = {}; }
 try { Object.assign(settings, JSON.parse(localStorage.getItem(LSS) || '{}')); } catch (e) {}
@@ -1294,8 +1362,10 @@ function currentWeight(){
 
 function renderBurn(){
   const isToday = editDate === todayKey();
-  const eb = energyBalance(editDate, body, weight, null);
+  renderEnergyInputs();
+  const eb = energyBalance(editDate, body, weight, burnByDay);
   const hasBody = eb.hasBody;
+  const sourceLabel = eb.source === 'manual' ? '手动录入' : '估算';
 
   // ---- 身体数据摘要 ----
   const bs = $('bodySummary');
@@ -1346,8 +1416,8 @@ function renderBurn(){
   // ---- 能量平衡 ----
   const bb = $('balanceBox');
   if (bb){
-    if (!hasBody){
-      bb.innerHTML = '<div class="empty2">填写身体数据后显示</div>';
+    if (!eb.hasBurn){
+      bb.innerHTML = '<div class="empty2">录入两项健康能量，或填写身体数据与体重后显示</div>';
     } else {
       const intake = eb.intake;
       const burn = eb.burn;
@@ -1356,19 +1426,20 @@ function renderBurn(){
       let h = '';
       h += '<div class="kcal"><b>' + (gap >= 0 ? '−' : '+') + Math.abs(Math.round(gap)) + '</b>' +
            '<span>' + (gap >= 0 ? 'kcal 缺口' : 'kcal 盈余') + '</span></div>';
-      if (gap > 0){
+      if (!allItemsOf(editDate).length) h += '<div class="hint">这一天还没有饮食记录，摄入 0 不代表没有进食。</div>';
+      if (gap > 0 && allItemsOf(editDate).length){
         const perWeek = gap * 7 / KCAL_PER_KG_FAT;
         h += '<div class="hint" style="margin-top:2px">按此节奏，预计每周约 <b>' + perWeek.toFixed(2) + ' kg</b></div>';
       }
       h += '<div style="margin-top:12px">';
       h += '<div class="brow"><span class="bk">饮食摄入</span><span class="bv">' + Math.round(intake) + ' kcal</span></div>';
-      h += '<div class="brow"><span class="bk">总消耗（估算）</span><span class="bv">' + Math.round(burn) + ' kcal</span></div>';
-      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--p)"></span>基础代谢</span><span class="bv">' + Math.round(eb.rest) + ' kcal</span></div>';
-      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--c)"></span>日常与运动</span><span class="bv">' + Math.round(eb.active) + ' kcal</span></div>';
-      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--f)"></span>食物热效应</span><span class="bv">' + Math.round(eb.tef) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk">总消耗（' + sourceLabel + '）</span><span class="bv">' + Math.round(burn) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--p)"></span>' + (eb.source === 'manual' ? '静息能量' : '基础代谢') + '</span><span class="bv">' + N(eb.rest) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--c)"></span>' + (eb.source === 'manual' ? '活动能量' : '日常与运动') + '</span><span class="bv">' + N(eb.active) + ' kcal</span></div>';
+      if (eb.source === 'estimate') h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--f)"></span>食物热效应</span><span class="bv">' + Math.round(eb.tef) + ' kcal</span></div>';
       h += '</div>';
-      if (sug.ok){
-        h += '<div class="hint" style="margin-top:12px">按估算消耗，建议每日摄入 <b>' + sug.target +
+      if (sug.ok && hasBody){
+        h += '<div class="hint" style="margin-top:12px">按' + sourceLabel + '消耗，建议每日摄入 <b>' + sug.target +
              ' kcal</b>（缺口 ' + sug.gap + '，约每周 −' + sug.weeklyKg.toFixed(2) + ' kg）' +
              (sug.clipped ? '<br>⚠️ 已按安全下限 ' + sug.floor + ' kcal 抬高，不建议再低' : '') + '</div>';
       }
@@ -1379,14 +1450,14 @@ function renderBurn(){
   // ---- 近 14 天 摄入 vs 消耗 ----
   const db = $('duoBox');
   if (db){
-    if (!hasBody){
-      db.innerHTML = '<div class="empty2">填写身体数据后显示</div>';
+    if (!hasBody && !Object.keys(burnByDay).some(k => k >= dayBack(13) && k <= todayKey())){
+      db.innerHTML = '<div class="empty2">录入健康能量或填写身体数据后显示</div>';
     } else {
       const cells = [];
       for (let i = 13; i >= 0; i--){
         const k = dayBack(i);
-        const e = energyBalance(k, body, weight, null);
-        cells.push({ key: k, intake: e.intake, burn: e.burn });
+        const e = energyBalance(k, body, weight, burnByDay);
+        cells.push({ key: k, intake: e.intake, burn: e.hasBurn ? e.burn : 0, hasBurn: e.hasBurn });
       }
       const max = Math.max(1, ...cells.map(c => Math.max(c.intake, c.burn)));
       let h = '<div class="duo">';
@@ -1395,7 +1466,7 @@ function renderBurn(){
         const ho = Math.max(2, Math.round(c.burn / max * 100));
         h += '<div class="dcol">' +
                '<div class="dbar in" style="height:' + hi + '%"></div>' +
-               '<div class="dbar out" style="height:' + ho + '%"></div>' +
+               '<div class="dbar out" style="height:' + ho + '%;visibility:' + (c.hasBurn ? 'visible' : 'hidden') + '"></div>' +
              '</div>';
       }
       h += '</div><div class="duo-x">';
@@ -1405,11 +1476,12 @@ function renderBurn(){
       h += '</div>';
       const withIn = cells.filter(c => c.intake > 0);
       const avgIn = withIn.length ? withIn.reduce((a, c) => a + c.intake, 0) / withIn.length : 0;
-      const avgOut = cells.reduce((a, c) => a + c.burn, 0) / cells.length;
+      const withOut = cells.filter(c => c.hasBurn);
+      const avgOut = withOut.length ? withOut.reduce((a, c) => a + c.burn, 0) / withOut.length : 0;
       h += '<div class="legend-inline"><span><i style="background:var(--p)"></i>摄入</span>' +
            '<span><i style="background:var(--c)"></i>消耗</span></div>';
-      h += '<div class="hint">14 天平均：摄入 <b>' + Math.round(avgIn) + '</b> / 消耗 <b>' +
-           Math.round(avgOut) + '</b> kcal</div>';
+      h += '<div class="hint">有数据日平均：摄入 <b>' + Math.round(avgIn) + '</b>（' + withIn.length + ' 天）/ 消耗 <b>' +
+           Math.round(avgOut) + '</b> kcal（' + withOut.length + ' 天' + (cells.some(c => c.hasBurn && !burnByDay[c.key]) ? '，含估算' : '') + '）</div>';
       db.innerHTML = h;
     }
   }
@@ -1456,9 +1528,8 @@ function renderBurn(){
         const diff = rev.value - eb.burn;
         h += '<div class="hint" style="margin-top:14px">实际 TDEE（按 ' + rev.days + ' 天、' +
              rev.logged + ' 天有记录反推）：<b>' + Math.round(rev.value) + ' kcal</b>' +
-             '<br>比估算的 ' + Math.round(eb.burn) + ' kcal ' +
-             (diff >= 0 ? '高 ' : '低 ') + Math.abs(Math.round(diff)) + ' kcal' +
-             (Math.abs(diff) > 200 ? '，说明活动水平设置可调整' : '') + '</div>';
+             (eb.hasBurn ? '<br>比所选日期的消耗 ' + Math.round(eb.burn) + ' kcal ' +
+             (diff >= 0 ? '高 ' : '低 ') + Math.abs(Math.round(diff)) + ' kcal' : '') + '</div>';
       } else {
         const why = { noWeight: '至少需要两次体重记录', tooShort: '记录跨度不足 7 天',
                       tooLong: '跨度超过 42 天，参考性下降', fewLogs: '饮食记录太少' }[rev.reason] || '数据不足';
@@ -1473,16 +1544,16 @@ function renderBurn(){
   // ---- 主屏入口卡 ----
   const bn = $('balNum'), bsub = $('balSub');
   if (bn && bsub){
-    if (!hasBody){
+    if (!eb.hasBurn){
       bn.textContent = '—';
       bn.className = 'bnum';
-      bsub.textContent = '点击设置身体数据';
+      bsub.textContent = '点击录入健康能量或设置身体数据';
     } else {
       const gap = eb.deficit;
       bn.textContent = (gap >= 0 ? '−' : '+') + Math.abs(Math.round(gap));
       bn.className = 'bnum ' + (gap >= 0 ? 'neg' : 'pos');
       bsub.textContent = (isToday ? '今日' : editDate.slice(5) + ' ') +
-        (gap >= 0 ? '热量缺口' : '热量盈余') + ' kcal';
+        (gap >= 0 ? '热量缺口' : '热量盈余') + ' kcal · ' + sourceLabel;
     }
   }
 }
@@ -1633,30 +1704,30 @@ function suggestTarget(tdee, sex){
 /* 某天的能量平衡：摄入 / 消耗 / 缺口 */
 function energyBalance(dateKey, body, weight, burnByDay){
   const b = body || {};
-  const wOn = (weight && +weight[dateKey] > 0) ? +weight[dateKey] : +b.weightKg;
+  const weightDates = Object.keys(weight || {}).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= dateKey && +weight[k] > 0).sort();
+  const wOn = weightDates.length ? +weight[weightDates[weightDates.length - 1]] : +b.weightKg;
   const bmrR = calcBMR({ sex: b.sex, birthYear: b.birthYear, heightCm: b.heightCm,
                          weightKg: wOn, bodyFat: (weight && weight[dateKey + '|bf']) || b.bodyFat,
                          preferHarris: b.preferHarris });
   const real = burnByDay && burnByDay[dateKey];
-  const active = real && +real.active > 0 ? +real.active : 0;
-  const basal  = real && +real.basal  > 0 ? +real.basal  : 0;
+  const hasManual = !!real && validEnergy(real.active) && validEnergy(real.basal);
 
   const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(dateKey)[k] || []), []));
   const intake = t.kcal;
 
-  // 有真实数据：总消耗 = 静息 + 活动 + 食物热效应
+  // 手动 Apple 健康日累计：直接相加，不重复加入运动或食物热效应。
   // 无真实数据：总消耗 = BMR × 活动系数 + 食物热效应
   let rest, act, source;
-  if (basal > 0 || active > 0){
-    rest = basal > 0 ? basal : bmrR.value;
-    act = active;
-    source = 'real';
+  if (hasManual){
+    rest = real.basal;
+    act = real.active;
+    source = 'manual';
   } else {
     rest = bmrR.value;
     act = rest * ((+b.activity || 1.2) - 1);
     source = 'estimate';
   }
-  const tef = intake * 0.10;
+  const tef = hasManual ? 0 : intake * 0.10;
   const burn = rest + act + tef;
   const balance = intake - burn;                 // 负值＝缺口
   return {
@@ -1665,7 +1736,8 @@ function energyBalance(dateKey, body, weight, burnByDay){
     balance: balance, deficit: -balance,
     source: source,
     bmr: bmrR.value, formula: bmrR.formula, formulaKey: bmrR.key,
-    hasBody: bmrR.value > 0
+    hasBody: bmrR.value > 0,
+    hasBurn: hasManual || bmrR.value > 0
   };
 }
 /* TEST-EXTRACT-BURN-B */                   // 测试用提取标记，勿删
@@ -1838,6 +1910,29 @@ $('btnSaveSet').addEventListener('click', () => {
 $('btnEditBody').addEventListener('click', openSet);
 $('btnBurn').addEventListener('click', openBurn);
 $('btnBurnBack').addEventListener('click', closeBurn);
+for (const id of ['energyActive', 'energyBasal']){
+  $(id).addEventListener('input', () => { $('energyStatus').textContent = '未保存'; });
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') $('btnSaveEnergy').click(); });
+}
+$('btnSaveEnergy').addEventListener('click', () => {
+  const active = $('energyActive').value.trim(), basal = $('energyBasal').value.trim();
+  if (!active || !basal || !validEnergy(Number(active)) || !validEnergy(Number(basal))){
+    toast('请填写两项有效能量（kcal，不能为负数，0 可以保存）'); return;
+  }
+  const next = { ...burnByDay, [editDate]: { active: Number(active), basal: Number(basal) } };
+  if (!saveBurn(next)) return;
+  energyEditDate = ''; render(); refreshRisk();
+  toast('已保存 ' + editDate + ' 健康能量');
+});
+$('btnClearEnergy').addEventListener('click', async () => {
+  const date = editDate;
+  const ok = await askChoice({ title: '清除当日能量', message: '清除 ' + date + ' 的活动与静息能量后，将恢复公式估算。',
+    buttons: [{ label: '清除录入', value: true }, { label: '取消', value: false }] });
+  if (!ok) return;
+  const next = { ...burnByDay }; delete next[date];
+  if (!saveBurn(next)) return;
+  energyEditDate = ''; render(); refreshRisk(); toast('已清除 ' + date + ' 的能量录入');
+});
 $('btnSaveWeight').addEventListener('click', () => {
   const v = parseFloat($('wInput').value);
   if (!(v > 0) || v > 400){ toast('请输入有效的体重（kg）'); return; }
@@ -1859,7 +1954,7 @@ function boot(){
   try { refreshRisk(); } catch (e) { errs.push(e); }
   try {
     (function backupReminder(){
-      if (!Object.keys(store).length) return;
+      if (!Object.keys(store).length && !Object.keys(burnByDay).length) return;
       const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
       if (since === null || since > 7){
         setTimeout(() => toast(since === null
@@ -2063,10 +2158,11 @@ function askMergeOrReplace(headline, detail){
 /* TEST-EXTRACT-A */                       // 测试用提取标记，勿删
 function buildBackup(){
   return JSON.stringify({
-    app: 'kcal', version: 3, exportedAt: new Date().toISOString(),
+    app: 'kcal', version: 4, exportedAt: new Date().toISOString(),
     settings: settings,
     body: body,            // 身体档案（v3 新增）
     weight: weight,        // 体重记录（v3 新增）
+    burn: burnByDay,       // 每日手动能量（v4 新增）
     entries: store
   }, null, 2);
 }
@@ -2078,7 +2174,7 @@ function refreshRisk(){
   const rb = $('riskBox');
   if (!rb) return;
   rb.innerHTML = '⚠️ <b>数据只存在这台手机的浏览器里</b><br>' +
-    '共 <b>' + days + '</b> 天、<b>' + total + '</b> 条记录，与账号无关、不上云。<br>' +
+    '共 <b>' + days + '</b> 天、<b>' + total + '</b> 条饮食记录，<b>' + Object.keys(burnByDay).length + '</b> 天健康能量，与账号无关、不上云。<br>' +
     '删除主屏幕图标、清理浏览器数据、换手机都会丢失。' +
     '<small>' + backupHint(since) + '</small>';
 }
@@ -2127,48 +2223,49 @@ function applyImport(text){
 
   const days = Object.keys(entries).length;
   // 备份里可能只有体重/身体数据而没有饮食记录，这种情况也要允许导入
+  const importedBurn = !fromDoc ? normalizeBurn(data && data.burn) : {};
+  const hasBurnField = !fromDoc && data && data.burn && typeof data.burn === 'object';
   const hasExtra = !fromDoc && ((data.body && Object.keys(data.body).length) ||
-                                (data.weight && Object.keys(data.weight).length));
+                                (data.weight && Object.keys(data.weight).length) || Object.keys(importedBurn).length);
   if (!days && !hasExtra){
     toast(fromDoc ? '没解析出带日期的记录，请确认有日期行' : '备份或文档里没有可识别的记录');
     return;
   }
 
-  // 备份里的目标设置、身体档案、体重一并恢复
-  if (!fromDoc && data.settings && typeof data.settings === 'object'){
-    for (const k of ['kcal', 'p', 'f', 'c']) if (data.settings[k] != null) settings[k] = +data.settings[k] || 0;
-    if (data.settings.dsScheme != null) settings.dsScheme = String(data.settings.dsScheme);
-    saveSet();
-  }
-  if (!fromDoc && data.body && typeof data.body === 'object'){
-    for (const k of Object.keys(body)) if (data.body[k] != null && data.body[k] !== '') body[k] = data.body[k];
-    saveBody();
-  }
-  if (!fromDoc && data.weight && typeof data.weight === 'object'){
-    for (const k of Object.keys(data.weight)){
-      const v = +data.weight[k];
-      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v > 0 && v < 400) weight[k] = v;   // 覆盖式合并
+  // 等用户选定方式再恢复全部数据；取消不得修改身体档案或健康能量。
+  function restoreExtras(mode){
+    if (hasBurnField && !saveBurn(mode === 'replace' ? importedBurn : { ...burnByDay, ...importedBurn })){
+      throw new Error('健康能量未能写入，导入已停止');
     }
-    saveWeight();
+    if (!fromDoc && data.settings && typeof data.settings === 'object'){
+      for (const k of ['kcal', 'p', 'f', 'c']) if (data.settings[k] != null) settings[k] = +data.settings[k] || 0;
+      if (data.settings.dsScheme != null) settings.dsScheme = String(data.settings.dsScheme);
+      saveSet();
+    }
+    if (!fromDoc && data.body && typeof data.body === 'object'){
+      for (const k of Object.keys(body)) if (data.body[k] != null && data.body[k] !== '') body[k] = data.body[k];
+      saveBody();
+    }
+    if (!fromDoc && data.weight && typeof data.weight === 'object'){
+      for (const k of Object.keys(data.weight)){
+        const v = +data.weight[k];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v > 0 && v < 400) weight[k] = v;   // 覆盖式合并
+      }
+      saveWeight();
+    }
+    energyEditDate = '';
   }
 
   const stat = countParsed(entries);
   const range = stat.dates.length ? (stat.dates[0] + ' ~ ' + stat.dates[stat.dates.length - 1]) : '';
 
-  // 只有身体/体重数据（没有饮食记录）时不需要问合并还是覆盖
-  if (!days){
-    save(); render(); refreshRisk();
-    toast('已恢复身体数据与 ' + Object.keys(weight).length + ' 条体重记录');
-    if (typeof __dshTestHook === 'function') __dshTestHook('importDone', { mode: 'extra', days: 0 });
-    return;
-  }
+  const headline = (fromDoc ? '解析到 ' : '备份包含 ') + days + ' 天、共 ' + stat.total + ' 条饮食记录' +
+    (hasExtra ? '\n以及身体数据 / 体重 / ' + Object.keys(importedBurn).length + ' 天健康能量' : '');
 
-  const headline = (fromDoc ? '解析到 ' : '备份包含 ') + days + ' 天、共 ' + stat.total + ' 条记录';
-
-  askMergeOrReplace(headline, range ? '日期范围：' + range : '').then(mode => {
+  return askMergeOrReplace(headline, range ? '日期范围：' + range : '').then(mode => {
     if (!mode) return;                                  // 取消
-
-    if (mode === 'replace'){
+    restoreExtras(mode);
+    if (mode === 'replace' && days){
       store = entries;
     } else {
       for (const date of Object.keys(entries)){
@@ -2285,7 +2382,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-04.2';
+const APP_VERSION = '2026-10-05.1';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
