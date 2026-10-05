@@ -4,14 +4,14 @@
    2) 其他静态资源「缓存优先」，快且省流量
    3) install 时 skipWaiting + activate 时 clients.claim，新版立刻接管，不等所有窗口关闭
    4) 离线时回退缓存，所以断网依然可用 */
-const CACHE = 'kcal-v6';
+const CACHE = 'kcal-v7';
 
 /* 注意：index.html 故意不预缓存，避免"预缓存的旧版"把网络优先短路掉 */
 const SHELL = [
   './manifest.webmanifest',
-  './icons/apple-touch-icon-v2.png',
-  './icons/icon-192-v2.png',
-  './icons/icon-512-v2.png'
+  './icons/apple-touch-icon-v3.png',
+  './icons/icon-192-v3.png',
+  './icons/icon-512-v3.png'
 ];
 
 self.addEventListener('install', e => {
