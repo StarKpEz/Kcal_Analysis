@@ -9,9 +9,8 @@
 <title>热量记账 · 拍照算热量</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <!-- PNG 图标：安卓 Chrome 不接受 SVG 作主屏幕图标，iOS 也不支持 SVG 的 apple-touch-icon -->
-<link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png">
-<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" sizes="180x180">
-<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="icon" href="./icons/icon-192-v2.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon-v2.png" sizes="180x180">
 <style>
   :root{
     /* iOS 系统色（深色模式变体），贴近原生质感 */
@@ -2382,7 +2381,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-05.1';
+const APP_VERSION = '2026-10-05.2';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
