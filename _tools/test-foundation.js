@@ -109,7 +109,7 @@ async function main(){
   assert.deepEqual(backup(automatic).completion,{});
 
   // 不接受损坏、未来版本、非法日期或非法能量；失败不会触发覆盖。
-  for (const bad of ['{"entries":', JSON.stringify({app:'other',entries:{}}), JSON.stringify({...full,version:7}),
+  for (const bad of ['{"entries":', JSON.stringify({app:'other',entries:{}}), JSON.stringify({...full,version:8}),
     JSON.stringify({...full,burn:{ [day]:{active:-1,basal:1400} }}),
     JSON.stringify({...full,weight:{'2026-02-30':70}}), JSON.stringify({version:5,entries:{}})]){
     const prev = state(edited), writes = edited.writes();

@@ -4,7 +4,7 @@
    2) 其他静态资源「缓存优先」，快且省流量
    3) install 完整缓存页面后 skipWaiting；activate 时 clients.claim
    4) 离线时回退缓存，所以断网依然可用 */
-const CACHE = 'kcal-v13';
+const CACHE = 'kcal-v14';
 
 /* 安装时缓存完整应用，成功后才接管并删除旧缓存；导航仍始终网络优先。 */
 const SHELL = [
@@ -12,6 +12,7 @@ const SHELL = [
   './manifest.webmanifest',
   './docs/health-import-example.json',
   './docs/健康数据导入格式.md',
+  './docs/shortcuts-guide.html',
   './icons/apple-touch-icon-v3.png',
   './icons/icon-192-v3.png',
   './icons/icon-512-v3.png'

@@ -42,7 +42,7 @@ async function main(){
   assert.deepEqual(read(restored).sleep,complete.sleep);
   const legacy=healthHarness({'kcal.data.v5':JSON.stringify(old)});
   assert.equal(legacy.run('storageReadError'),false);assert.deepEqual(read(legacy).training,{});
-  legacy.run('commitData({})');assert.equal(JSON.parse(legacy.storage.get('kcal.data.v5')).version,6);
+  legacy.run('commitData({})');assert.equal(JSON.parse(legacy.storage.get('kcal.data.v5')).version,7);
   for(const entry of [
     {...file.days[0],date:'2026-02-30'},
     {...file.days[0],training:[...file.days[0].training,...file.days[0].training]},

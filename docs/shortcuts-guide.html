@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark"><title>创建健康导出快捷指令</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--fg:#1c1c1e;--dim:#636366;--tint:#007aff;--line:#dedee3}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--fg:#f2f2f7;--dim:#aeaeb2;--tint:#0a84ff;--line:#38383a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:640px;margin:auto;padding:20px 20px calc(28px + env(safe-area-inset-bottom))}nav{padding-top:env(safe-area-inset-top)}a{color:var(--tint);text-decoration:none}nav a{display:inline-flex;align-items:center;min-height:44px}h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;margin:18px 0 12px}h2{font-size:21px;margin:26px 0 12px}h3{font-size:17px;margin:0 0 10px}p{margin:10px 0}.note{color:var(--dim);font-size:14px}.card{background:var(--card);border-radius:16px;padding:18px;margin:14px 0}ol,ul{padding-left:23px;margin:10px 0}li{margin:10px 0}code,pre{font-family:ui-monospace,Consolas,monospace;font-size:13px}code{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);padding:12px;border-radius:10px;line-height:1.5}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;vertical-align:top;padding:9px 5px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--tint)}button{border:0;background:transparent;color:var(--tint);font:inherit;min-height:44px;padding:8px 0;text-align:left;cursor:pointer}.flow{color:var(--tint);font-weight:600}footer{border-top:1px solid var(--line);padding-top:16px;margin-top:26px}
+</style>
+</head>
+<body><main>
+<nav><a href="../index.html#/health/import">‹ 返回健康导入</a></nav>
+<h1>创建健康导出快捷指令</h1>
+<p>在 iPhone 上创建一次，以后运行并保存一个近期 JSON 文件，再回到网页导入。只查询体重、两项能量和睡眠，不导出全部健康历史。</p>
+<p class="note">本页是手机创建指南，不是一键安装链接。Windows 无法运行苹果的快捷指令签名工具；以下配置和网页格式已对接，真实 iPhone 的动作名称、单位与分期值仍需首次运行核对。训练会话暂不包含在这个指令中，可继续手动记录。</p>
+<div class="card"><h3>先完成体重，再增加每日数据</h3><p>先创建「导出历史体重」，确认成功后复制为「导出近期健康」。示例从 <b>2026-09-23</b> 开始导入，网页保留此前记录；起始日期可按已有记录调整。</p><p class="flow">健康 → 快捷指令 → 我的 iPhone 中的 JSON → 网页检查与确认</p><p class="note">健康文件无需上传 GitHub。首次弹出权限时，只授权需要读取的健康项目。</p></div>
+<h2>1. 准备日期与变量</h2>
+<div class="card"><ol>
+<li>打开「快捷指令」→ 点击「＋」→ 命名为「导出历史体重」。</li>
+<li>添加「日期」，选择<b>当前日期</b>。后续所有日期计算都明确引用这一个日期，称为「运行时间」。</li>
+<li>添加「格式化日期」，输入「运行时间」，格式选择<b>自定</b>，填入下面的时间格式。把这个结果重命名为「导出时间」。</li>
+</ol><pre id="date-format">yyyy-MM-dd'T'HH:mm:ssXXX</pre><button data-copy="date-format">复制时间格式</button>
+<ol start="4"><li>再次「格式化日期」，输入仍为「运行时间」，自定格式 <code>yyyy-MM-dd</code>，结果命名为「今天」。</li>
+<li>添加「文本」，内容 <code>2026-09-23</code>，结果命名为「起始日期」。添加一个「日期」，指定 <b>2026 年 9 月 22 日 00:00</b>，结果命名为「查询起点」。查询多取一天，最终文件按起始日期过滤。</li>
+<li>添加「无」（Nothing），再添加「设定变量」，变量名「JSON片段」，输入明确选「无」。用它保存后面每条样本的 JSON 文本。</li></ol>
+<p class="note">动作输出可通过点击变量重命名，也可紧接「设定变量」保存。取某个样本的详细信息时，每次都要明确选择「重复项目」，不要使用上一动作的结果。</p></div>
+<h2>2. 创建体重查询块</h2>
+<div class="card"><ol>
+<li>添加「查找健康样本」。类型选择<b>体重</b>（Body Mass / Weight），开始日期在「查询起点」之后、在「运行时间」之前。匹配方式选择<b>所有条件</b>，关闭数量限制。确认它查询健康 App 中的样本，而不是过滤上一步的「JSON片段」。</li>
+<li>添加「重复每一项」，输入选择刚查到的<b>健康样本</b>。后面的操作放在「重复」和「结束重复」之间。</li>
+<li>添加「获取健康样本的详细信息」→ 获取<b>值</b>，输入选「重复项目」，结果命名为「样本值」。再添加同一动作获取<b>单位</b>，输入仍为「重复项目」，结果命名为「样本单位」。</li>
+<li>获取「重复项目」的<b>开始日期</b>，接「格式化日期」，用第一节的完整时间格式，结果命名为「开始时间」。</li>
+<li>获取「重复项目」的<b>结束日期</b>，同样格式化，命名为「结束时间」。</li>
+<li>获取「重复项目」的<b>来源</b>，命名为「样本来源」。</li>
+<li>添加「词典」，按下表建立字段。英文键名逐字填写；右侧的变量应使用快捷指令的变量标签，不能输入变量名字当普通文字。</li>
+</ol>
+<table><thead><tr><th>键</th><th>字段类型</th><th>值</th></tr></thead><tbody>
+<tr><td><code>kind</code></td><td>文本</td><td><code>weight</code></td></tr>
+<tr><td><code>value</code></td><td><b>数字</b></td><td>「样本值」变量</td></tr>
+<tr><td><code>unit</code></td><td>文本</td><td>「样本单位」变量</td></tr>
+<tr><td><code>startAt</code></td><td>文本</td><td>「开始时间」变量</td></tr>
+<tr><td><code>endAt</code></td><td>文本</td><td>「结束时间」变量</td></tr>
+<tr><td><code>source</code></td><td>文本</td><td>「样本来源」变量</td></tr>
+</tbody></table>
+<ol start="8"><li>添加「从输入中获取文本」，输入明确选上面的<b>词典</b>。再添加「添加到变量」，把这段文本添加到「JSON片段」。</li><li>保留「结束重复」。不要在循环外重新设定「JSON片段」，否则会丢掉前面的样本。</li></ol>
+<p class="note">单位跟着数值一起导出，网页支持 kg、g、lb，自动转换为 kg。不要把实际是磅的数值标成 kg。同一天多次称重取最后一次。</p>
+</div>
+<h2>3. 包装并保存 JSON</h2>
+<div class="card"><ol>
+<li>在「结束重复」之后，添加「合并文本」，输入选「JSON片段」，分隔符选择<b>自定</b>，填一个英文逗号 <code>,</code>。结果命名为「样本文本」。</li>
+<li>添加「文本」，粘贴下面模板。删掉四个 <code>【…】</code> 占位符，逐个插入对应的<b>变量标签</b>。导出时间与两项日期外面的双引号保留；样本文本外面不能加双引号。</li>
+</ol>
+<pre id="json-template">{
+  "app": "kcal-health-samples",
+  "version": 1,
+  "exportedAt": "【导出时间】",
+  "from": "【起始日期】",
+  "through": "【今天】",
+  "samples": [
+    【样本文本】
+  ]
+}</pre><button data-copy="json-template">复制 JSON 模板</button>
+<ol start="3"><li>添加「从输入中获取词典」，输入选择刚才的完整文本。这一步检查 JSON 是否能解析；发生错误时先修正模板和变量。</li>
+<li>添加「从输入中获取文本」，输入选择刚解析的<b>完整词典</b>。添加「设定名称」，名称填 <code>kcal-health-【今天】.json</code>，其中今天插入日期变量。</li>
+<li>添加「存储文件」，输入选刚命名的文件，开启「询问存储位置」。运行后保存到<b>我的 iPhone</b>中的一个文件夹。</li>
+<li>回到网页「健康 → 导入健康 JSON → 选择 JSON 文件」。先检查体重日期、数值，再确认导入。</li>
+</ol><p class="note">首次先运行体重版。单条样本应是词典对象，不是加了引号的长字符串；日期要带 +08:00 等时区，value 要是数字。文件中的任何测试数值都不应导入真实记录。</p></div>
+<h2>4. 扩展为每日能量与睡眠</h2>
+<div class="card"><ol>
+<li>复制已成功的体重指令，重命名「导出近期健康」。</li>
+<li>把固定「起始日期」改为：「调整日期」→ 从运行时间<b>减去 7 天</b> → 格式化为 <code>yyyy-MM-dd</code>。把查询起点改为：运行时间<b>减去 9 天</b>。额外查询两天是为了取齐第一个归档日的跨夜睡眠。</li>
+<li>把第二节整个查询与循环块复制三次，放在原体重块之后、第三节「合并文本」之前。四个块共用「JSON片段」，每次查找都查询健康 App，且循环的详细信息都引用各自的「重复项目」。</li>
+</ol>
+<table><thead><tr><th>健康类型</th><th>kind 文本</th><th>value 类型</th></tr></thead><tbody>
+<tr><td>体重</td><td><code>weight</code></td><td>数字</td></tr>
+<tr><td>活动能量 / Active Calories</td><td><code>active</code></td><td>数字</td></tr>
+<tr><td>静息能量 / Resting Calories</td><td><code>basal</code></td><td>数字</td></tr>
+<tr><td>睡眠 / Sleep</td><td><code>sleep</code></td><td><b>文本</b>（分期值）</td></tr>
+</tbody></table>
+<p>能量读取值和实际单位（支持 kcal、kJ 等）。<b>睡眠读取的是「值」，不是「时长」</b>，保留核心、深度、REM、清醒、卧床或未细分睡着的分类；睡眠块删去获取单位动作和词典的 <code>unit</code> 字段。</p>
+<p>在能量与睡眠的「查找健康样本」里，增加<b>来源</b>条件，每类选一个你实际使用的来源。睡眠通常选佩戴的 Apple Watch。第一版不会混加多个设备的样本；网页检测到多个来源会提示调整筛选。单一来源的能量也要与健康 App 对照，不能默认等同于它的多来源日总量。</p>
+<p class="note">首次测试时，可临时在获取睡眠「值」后加「快速查看」，确认结果是 Core、Deep、REM 或对应中文分类。若结果无法识别，网页会显示原始值并停止导入，不猜测分期。动作中文名称可能随 iOS 版本变化，可用“健康样本”“词典”“合并文本”搜索。</p>
+</div>
+<h2>5. 日常使用与核对</h2>
+<div class="card"><ul>
+<li>建议起床后，待手表数据在健康 App 中出现，再手动运行近期指令。昨天的能量、今天醒来的睡眠一起导入；今天能量仍是累计。</li>
+<li>查看网页预览中的体重和睡眠日期。相邻睡眠样本间隔不超过 90 分钟归为同一段，使用最后片段结束日期；长时间清醒或多段睡眠可能需要核对归档。</li>
+<li>相同睡眠时间段只统计一次，实际时长排除清醒和卧床；未细分睡着不重复叠加分期。没有细分数据时展示“未提供”。睡眠评分暂不计算。</li>
+<li>每个导出窗口应包含范围内的完整样本，关闭数量限制。缺少某项权限或只导出部分片段时，先不要覆盖已有日汇总。</li>
+<li>重复导入同一文件会跳过。重新运行导出后可补齐晚同步的数据；之前日期和没有出现在文件中的类别继续保留。</li>
+</ul><p>首次至少核对一个完整日：体重、活动能量、静息能量、实际睡眠、核心、深度、REM。源数据一致后，再考虑定时运行；网页导入目前仍需手动确认。</p></div>
+<footer class="note"><p>版本 2026-10-07.7 · 手机创建指南待真机核对。</p><p><a href="https://support.apple.com/zh-cn/guide/shortcuts/apd43b69f337/ios">苹果：通过词典组织 JSON</a> · <a href="https://support.apple.com/en-hk/101583">苹果：快捷指令睡眠分期支持</a> · <a href="健康数据导入格式.md">本应用格式说明</a></p></footer>
+</main><script>
+document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{
+  const value=document.getElementById(button.dataset.copy).textContent;
+  try{await navigator.clipboard.writeText(value);button.textContent='已复制';}
+  catch(e){const range=document.createRange();range.selectNodeContents(document.getElementById(button.dataset.copy));const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);button.textContent='请长按选中文字复制';}
+}));
+</script></body></html>

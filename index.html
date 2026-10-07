@@ -665,12 +665,13 @@
     <section id="healthImportPanel" aria-label="导入健康数据" hidden>
       <div class="card">
         <h2>导入健康数据</h2>
-        <p class="hint">选择符合本应用格式的 JSON，或粘贴内容。可同时导入活动能量、静息能量、训练和睡眠。仅在本机处理。</p>
+        <p class="hint">选择快捷指令生成的 JSON，或粘贴内容。支持体重、活动能量、静息能量、训练和睡眠；睡眠展示核心、深度与 REM。仅在本机处理。</p>
+        <a class="settings-action" href="docs/shortcuts-guide.html">在 iPhone 上创建导出快捷指令 <span aria-hidden="true">›</span></a>
         <button class="wide ghost" id="btnChooseHealthFile">选择 JSON 文件</button><input type="file" id="healthFile" accept=".json,application/json" hidden>
         <label for="healthJson" class="hint">JSON 内容</label><textarea id="healthJson" placeholder="选择文件或粘贴 JSON"></textarea>
         <div class="row"><button class="wide ghost" id="btnCheckHealth">检查内容</button><button class="wide primary" id="btnApplyHealth">确认导入</button></div>
         <p class="health-preview" id="healthPreview" role="status"></p>
-        <details class="hint"><summary>文件格式与导出说明</summary><p>苹果健康自带“导出所有健康数据”得到的是 XML，本页接收经过整理的日汇总 JSON。快捷指令读取与汇总需在 iPhone 实测；暂未提供自动同步。</p><p>建议次日早晨导出最近 7 天并补齐历史数据。睡眠使用去重后的实际睡眠时长，在床和清醒不相加；训练列表按当天整体更新，不累加重复会话。</p><a href="docs/健康数据导入格式.md" target="_blank" rel="noopener">查看格式说明</a></details>
+        <details class="hint"><summary>文件格式与导出说明</summary><p>支持旧版日汇总、新版体重日汇总及快捷指令精简样本。苹果全量 XML 不适合每日导入。手机创建步骤见上方指南，目前没有经过真机验证的一键安装快捷指令。</p><p>建议早晨导出最近 7 天；第一次可单独补入历史体重。样本中同一天多次称重取最后一次；睡眠片段去重，排除卧床与清醒，并按结束日期归档。请核对睡眠日期和分期，避免缺少片段导致旧记录被不完整数据替换。</p><a href="docs/健康数据导入格式.md" target="_blank" rel="noopener">查看格式说明</a></details>
       </div>
     </section>
   </div>
@@ -877,6 +878,7 @@ let body = { sex: 'male', birthYear: '', heightCm: '', bodyFat: '', activity: 1.
              weightKg: '', preferHarris: false };
 /* 体重记录：{ 'YYYY-MM-DD': kg } */
 let weight = {};
+let weightMeta = {}; // 保持体重数值结构兼容，来源和称重时间单独保存。
 /* 每日手动录入的 Apple 健康能量；独立存储，不改动饮食记录。 */
 let burnByDay = {};
 let trainingByDay = {}, sleepByDay = {};
@@ -1043,17 +1045,157 @@ function normalizeHealthDays(raw, kind){
   }
   return out;
 }
+function sleepStage(value){
+  if(typeof value==='number' && Number.isInteger(value))return ['inBed','asleep','awake','core','deep','rem'][value];
+  const s=String(value).toLowerCase().replace(/[\s()（）_\-]/g,'');
+  if(/^[0-5]$/.test(s))return ['inBed','asleep','awake','core','deep','rem'][Number(s)];
+  const labels={core:['core','asleepcore','核心','核心睡眠','睡眠核心','睡着核心'],deep:['deep','asleepdeep','深度','深度睡眠','深睡','睡眠深度','睡着深度'],rem:['rem','asleeprem','快速眼动','快速眼动睡眠','睡眠rem','睡着rem'],awake:['awake','清醒','醒着'],inBed:['inbed','卧床','在床','卧床时间'],asleep:['asleep','asleepunspecified','睡眠','睡着','未细分睡眠']};
+  return Object.keys(labels).find(k=>labels[k].includes(s));
+}
+function unionIntervals(rows){
+  const out=[];
+  for(const r of [...rows].sort((a,b)=>a.start-b.start || a.end-b.end)){
+    const last=out.at(-1);
+    if(last && r.start<=last.end)last.end=Math.max(last.end,r.end);
+    else out.push({start:r.start,end:r.end});
+  }
+  return out;
+}
+const intervalMinutes=rows=>unionIntervals(rows).reduce((n,r)=>n+(r.end-r.start)/60000,0);
+function subtractIntervals(rows,cuts){
+  const result=[],blocked=unionIntervals(cuts);let cutIndex=0;
+  for(const r of unionIntervals(rows)){
+    let at=r.start;
+    while(cutIndex<blocked.length && blocked[cutIndex].end<=at)cutIndex++;
+    for(let i=cutIndex;i<blocked.length;i++){
+      const b=blocked[i];
+      if(b.end<=at)continue;if(b.start>=r.end)break;
+      if(b.start>at)result.push({start:at,end:Math.min(b.start,r.end)});
+      at=Math.max(at,b.end);if(at>=r.end)break;
+    }
+    if(at<r.end)result.push({start:at,end:r.end});
+  }
+  return result;
+}
+function intervalsOverlap(a,b){
+  let i=0,j=0;
+  while(i<a.length && j<b.length){
+    if(Math.min(a[i].end,b[j].end)>Math.max(a[i].start,b[j].start))return true;
+    if(a[i].end<=b[j].end)i++;else j++;
+  }
+  return false;
+}
+function healthOffset(timestamp){
+  if(timestamp.endsWith('Z'))return 0;
+  const m=timestamp.match(/([+-])(\d{2}):(\d{2})$/);
+  return (m[1]==='-'?-1:1)*(Number(m[2])*60+Number(m[3]));
+}
+function healthDateAt(time,offset){return new Date(time+offset*60000).toISOString().slice(0,10);}
+function healthTimeAt(time,template){return new Date(time+healthOffset(template)*60000).toISOString().replace(/Z$/,template.endsWith('Z')?'Z':template.slice(-6));}
+function summarizeHealthSamples(data){
+  if(data.version!==1 || !Array.isArray(data.samples) || data.samples.length>30000 || Object.keys(data).some(k=>!['app','version','exportedAt','from','through','samples'].includes(k)))throw new Error('快捷指令样本格式无效');
+  const exportedAt=healthTimestamp(data.exportedAt),exportTime=Date.parse(exportedAt);
+  if(exportTime>Date.now()+300000)throw new Error('导出时间在未来');
+  if(!isDayKey(data.from)||!isDayKey(data.through)||data.from>data.through||data.through>todayKey())throw new Error('导出日期范围无效');
+  const days={},sleepRows=[],energyRows={active:[],basal:[]},sources={active:new Set(),basal:new Set(),sleep:new Set()},seen=new Set(),notes=[];
+  const day=k=>days[k] ||= {date:k};
+  const inRange=k=>k>=data.from && k<=data.through;
+  for(const s of data.samples){
+    if(!isObject(s)||!['weight','sleep','active','basal'].includes(s.kind)||Object.keys(s).some(k=>!['kind','value','unit','startAt','endAt','source'].includes(k)))throw new Error('健康样本类别或字段无效');
+    if(typeof s.source!=='string'||!s.source.trim()||s.source.length>200)throw new Error('样本需提供来源；请读取健康样本的“来源”');
+    const startAt=healthTimestamp(s.startAt),endAt=healthTimestamp(s.endAt),start=Date.parse(startAt),end=Date.parse(endAt);
+    if(end<start || end>exportTime+60000)throw new Error('样本起止时间无效或晚于导出时间');
+    const fingerprint=JSON.stringify([s.kind,s.source,start,end,s.value,s.unit]);
+    if(seen.has(fingerprint))continue;seen.add(fingerprint);
+    if(s.kind==='weight'){
+      const factors={kg:1,'千克':1,'公斤':1,g:.001,'克':.001,lb:.45359237,lbs:.45359237,'磅':.45359237};
+      if(!Object.hasOwn(factors,s.unit))throw new Error('不支持体重单位“'+String(s.unit)+'”；请提供 kg、g 或 lb 及对应数值');
+      const kg=healthNumber(healthNumber(s.value,'体重样本',0,400000)*factors[s.unit],'体重',0.1,400),k=startAt.slice(0,10);
+      if(!inRange(k))continue;
+      const previous=day(k).weight;
+      if(previous && Date.parse(previous.measuredAt)===start && previous.kg!==kg)throw new Error(k+' 同一时间有不同体重，请核对来源');
+      if(!previous || Date.parse(previous.measuredAt)<start)day(k).weight={kg,measuredAt:startAt};
+    }else if(s.kind==='sleep'){
+      const stage=sleepStage(s.value);
+      if(!stage)throw new Error('无法识别睡眠分期“'+String(s.value).slice(0,60)+'”；请核对快捷指令的“值”');
+      if(end<=start || end-start>2160*60000)throw new Error('睡眠样本时长无效');
+      sleepRows.push({start,end,startAt,endAt,stage,source:s.source});sources.sleep.add(s.source);
+    }else{
+      const factors={kcal:1,Cal:1,'千卡':1,'大卡':1,kJ:1/4.184,'千焦':1/4.184,J:1/4184,cal:.001};
+      if(!Object.hasOwn(factors,s.unit))throw new Error('不支持能量单位“'+String(s.unit)+'”；请提供 kcal 或 kJ 及对应数值');
+      const value=healthNumber(healthNumber(s.value,'能量样本',0,209200000)*factors[s.unit],'能量',0,50000);
+      if(end-start>1440*60000)throw new Error('能量样本跨度超过一天，请分段导出');
+      energyRows[s.kind].push({start,end,startAt,endAt,value});sources[s.kind].add(s.source);
+    }
+  }
+  for(const [kind,set] of Object.entries(sources))if(set.size>1)throw new Error(({active:'活动能量',basal:'静息能量',sleep:'睡眠'})[kind]+'含多个来源：'+[...set].join('、')+'。请在快捷指令中筛选一个来源，避免重复统计');
+  for(const kind of ['active','basal']){
+    const rows=energyRows[kind].sort((a,b)=>a.start-b.start || a.end-b.end);
+    let lastEnd=-Infinity;
+    for(const r of rows){
+      if(r.start<lastEnd && r.end>r.start && r.value>0)throw new Error('同一来源的能量样本重叠且不完全相同，请核对导出数据');
+      if(r.end>r.start && r.value>0)lastEnd=Math.max(lastEnd,r.end);
+      const offset=healthOffset(r.endAt);
+      if(r.start===r.end){const k=healthDateAt(r.start,offset);if(inRange(k)){const e=day(k).energy ||= {};e[kind]=(e[kind]||0)+r.value;}continue;}
+      let at=r.start,parts=0;
+      while(at<r.end){
+        const k=healthDateAt(at,offset),next=Date.parse(shiftDay(k,1)+'T00:00:00Z')-offset*60000,until=Math.min(next,r.end);
+        if(inRange(k)){const e=day(k).energy ||= {};e[kind]=(e[kind]||0)+r.value*(until-at)/(r.end-r.start);}
+        parts++;at=until;
+      }
+      if(parts>1)notes.push('跨午夜能量按样本时长分配，请与健康 App 日总量核对。');
+    }
+  }
+  // 不用 0 冒充某类样本未授权或尚未同步。
+  for(const d of Object.values(days))if(d.energy){
+    if(d.energy.active==null || d.energy.basal==null){delete d.energy;notes.push(d.date+' 能量缺少活动或静息样本，本次不更新能量。');}
+  }
+  const groups=[];
+  for(const r of sleepRows.sort((a,b)=>a.start-b.start || a.end-b.end)){
+    let g=groups.at(-1);
+    if(!g || r.start-g.end>90*60000){g={end:r.end,rows:[]};groups.push(g);}
+    g.rows.push(r);g.end=Math.max(g.end,r.end);
+  }
+  for(const g of groups){
+    const asleep=g.rows.filter(r=>['core','deep','rem','asleep'].includes(r.stage));
+    if(!asleep.length)continue;
+    const last=g.rows.reduce((a,b)=>a.end>=b.end?a:b),k=last.endAt.slice(0,10);
+    if(!inRange(k))continue;
+    const stages={};
+    for(const kind of ['core','deep','rem'])stages[kind]=unionIntervals(asleep.filter(r=>r.stage===kind));
+    for(const [a,b] of [['core','deep'],['core','rem'],['deep','rem']])if(intervalsOverlap(stages[a],stages[b]))throw new Error(k+' 不同睡眠阶段互相重叠，请核对来源');
+    const awake=unionIntervals(g.rows.filter(r=>r.stage==='awake')),known=asleep.filter(r=>r.stage!=='asleep');
+    if(intervalsOverlap(unionIntervals(known),awake))throw new Error(k+' 清醒与睡眠分期互相重叠，请核对来源');
+    const actual=unionIntervals([...known,...subtractIntervals(asleep.filter(r=>r.stage==='asleep'),awake)]);
+    if(!actual.length)continue;
+    const first=asleep.reduce((a,b)=>a.start<=b.start?a:b),startAt=healthTimeAt(actual[0].start,first.startAt),d=day(k);
+    if(!d.sleep)d.sleep={asleepMinutes:0,startAt,endAt:last.endAt};
+    d.sleep.asleepMinutes+=intervalMinutes(actual);
+    if(asleep.some(r=>r.stage!=='asleep')){
+      d.sleep.stages ||= {core:0,deep:0,rem:0};
+      for(const kind of ['core','deep','rem'])d.sleep.stages[kind]+=intervalMinutes(stages[kind]);
+    }
+    if(Date.parse(startAt)<Date.parse(d.sleep.startAt))d.sleep.startAt=startAt;
+    if(Date.parse(last.endAt)>Date.parse(d.sleep.endAt))d.sleep.endAt=last.endAt;
+  }
+  const result=Object.values(days).filter(d=>Object.keys(d).length>1).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!result.length)throw new Error('日期范围内没有可导入的完整能量、体重或实际睡眠；请检查授权和同步');
+  if(sleepRows.length)notes.push('睡眠按连续片段汇总（间隔超过 90 分钟分段），归最后片段结束日期；请核对跨夜归档与三项分期。');
+  if(result.some(d=>d.weight))notes.push('同一天多次称重采用最后一次；未称重的日期不补值。');
+  return {app:'kcal-health',version:2,exportedAt,days:result,notes:[...new Set(notes)]};
+}
 function parseHealthJSON(text){
   if (String(text).length>5*1024*1024) throw new Error('内容超过 5 MB，请导出精简日汇总 JSON');
-  let data;
+  let data,notes=[];
   try { data = JSON.parse(String(text).replace(/^\uFEFF/,'')); } catch(e){ throw new Error('JSON 不完整或格式错误'); }
-  if (!isObject(data) || data.app !== 'kcal-health' || data.version !== 1 || !Array.isArray(data.days) || !data.days.length || data.days.length > 3660) throw new Error('需要 kcal-health v1 日汇总 JSON；完整备份请在设置中恢复');
-  const exportedAt = healthTimestamp(data.exportedAt), fields = { burn:{},training:{},sleep:{} }, dates = new Set();
+  if (isObject(data) && data.app === 'kcal-health-samples'){data = summarizeHealthSamples(data);notes=data.notes;}
+  if (!isObject(data) || data.app !== 'kcal-health' || ![1,2].includes(data.version) || !Array.isArray(data.days) || !data.days.length || data.days.length > 3660) throw new Error('需要健康日汇总或快捷指令样本 JSON；完整备份请在设置中恢复');
+  const exportedAt = healthTimestamp(data.exportedAt), fields = { burn:{},training:{},sleep:{},weight:{},weightMeta:{} }, dates = new Set();
   if (Date.parse(exportedAt)>Date.now()+300000) throw new Error('导出时间在未来，请核对导出工具时间');
   for (const d of data.days){
     if (!isObject(d) || !isDayKey(d.date) || d.date > todayKey() || dates.has(d.date)) throw new Error('日期无效、在未来或重复');
     dates.add(d.date);
-    if (Object.keys(d).some(k => !['date','energy','training','sleep'].includes(k))) throw new Error(d.date+' 含有不支持的数据类别');
+    if (Object.keys(d).some(k => !['date','energy','training','sleep',...(data.version===2?['weight']:[])].includes(k))) throw new Error(d.date+' 含有不支持的数据类别');
     let recognized = false;
     if (Object.hasOwn(d,'energy')){
       if (!isObject(d.energy) || Object.keys(d.energy).some(k=>!['active','basal'].includes(k))) throw new Error('能量格式无效，单位须为 kcal');
@@ -1061,28 +1203,43 @@ function parseHealthJSON(text){
       recognized = true;
     }
     if (Object.hasOwn(d,'training')){ fields.training[d.date] = normalizeTrainingDay({sessions:d.training,source:'health-json',updatedAt:exportedAt},d.date); recognized = true; }
-    if (Object.hasOwn(d,'sleep')){ fields.sleep[d.date] = normalizeSleepDay({...d.sleep,source:'health-json',updatedAt:exportedAt},d.date); recognized = true; }
+    if (Object.hasOwn(d,'sleep')){
+      if(data.version===2 && d.sleep?.stages && !['core','deep','rem'].every(k=>Object.hasOwn(d.sleep.stages,k)))throw new Error('v2 睡眠分期需同时提供核心、深度和 REM');
+      fields.sleep[d.date] = normalizeSleepDay({...d.sleep,source:'health-json',updatedAt:exportedAt},d.date); recognized = true;
+    }
+    if (Object.hasOwn(d,'weight')){
+      if (!isObject(d.weight) || Object.keys(d.weight).some(k=>!['kg','measuredAt'].includes(k))) throw new Error('体重格式无效，单位须为 kg');
+      fields.weight[d.date] = healthNumber(d.weight.kg,'体重',0.1,400);
+      const measuredAt=healthTimestamp(d.weight.measuredAt);
+      if (measuredAt.slice(0,10)!==d.date || Date.parse(measuredAt)>Date.parse(exportedAt)+60000) throw new Error('体重日期或称重时间不一致');
+      fields.weightMeta[d.date]={source:'health-json',updatedAt:exportedAt,measuredAt};recognized=true;
+    }
     if (!recognized) throw new Error(d.date+' 没有可导入的数据');
   }
+  if(notes.length)fields.notes=notes;
   return fields;
 }
 function healthImportPlan(fields){
-  const current = { burn:burnByDay,training:trainingByDay,sleep:sleepByDay };
+  const current = { burn:burnByDay,training:trainingByDay,sleep:sleepByDay,weight };
   const patch = {}, details = []; let updates = 0, skipped = 0, conflicts = 0;
-  const names = {burn:'能量',training:'训练',sleep:'睡眠'};
+  const names = {burn:'能量',training:'训练',sleep:'睡眠',weight:'体重'};
+  patch.weightMeta=cloneData(weightMeta);
   for (const key of Object.keys(current)){
     patch[key] = cloneData(current[key]);
     for (const [date,value] of Object.entries(fields[key] || {})){
       const old = current[key][date];
-      if (old && Date.parse(old.updatedAt || '') >= Date.parse(value.updatedAt)){
+      const oldMeta=key==='weight'?weightMeta[date]:old,newMeta=key==='weight'?fields.weightMeta[date]:value;
+      if (old != null && (Date.parse(oldMeta?.updatedAt || '') >= Date.parse(newMeta.updatedAt) || (key==='weight' && oldMeta?.measuredAt && Date.parse(oldMeta.measuredAt)>Date.parse(newMeta.measuredAt)))){
         skipped++; details.push(date+' '+names[key]+'：跳过（已有同时间或更新记录）'); continue;
       }
-      if (old && old.source !== 'health-json') conflicts++;
+      if (old != null && oldMeta?.source !== 'health-json') conflicts++;
       patch[key][date] = cloneData(value); updates++;
-      const suffix = key === 'burn' ? N(value.active+value.basal)+' kcal' : key === 'training' ? value.sessions.length+' 次 · '+N(value.sessions.reduce((n,s)=>n+s.durationMinutes,0))+' 分钟' : formatSleep(value.asleepMinutes);
+      if(key==='weight')patch.weightMeta[date]=cloneData(newMeta);
+      const suffix = key === 'weight' ? N(value)+' kg · '+newMeta.measuredAt.slice(11,16) : key === 'burn' ? N(value.active+value.basal)+' kcal' : key === 'training' ? value.sessions.length+' 次 · '+N(value.sessions.reduce((n,s)=>n+s.durationMinutes,0))+' 分钟' : formatSleep(value.asleepMinutes)+(value.stages?' · 核心 '+N(value.stages.core??0)+' / 深度 '+N(value.stages.deep??0)+' / REM '+N(value.stages.rem??0)+' 分':'');
       details.push(date+' '+names[key]+'：'+(old?'更新':'新增')+' '+suffix);
     }
   }
+  if(fields.notes)details.push(...fields.notes);
   return {patch,updates,skipped,conflicts,details};
 }
 function formatSleep(minutes){ const n = Math.round(minutes); return Math.floor(n/60)+' 小时 '+n%60+' 分'; }
@@ -1103,12 +1260,13 @@ function weightLineChart(records, asOf){
 }
 /* TEST-EXTRACT-HEALTH-MODEL-B */
 function dataSnapshot(){
-  return { app: 'kcal', version: 6, entries: store, settings, body, weight,
+  return { app: 'kcal', version: 7, entries: store, settings, body, weight, weightMeta,
     burn: burnByDay, training:trainingByDay, sleep:sleepByDay, completion, meta: { lastBackup } };
 }
 function applySnapshot(data){
   store = data.entries; settings = data.settings; body = data.body;
   weight = data.weight; burnByDay = data.burn; completion = data.completion;
+  weightMeta = data.weightMeta || {};
   trainingByDay = data.training || {}; sleepByDay = data.sleep || {};
   lastBackup = data.meta.lastBackup || '';
 }
@@ -1117,7 +1275,7 @@ try { initialData = localStorage.getItem(LSD); } catch (e) { storageReadError = 
 if (initialData !== null && initialData !== undefined){
   try {
     const data = JSON.parse(initialData);
-    if (data.app !== 'kcal' || ![5,6].includes(data.version) ||
+    if (data.app !== 'kcal' || ![5,6,7].includes(data.version) ||
         !['entries','settings','body','weight','burn','completion','meta'].every(k => isObject(data[k]))) throw new Error('invalid snapshot');
     applySnapshot({ ...data, ...validateBackup(data) });
   } catch (e) { storageReadError = true; }
@@ -1948,7 +2106,7 @@ function renderHealth(){
   const value = latest ? +weight[latest] : +body.weightKg || 0;
   $('healthWeightValue').textContent = value > 0 ? N(value) : '—';
   $('healthWeightDate').textContent = latest
-    ? (latest === editDate ? '所选日期已记录 · ' : '最近记录 · ') + latest
+    ? (latest === editDate ? '所选日期已记录 · ' : '最近记录 · ') + latest + (weightMeta[latest]?.source==='health-json'?' · 健康导入':'')
     : value > 0 ? '身体档案中的体重 · 点击记录' : '尚无体重记录 · 点击记录';
   const training = trainingByDay[editDate], sleep = sleepByDay[editDate];
   $('healthTrainingValue').textContent = training ? N(training.sessions.reduce((n,s)=>n+s.durationMinutes,0)) : '—';
@@ -2387,7 +2545,7 @@ $('btnSaveWeight').addEventListener('click', () => {
   const v = parseFloat($('wInput').value);
   if (!(v > 0) || v > 400){ toast('请输入有效的体重（kg）'); return; }
   if (!Number.isFinite(v)){ toast('请输入有效的体重（kg）'); return; }
-  if (!commitData({ weight: { ...weight, [editDate]: Math.round(v * 10) / 10 } })) return;
+  if (!commitData({ weight: { ...weight, [editDate]: Math.round(v * 10) / 10 }, weightMeta:{...weightMeta,[editDate]:{source:'manual',updatedAt:new Date().toISOString()}} })) return;
   $('wInput').value = '';
   render();
   toast('已记录 ' + editDate + ' 体重 ' + weight[editDate] + ' kg');
@@ -2431,7 +2589,8 @@ function renderWellness(){
   if(training)$('trainingList').innerHTML+='<div class="well-source">'+healthSource(training)+' · '+esc(localDateTime(training.updatedAt).replace('T',' '))+'</div>';
   let summary=sleep?'<div class="well-value">'+formatSleep(sleep.asleepMinutes)+'</div><div class="well-source">实际睡眠 · '+healthSource(sleep)+'</div>':'<div class="empty2">尚无睡眠记录</div>';
   if(sleep?.startAt)summary+='<div class="brow"><span>入睡</span><span>'+esc(localDateTime(sleep.startAt).replace('T',' '))+'</span></div><div class="brow"><span>醒来</span><span>'+esc(localDateTime(sleep.endAt).replace('T',' '))+'</span></div>';
-  if(sleep?.stages){summary+='<div class="sleep-stages">';for(const [k,label] of [['core','核心'],['deep','深睡'],['rem','REM']])if(sleep.stages[k]!=null)summary+='<span>'+label+' '+N(sleep.stages[k])+' 分</span>';summary+='</div>';}
+  if(sleep?.stages){summary+='<div class="sleep-stages">';for(const [k,label] of [['core','核心'],['deep','深度'],['rem','REM']])summary+='<span>'+label+' '+(sleep.stages[k]!=null?N(sleep.stages[k])+' 分':'未提供')+'</span>';summary+='</div>';const known=Object.values(sleep.stages).reduce((n,v)=>n+v,0);if(sleep.asleepMinutes-known>1)summary+='<div class="hint">另有 '+N(sleep.asleepMinutes-known)+' 分睡眠未细分阶段，已计入实际睡眠。</div>';}
+  else if(sleep)summary+='<div class="sleep-stages"><span>核心 未提供</span><span>深度 未提供</span><span>REM 未提供</span></div>';
   $('sleepSummary').innerHTML=summary;
   $('btnClearSleep').hidden=!sleep;
   if(wellnessEditDate!==editDate){
@@ -2509,7 +2668,7 @@ async function applyHealthJSON(text){
   if(!await askChoice({title:'导入健康数据？',message:plan.details.join('\n')+(plan.conflicts?'\n将覆盖 '+plan.conflicts+' 项手动记录。':'')+'\n按所列日期更新；文件未包含的记录保留。训练热量不再加到每日消耗。',buttons:[{label:'导入并更新所列记录',value:true,strong:true},{label:'取消',value:false}]}))return false;
   // 用户确认期间其他窗口可能写入；commitData 的快照比较会拒绝过期覆盖。
   if(!commitData(healthImportPlan(fields).patch))return false;
-  energyEditDate='';wellnessEditDate='';render();refreshRisk();toast('健康数据已导入');return true;
+  energyEditDate='';wellnessEditDate='';weightEditDate='';render();refreshRisk();toast('健康数据已导入');return true;
 }
 $('btnCheckHealth').addEventListener('click',()=>{try{checkHealthImport();}catch(e){$('healthPreview').textContent=e.message;}});
 $('btnApplyHealth').addEventListener('click',async()=>{try{checkHealthImport();if(await applyHealthJSON($('healthJson').value))checkHealthImport();}catch(e){$('healthPreview').textContent=e.message;toast('导入失败：'+e.message);}});
@@ -2892,9 +3051,10 @@ function doBackup(){
 function validateBackup(data){
   if (!isObject(data)) throw new Error('不是有效的备份对象');
   if (data.app && data.app !== 'kcal') throw new Error('文件不是本应用的完整备份；原始恢复文件需另行分析');
-  if (data.version != null && (!Number.isInteger(data.version) || data.version < 1 || data.version > 6)) throw new Error('不支持的备份版本');
+  if (data.version != null && (!Number.isInteger(data.version) || data.version < 1 || data.version > 7)) throw new Error('不支持的备份版本');
   if (data.version === 5 && !['entries','settings','body','weight','burn','completion','meta'].every(k => isObject(data[k]))) throw new Error('v5 完整备份缺少必要数据');
   if (data.version === 6 && !['entries','settings','body','weight','burn','training','sleep','completion','meta'].every(k => isObject(data[k]))) throw new Error('v6 完整备份缺少必要数据');
+  if (data.version === 7 && !['entries','settings','body','weight','weightMeta','burn','training','sleep','completion','meta'].every(k => isObject(data[k]))) throw new Error('v7 完整备份缺少必要数据');
   const fields = {};
   const has = key => Object.hasOwn(data, key);
   const rawEntries = has('entries') ? data.entries : has('store') ? data.store :
@@ -2925,6 +3085,16 @@ function validateBackup(data){
     fields[key] = normalized;
   }
   for (const key of ['training','sleep']) if (has(key)) fields[key] = normalizeHealthDays(data[key],key);
+  if(has('weightMeta')){
+    if(!isObject(data.weightMeta))throw new Error('体重来源格式错误');
+    fields.weightMeta={};
+    for(const [date,v] of Object.entries(data.weightMeta)){
+      if(!isDayKey(date)||!isObject(v)||!has('weight')||!Object.hasOwn(fields.weight,date))throw new Error('体重来源缺少对应记录');
+      if(Object.keys(v).some(k=>!['source','updatedAt','measuredAt'].includes(k)))throw new Error('体重来源字段无效');
+      fields.weightMeta[date]=healthMeta(v);
+      if(v.measuredAt!=null){fields.weightMeta[date].measuredAt=healthTimestamp(v.measuredAt);if(v.measuredAt.slice(0,10)!==date)throw new Error('称重日期不一致');}
+    }
+  }
   if (has('settings')){
     if (!isObject(data.settings)) throw new Error('目标设置格式错误');
     fields.settings = {};
@@ -2989,6 +3159,12 @@ function importedSnapshot(fields, mode){
     else if (key === 'body') next.body = { ...(mode === 'replace' ? DEFAULT_BODY : current.body), ...value };
     else next[key] = mode === 'replace' ? value : { ...current[key], ...value };
   }
+  if(Object.hasOwn(fields,'weight')){
+    // 旧备份的体重没有来源；清除被恢复日期的旧来源，避免错误跳过下一次同步。
+    next.weightMeta=mode==='replace'?{}:cloneData(current.weightMeta);
+    for(const date of Object.keys(fields.weight))delete next.weightMeta[date];
+    Object.assign(next.weightMeta,fields.weightMeta || {});
+  }
   // 旧备份没有的类别保留；替换或合并改变记录时，旧完成标记失效。
   for (const date of new Set([...Object.keys(current.entries), ...Object.keys(next.entries), ...Object.keys(current.burn), ...Object.keys(next.burn)])){
     const status = next.completion[date] || {};
@@ -3031,10 +3207,10 @@ async function applyImport(text){
       '覆盖会替换备份包含的整类数据；旧备份没有的类别保留。\n合并时，同一天的体重、能量、训练和睡眠以备份为准。';
     const mode = await askMergeOrReplace(headline, detail);
     if (!mode) return false;
-    if (storageReadError && (mode !== 'replace' || !data || ![5,6].includes(data.version))) throw new Error('本地读取异常，请先保存原始恢复文件，再覆盖恢复有效的 v5/v6 完整备份');
+    if (storageReadError && (mode !== 'replace' || !data || ![5,6,7].includes(data.version))) throw new Error('本地读取异常，请先保存原始恢复文件，再覆盖恢复有效的 v5/v6/v7 完整备份');
     const next = importedSnapshot(fields,mode);
     if (!commitData(next, storageReadError)) { render(); return false; }
-    energyEditDate = ''; wellnessEditDate = ''; render(); refreshRisk(); closeSet();
+    energyEditDate = ''; wellnessEditDate = ''; weightEditDate = ''; render(); refreshRisk(); closeSet();
     toast('已' + (mode === 'replace' ? '覆盖' : '合并') + '恢复，现有 ' + Object.keys(store).length + ' 天饮食记录');
     if (typeof __dshTestHook === 'function') __dshTestHook('importDone', { mode, days: stat.dates.length });
     return true;
@@ -3132,7 +3308,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-07.6';
+const APP_VERSION = '2026-10-07.7';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;

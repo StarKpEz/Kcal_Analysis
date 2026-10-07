@@ -38,7 +38,7 @@ function harness(hash = ''){
     closeRec:()=>node('rec').classList.remove('on'),N:v=>Math.round(v*10)/10,todayKey:()=> '2026-10-07'});
   function $(id){return node(id);}
   const run = code => vm.runInContext(code,ctx);
-  run("let editDate='2026-10-05'; const store={fixture:true}; let burnByDay={}, weight={}, body={},trainingByDay={},sleepByDay={};");
+  run("let editDate='2026-10-05'; const store={fixture:true}; let burnByDay={}, weight={},weightMeta={}, body={},trainingByDay={},sleepByDay={};");
   run(slice('function renderHealth(){','function openBurn(){'));
   run(slice('/* TEST-EXTRACT-NAV-A */','/* TEST-EXTRACT-NAV-B */'));
   return {run,node,history,location,window,focus:()=>focus,
