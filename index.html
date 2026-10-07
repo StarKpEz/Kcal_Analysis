@@ -39,6 +39,15 @@
   body{padding:calc(14px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
     max-width:640px;margin:0 auto}
   body.settings-open,body:has(#burn.on){overflow:hidden}
+  .ios-status-strip{display:none}
+  /* iOS 主屏幕网页的顶部系统模糊兼容：提供独立的固定颜色边界。
+     WebKit 从 computed background-color 取色；空元素 clip 到 text 后不遮挡页面。
+     高度超过其 10px 的边缘采样阈值。此行为非公开 API，需真机确认。 */
+  @supports (-webkit-touch-callout:none){
+    html.ios-standalone .ios-status-strip{display:block;position:fixed;inset:0 0 auto;
+      height:12px;z-index:100;pointer-events:none;background-color:var(--bg);
+      -webkit-background-clip:text;background-clip:text}
+  }
   h1{font-size:22px;margin:0;display:flex;align-items:center;gap:8px;line-height:1.2;
     font-weight:700;letter-spacing:-.02em}
   .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px}
@@ -401,6 +410,7 @@
 </style>
 </head>
 <body>
+<div class="ios-status-strip" id="iosStatusStrip" aria-hidden="true"></div>
 
 <svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;overflow:hidden">
   <defs>
@@ -678,6 +688,8 @@
 
 <script>
 'use strict';
+/* 使用 iOS 的实际主屏幕标记；部分版本的 display-mode 查询与它不一致。 */
+if (navigator.standalone === true) document.documentElement.classList.add('ios-standalone');
 const $ = id => document.getElementById(id);
 const N = v => Number.isFinite(v) ? Math.round(v * 10) / 10 : 0;
 
@@ -1680,7 +1692,7 @@ function openBurn(){
   $('burn').classList.add('on');
   $('burn').scrollTop = 0;
   for (const element of document.body.children){
-    if (['burn','dlg','rec','toast','alert','impor'].includes(element.id)) continue;
+    if (['burn','dlg','rec','toast','alert','impor','iosStatusStrip'].includes(element.id)) continue;
     burnInertState.set(element,element.inert); element.inert = true;
   }
   $('btnBurnBack').focus();
@@ -2023,7 +2035,7 @@ const openSet = () => {
   document.body.classList.add('settings-open');
   $('dlg').querySelector('.settings-content').scrollTop = 0;
   for (const element of document.body.children){
-    if (['dlg','toast','alert','impor'].includes(element.id)) continue;
+    if (['dlg','toast','alert','impor','iosStatusStrip'].includes(element.id)) continue;
     settingsInertState.set(element,element.inert); element.inert = true;
   }
   $('btnCloseX').focus();
@@ -2608,7 +2620,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-07.3';
+const APP_VERSION = '2026-10-07.4';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;

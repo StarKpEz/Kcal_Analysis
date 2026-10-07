@@ -42,7 +42,17 @@ DeepSeek **官方目前没有公开的 URL scheme**（社区里还在提这个�
 - 深浅外观、减少动态效果、输入标签与底部安全区适配。暂不引入 Liquid Glass；记录弹窗沿用普通背景模糊。
 - 设计依据：[Apple HIG — Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons)、[Settings](https://developer.apple.com/design/human-interface-guidelines/settings)、[Layout](https://developer.apple.com/design/human-interface-guidelines/layout)。无底色按钮是本项目按用户偏好选择的样式，不声称是最新 HIG 对所有按钮的要求。
 
-## 顶部文字渲染修正（2026-10-07.3）
+## iOS 主屏幕顶部模糊兼容（2026-10-07.4）
+
+真机反馈：v2026-10-07.3 在 iOS 27.0.1 的主屏幕应用中仍模糊，同网址 Safari 正常，因此上一版的布局和状态栏调整没有解决该问题。
+
+本版仅在 `navigator.standalone === true` 且支持 iOS WebKit 属性时启用一个 12px 高的独立固定颜色边界。它使用页面深浅背景色，空元素的 `background-clip: text` 不绘制遮盖，`pointer-events: none` 不拦截点击，`aria-hidden` 不进入辅助阅读；设置和消耗页打开时保持它参与渲染。不增加空白、不移动按钮、不写入记录，也不需要删除主屏幕图标。
+
+依据：[WebKit 的边缘颜色采样实现](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/page/LocalFrameView.cpp)和 [WKWebView 的系统滚动边缘处理](https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/API/Cocoa/WKWebView.mm)。固定/粘性元素、尺寸和样式颜色会参与采样，边缘颜色视图影响系统效果的显示。此处据源码选择兼容方法，当前主分支不等于设备内的具体 WebKit 构建；非公开行为可能随系统更新改变，**实际是否消除模糊需 iOS 27.0.1 真机确认**。
+
+验证：三组现有 Node 回归测试通过；普通浏览器不启用兼容元素。使用仅本地的测试页面强制启用同一组样式并把背景设为亮粉色，确认没有色块遮盖、点击穿透正常、设置与消耗页打开后元素不被置为 inert、保存和滚动正常。此测试检查布局和交互，不模拟 iOS 的系统模糊。正式页面 [393×852 预览](docs/previews/settings-ios-compat-2026-10-07.jpg)使用虚构数据。
+
+## 顶部文字渲染调整（2026-10-07.3，真机未解决）
 
 针对 iPhone 主屏幕网页中设置栏文字模糊的反馈，将设置导航栏移出滚动区域，仅表单内容滚动，导航按钮不再缩放。状态栏从透明改为 `default`，深浅外观的网页主题色分别匹配页面背景；保留安全区适配。
 
