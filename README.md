@@ -42,6 +42,14 @@ DeepSeek **官方目前没有公开的 URL scheme**（社区里还在提这个�
 - 深浅外观、减少动态效果、输入标签与底部安全区适配。暂不引入 Liquid Glass；记录弹窗沿用普通背景模糊。
 - 设计依据：[Apple HIG — Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons)、[Settings](https://developer.apple.com/design/human-interface-guidelines/settings)、[Layout](https://developer.apple.com/design/human-interface-guidelines/layout)。无底色按钮是本项目按用户偏好选择的样式，不声称是最新 HIG 对所有按钮的要求。
 
+## 顶部文字渲染修正（2026-10-07.3）
+
+针对 iPhone 主屏幕网页中设置栏文字模糊的反馈，将设置导航栏移出滚动区域，仅表单内容滚动，导航按钮不再缩放。状态栏从透明改为 `default`，深浅外观的网页主题色分别匹配页面背景；保留安全区适配。
+
+状态栏选项依据 [Apple Safari — Supported Meta Tags](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariHTMLRef/Articles/MetaTags.html)。这些改动用于减少顶部渲染干扰，实际 iOS 27.0.1 清晰度仍需真机确认。现有主屏幕图标的状态栏配置是否随页面更新生效也需真机确认，不要求删除图标或清理数据。
+
+验证：三组现有 Node 回归测试通过；桌面浏览器在 393×852 下验证导航栏不随表单滚动、保存和取消正常、重新进入设置回到顶部，在 320×568 下验证顶部按钮未被裁切且点击高度为 44 px。预览使用虚构测试数据，见 [设置顶部预览](docs/previews/settings-header-2026-10-07.jpg)，不代表 iPhone 真机结果。
+
 ## 长期记录与完整备份（2026-10-07.2）
 
 饮食、体重和健康能量长期保留，不再自动删除 30 个日期之前的饮食。月历可访问历史月份，图表显示范围不影响存储范围。

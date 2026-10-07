@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>热量记账 · 拍照算热量</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <!-- PNG 图标：安卓 Chrome 不接受 SVG 作主屏幕图标，iOS 也不支持 SVG 的 apple-touch-icon -->
@@ -358,13 +359,18 @@
   /* 设置采用不透明的独立页面；分组列表不使用玻璃、图标圆底或重复按钮。 */
   #dlg{padding:0;background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none}
   #dlg .settings-panel{max-width:640px;height:100%;max-height:100%;border-radius:0;
-    padding:0;background:var(--bg);box-shadow:none;overscroll-behavior:contain}
-  .settings-nav{position:sticky;top:0;z-index:1;display:grid;grid-template-columns:64px 1fr 64px;
-    align-items:center;padding:env(safe-area-inset-top) 10px 0;min-height:56px;background:var(--bg)}
+    padding:0;background:var(--bg);box-shadow:none;display:flex;flex-direction:column;
+    overflow:hidden;-webkit-overflow-scrolling:auto}
+  /* 导航栏不参与滚动或缩放，避免 sticky 合成图层影响顶部文字清晰度。 */
+  .settings-nav{flex:none;display:grid;grid-template-columns:64px 1fr 64px;
+    align-items:center;padding:env(safe-area-inset-top) 10px 0;
+    min-height:calc(56px + env(safe-area-inset-top));background:var(--bg)}
+  #dlg .settings-nav button{transform:none;transition:opacity .12s ease}
   #dlg .settings-nav h2{position:static;margin:0;padding:0;border:0;background:transparent;
     display:block;text-align:center;font-size:17px;font-weight:600}
   .textbtn{background:transparent;color:var(--tint);border-radius:8px;min-height:44px;padding:8px 10px;font-size:17px}
-  .settings-content{padding:8px 16px calc(28px + env(safe-area-inset-bottom))}
+  .settings-content{flex:1;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;padding:8px 16px calc(28px + env(safe-area-inset-bottom))}
   .settings-title{font-size:30px;letter-spacing:-.025em;font-weight:700;margin:4px 0 22px}
   .settings-section{margin:0 0 26px}
   .settings-section h3{font-size:13px;color:var(--dim);font-weight:500;margin:0 16px 8px}
@@ -2013,9 +2019,9 @@ const openSet = () => {
   $('bActivity').value = String(body.activity || 1.375);
   refreshRisk();
   $('settingsDate').textContent = '当前选择：' + editDate + '。清空仅影响这一天的饮食，体重与能量保留。';
-  $('dlg').querySelector('.settings-panel').scrollTop = 0;
   $('dlg').classList.add('on');
   document.body.classList.add('settings-open');
+  $('dlg').querySelector('.settings-content').scrollTop = 0;
   for (const element of document.body.children){
     if (['dlg','toast','alert','impor'].includes(element.id)) continue;
     settingsInertState.set(element,element.inert); element.inert = true;
@@ -2602,7 +2608,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-07.2';
+const APP_VERSION = '2026-10-07.3';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
