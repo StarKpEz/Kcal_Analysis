@@ -15,20 +15,20 @@
   :root{
     /* iOS 系统色（深色模式变体），贴近原生质感 */
     --bg:#000000; --card:#1c1c1e; --card2:#2c2c2e; --line:#38383a;
-    --fg:#ffffff; --dim:#98989f;
+    --fg:#ffffff; --dim:#aeaeb2; --tint:#64a8ff; --danger:#ff6961;
     --acc:#30d158;          /* systemGreen dark */
     --p:#0a84ff;            /* systemBlue dark */
     --f:#ffd60a;            /* systemYellow dark */
     --c:#ff9f0a;            /* systemOrange dark */
     --radius:22px; --radius-sm:14px;
-    --shadow:0 12px 34px rgba(0,0,0,.5);
+    --shadow:0 2px 8px rgba(0,0,0,.12);
   }
   @media (prefers-color-scheme: light){
     :root{
       --bg:#f2f2f7; --card:#ffffff; --card2:#e9e9ee; --line:#e2e2e7;
-      --fg:#000000; --dim:#8a8a8e;
+      --fg:#000000; --dim:#636366; --tint:#0062cc; --danger:#c62828;
       --acc:#34c759; --p:#007aff; --f:#ffcc00; --c:#ff9500;
-      --shadow:0 12px 34px rgba(0,0,0,.12);
+      --shadow:0 2px 8px rgba(0,0,0,.025);
     }
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -37,19 +37,21 @@
     -webkit-font-smoothing:antialiased}
   body{padding:calc(14px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
     max-width:640px;margin:0 auto}
+  body.settings-open,body:has(#burn.on){overflow:hidden}
   h1{font-size:22px;margin:0;display:flex;align-items:center;gap:8px;line-height:1.2;
     font-weight:700;letter-spacing:-.02em}
   .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px}
-  /* 关键：flex 居中 + padding:0 + line-height:1
-     否则 button 的默认 padding 和 emoji 字形的行盒会让齿轮偏 */
+  /* 无底色的导航控件：视觉图标小，触摸区域仍至少 44 × 44。 */
   .iconbtn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
     padding:0;line-height:1;
-    background:var(--card2);border:none;color:var(--fg);
-    width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer}
+    background:transparent;border:none;color:var(--tint);
+    width:44px;height:44px;border-radius:8px;font-size:20px;cursor:pointer}
   button.iconbtn{font-family:inherit}
-  /* emoji 字形的几何中心略低于方框中心，单独微调 */
-  .top .iconbtn{font-size:21px}
-  .top .iconbtn>span,.modal h2 .iconbtn>span{display:block;transform:translateY(-1px)}
+  .ui-icon{display:block;width:22px;height:22px;flex:0 0 auto;fill:none;stroke:currentColor;
+    stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .top .iconbtn .ui-icon{width:25px;height:25px}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{
+    outline:2px solid var(--tint);outline-offset:3px}
   .card{background:var(--card);border:none;border-radius:var(--radius);
     padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
   .card h2{font-size:13px;font-weight:600;color:var(--dim);margin:0 0 12px;
@@ -79,6 +81,7 @@
   button:disabled{opacity:.45}
   .hint{color:var(--dim);font-size:12.5px;margin-top:12px;line-height:1.6}
   .hint code{background:var(--card2);padding:1px 6px;border-radius:6px;font-size:11px}
+  .storage-error{background:var(--card2);border:1px solid var(--c);padding:14px;border-radius:14px;margin-bottom:14px;font-size:14px}
   /* 餐次选择 */
   .mealbar{display:flex;gap:7px;margin-bottom:11px;flex-wrap:wrap}
   .mealchip{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;
@@ -101,7 +104,7 @@
     max-width:100%;flex-wrap:wrap}
   .gwrap input{width:66px;min-width:0;background:var(--card2);border:none;color:var(--fg);
     border-radius:9px;padding:5px 7px;font:inherit;font-size:12.5px;text-align:right}
-  .del{background:transparent;border:none;color:var(--dim);font-size:17px;padding:2px 0 2px 6px;cursor:pointer}
+  .del{background:transparent;border:none;color:var(--dim);font-size:17px;padding:0;min-width:44px;min-height:44px;cursor:pointer}
   .empty{color:var(--dim);font-size:13.5px;text-align:center;padding:20px 0}
   /* 弹出层：flex 居中 + 安全区适配 + iOS 毛玻璃 */
   .modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:90;display:none;
@@ -135,8 +138,8 @@
     opacity:0;pointer-events:none;transition:.25s;z-index:99;
     -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-  .navbtn{width:36px;height:36px;flex:0 0 auto;border-radius:50%;background:var(--card2);
-    border:none;color:var(--fg);font-size:17px;cursor:pointer}
+  .navbtn{width:44px;height:44px;flex:0 0 auto;border-radius:8px;background:transparent;
+    border:none;color:var(--tint);font-size:24px;cursor:pointer;padding:0}
   /* 圆环与图例：默认上下排列（窄屏下并排会把图例文字挤成竖排） */
   .ringbox{display:flex;flex-direction:column;gap:16px;align-items:center;margin:2px 0 16px}
   .ringbox svg{flex:0 0 auto;width:196px;height:196px}
@@ -176,11 +179,11 @@
   .daterow input[type=date]{flex:1;min-width:0;background:var(--card2);border:none;color:var(--fg);
     border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;-webkit-appearance:none;appearance:none}
   .daterow input[type=date]:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
-  .dnav{width:32px;height:32px;flex:0 0 auto;border-radius:50%;background:var(--card2);border:none;
-    color:var(--fg);font-size:15px;cursor:pointer;padding:0;
+  .dnav{width:44px;height:44px;flex:0 0 auto;border-radius:8px;background:transparent;border:none;
+    color:var(--tint);font-size:22px;cursor:pointer;padding:0;
     display:inline-flex;align-items:center;justify-content:center;line-height:1}
   /* 「回到今天」做成真按钮 */
-  .todaybtn{flex:0 0 auto;padding:0 12px;height:32px;border-radius:99px;border:none;
+  .todaybtn{flex:0 0 auto;padding:0 12px;min-width:44px;height:44px;border-radius:10px;border:none;
     background:var(--card2);color:var(--fg);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
   .todaybtn.on{background:var(--acc);color:#04240f}
@@ -214,7 +217,7 @@
   /* 月视图的月份导航：只要箭头，不要圆形底 */
   .calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
   .calnav b{font-size:15px;font-weight:700}
-  .calnav .navbtn{width:40px;height:36px;background:transparent;border:none;color:var(--fg);
+  .calnav .navbtn{width:44px;height:44px;background:transparent;border:none;color:var(--tint);
     font-size:22px;font-weight:800;line-height:1;cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center}
   .calnav .navbtn:active{opacity:.5}
@@ -252,12 +255,14 @@
   .sechd{font-size:20px;font-weight:700;letter-spacing:-.02em;margin:20px 4px 10px}
   /* 餐次列表 */
   .meals{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-  .mrow{display:flex;align-items:center;gap:12px;padding:15px 16px;border-top:1px solid var(--line);cursor:pointer}
+  .mrow{display:flex;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--line)}
+  .meal-toggle{display:flex;align-items:center;gap:10px;flex:1;min-width:0;min-height:44px;
+    padding:4px 0;background:transparent;border-radius:6px;text-align:left}
   .mrow:first-child{border-top:none}
   .mrow .micon{font-size:24px;flex:0 0 auto;line-height:1}
   .mrow .mname{font-size:16px;font-weight:600;flex:1;min-width:0}
   .mrow .mkcal{font-size:15px;color:var(--dim);font-weight:600;white-space:nowrap}
-  .addbtn{flex:0 0 auto;width:27px;height:27px;border-radius:50%;background:var(--p);color:#fff;
+  .addbtn{flex:0 0 auto;width:44px;height:44px;border-radius:8px;background:transparent;color:var(--tint);
     border:none;font-size:17px;font-weight:700;line-height:1;cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center;padding:0}
   .addbtn:active{opacity:.7}
@@ -273,16 +278,16 @@
   #burn.on{display:block}
   .scrwrap{max-width:640px;margin:0 auto;
     padding:calc(12px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom))}
-  .scrhead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-  .scrhead h1{font-size:22px;margin:0;flex:1;text-align:center}
-  .backbtn{flex:0 0 auto;width:38px;height:38px;border-radius:50%;background:var(--card2);
-    border:none;color:var(--fg);font-size:20px;line-height:1;cursor:pointer;
+  .scrhead{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px;margin-bottom:18px}
+  .scrhead h1{font-size:17px;margin:0;display:block;text-align:center}
+  .backbtn{flex:0 0 auto;width:44px;height:44px;border-radius:8px;background:transparent;
+    border:none;color:var(--tint);font-size:20px;line-height:1;cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center;padding:0}
-  .energy-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .energy-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
   .energy-date{font-size:14px;font-weight:600}
   .energy-status{font-size:12px;color:var(--dim)}
   .energy-row{display:flex;align-items:center;gap:10px;padding:16px 0;border-bottom:1px solid var(--line)}
-  .energy-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;background:var(--card2)}
+  .energy-icon{width:24px;height:32px;display:grid;place-items:center;flex-shrink:0;background:transparent}
   .energy-icon svg{width:20px;height:20px;fill:currentColor}
   .energy-row label{font-size:16px;font-weight:600;flex:1;white-space:nowrap}
   .energy-row input{width:98px;min-width:0;border:none;border-radius:10px;background:var(--card2);color:var(--fg);
@@ -350,13 +355,64 @@
     font-size:11px;line-height:1.6;color:var(--dim);overflow:auto;margin:0 0 10px;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre}
   @media (prefers-color-scheme: light){.toast{background:#1a1f2bdd}}
+  /* 设置采用不透明的独立页面；分组列表不使用玻璃、图标圆底或重复按钮。 */
+  #dlg{padding:0;background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none}
+  #dlg .settings-panel{max-width:640px;height:100%;max-height:100%;border-radius:0;
+    padding:0;background:var(--bg);box-shadow:none;overscroll-behavior:contain}
+  .settings-nav{position:sticky;top:0;z-index:1;display:grid;grid-template-columns:64px 1fr 64px;
+    align-items:center;padding:env(safe-area-inset-top) 10px 0;min-height:56px;background:var(--bg)}
+  #dlg .settings-nav h2{position:static;margin:0;padding:0;border:0;background:transparent;
+    display:block;text-align:center;font-size:17px;font-weight:600}
+  .textbtn{background:transparent;color:var(--tint);border-radius:8px;min-height:44px;padding:8px 10px;font-size:17px}
+  .settings-content{padding:8px 16px calc(28px + env(safe-area-inset-bottom))}
+  .settings-title{font-size:30px;letter-spacing:-.025em;font-weight:700;margin:4px 0 22px}
+  .settings-section{margin:0 0 26px}
+  .settings-section h3{font-size:13px;color:var(--dim);font-weight:500;margin:0 16px 8px}
+  .settings-group{background:var(--card);border-radius:14px;overflow:hidden}
+  #dlg .fld{min-height:52px;margin:0 0 0 16px;padding:4px 16px 4px 0;border-bottom:1px solid var(--line)}
+  #dlg .fld:last-child{border-bottom:0}
+  #dlg .fld label{font-size:16px;font-weight:400;flex:1;min-width:0}
+  #dlg .fld label small{font-size:13px;color:var(--dim)}
+  #dlg .fld input,#dlg .fld .pick{font-size:16px;min-height:44px;padding:8px 0 8px 8px;
+    background:transparent;border-radius:6px;text-align:right}
+  #dlg .fld input{width:105px;color:var(--tint)}
+  #dlg .fld .pick{max-width:60%;width:auto;color:var(--tint)}
+  #dlg .fld.stacked{display:block;padding-top:12px;padding-bottom:12px}
+  #dlg .fld.stacked label{display:block;font-size:15px}
+  #dlg .fld.stacked input,#dlg .fld.stacked .pick{display:block;width:100%;max-width:100%;text-align:left;padding-left:0}
+  .settings-note{font-size:12.5px;line-height:1.6;color:var(--dim);margin:8px 16px 0}
+  .settings-note small{display:block;margin-top:6px;font-size:12px}
+  .settings-action{width:100%;min-height:52px;display:flex;align-items:center;gap:12px;padding:10px 16px;
+    background:transparent;border-radius:0;color:var(--tint);font-size:16px;font-weight:400;text-align:left}
+  .settings-action+.settings-action{border-top:1px solid var(--line)}
+  .settings-action .action-label{flex:1;min-width:0}
+  .settings-action .action-chevron{width:16px;height:16px;color:var(--dim)}
+  .settings-action.danger{color:var(--danger)}
+  .settings-action:active{background:var(--card2);transform:none}
+  .settings-footer{text-align:center;font-size:12px;color:var(--dim);margin-top:18px}
+  @media (max-width:360px){#dlg .fld label{font-size:15px}.energy-row{gap:8px}.energy-row label{font-size:15px}}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;overflow:hidden">
+  <defs>
+    <symbol id="i-gear" viewBox="0 0 24 24"><path d="M9.5 3h5l.6 2.6 1.6.9 2.5-.8 2.5 4.3-1.9 1.8v1.8l1.9 1.8-2.5 4.3-2.5-.8-1.6.9-.6 2.6h-5l-.6-2.6-1.6-.9-2.5.8-2.5-4.3 1.9-1.8v-1.8L2.3 10l2.5-4.3 2.5.8 1.6-.9z"/><circle cx="12" cy="12.7" r="3.2"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m14.5 5-7 7 7 7"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15V3m-5 5 5-5 5 5M4 16v5h16v-5"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8l-5-5v5h5M8 12h8M8 16h6"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 3v18h17M8 16v-5m5 5V7m5 9v-3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 9a8 8 0 0 0-13-4L3 9m0-6v6h6M4 15a8 8 0 0 0 13 4l4-4m0 6v-6h-6"/></symbol>
+  </defs>
+</svg>
+
 <div class="top">
   <h1>🍽️ 饮食</h1>
-  <button class="iconbtn" id="btnSet" title="设置" aria-label="设置"><span>&#9881;&#65038;</span></button>
+  <button class="iconbtn" id="btnSet" title="设置" aria-label="设置"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-gear"/></svg></button>
 </div>
 
 <!-- ===== 日期标题（点开选日期） ===== -->
@@ -372,6 +428,8 @@
 <!-- 周视图（折叠态）/ 整月日历（展开态）都渲染在这里 -->
 <div id="calArea"></div>
 
+<div class="storage-error" id="storageError" role="alert" hidden></div>
+<button id="btnReloadData" class="wide" hidden>重新加载数据</button>
 <!-- ===== 摄入热量 ===== -->
 <div class="card">
   <div class="kcal-hd"><span>🍽️ 摄入热量</span><span class="kcal-goal" id="gKcalTxt">目标 2000</span></div>
@@ -404,9 +462,9 @@
 <div id="burn">
   <div class="scrwrap">
     <div class="scrhead">
-      <button class="backbtn" id="btnBurnBack" aria-label="返回">‹</button>
+      <button class="backbtn" id="btnBurnBack" aria-label="返回饮食"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-back"/></svg></button>
       <h1>代谢与消耗</h1>
-      <span style="width:38px;flex:0 0 auto"></span>
+      <span aria-hidden="true"></span>
     </div>
 
     <div class="sechd" style="margin-top:0">健康能量</div>
@@ -425,7 +483,7 @@
         <span class="energy-unit">kcal</span>
       </div>
       <div class="energy-actions"><button class="primary wide" id="btnSaveEnergy">保存当日能量</button><button class="ghost" id="btnClearEnergy" hidden>清除录入</button></div>
-      <div class="hint" id="energyHint">填写 Apple 健康中同一天的两项累计能量，日期跟随首页选择。总消耗 = 活动 + 静息，不再另加运动热量或食物热效应。当天尚未结束时，数据也尚未完整。</div>
+      <div class="hint" id="energyHint">填写 Apple 健康中所选日期的两项累计能量。总消耗 = 活动 + 静息，不另加训练热量。今天保存的是日内累计，暂不计算全天差额；历史日期请使用全天累计值，之后可补录修正。</div>
     </div>
 
     <div class="sechd">身体数据</div>
@@ -442,7 +500,7 @@
       <div id="balanceBox"></div>
     </div>
 
-    <div class="sechd">近 14 天：摄入 vs 消耗</div>
+    <div class="sechd" id="duoTitle">近 14 天：摄入 vs 消耗</div>
     <div class="card">
       <div id="duoBox"></div>
     </div>
@@ -450,7 +508,7 @@
     <div class="sechd">体重</div>
     <div class="card">
       <div class="winline">
-        <input type="number" inputmode="decimal" step="0.1" id="wInput" placeholder="体重 kg">
+        <input type="number" inputmode="decimal" step="0.1" id="wInput" placeholder="体重 kg" aria-label="体重（kg）">
         <button id="btnSaveWeight">记录</button>
       </div>
       <div id="weightBox"></div>
@@ -458,8 +516,8 @@
 
     <div class="hint" style="margin-top:16px">
       说明：BMR 是公式算出的基础代谢；TDEE 是估算的每日总消耗。
-      「实际 TDEE」由你的饮食记录与体重变化反推（需至少 7 天数据 + 两次体重记录），
-      比公式更准，可在设置里用它来校正热量目标。
+      趋势推算使用近 28 天体重趋势与已记录饮食，仅作参考，漏记会影响结果，不能视为实测消耗。
+      手表能量也是估算值；当前记录差额不代表实际减重，不自动修改你的摄入目标。
     </div>
   </div>
 </div>
@@ -476,8 +534,7 @@
   <div class="panel" style="max-width:460px">
     <h2>
       <span id="recTitle2">记录一餐</span>
-      <button class="iconbtn" id="btnRecClose" title="关闭" aria-label="关闭"
-        style="width:30px;height:30px;font-size:15px"><span>&#10005;</span></button>
+      <button class="iconbtn" id="btnRecClose" title="关闭" aria-label="关闭记录窗口"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     </h2>
 
     <div class="hint" style="margin:0 0 10px" id="recWhen"></div>
@@ -508,82 +565,68 @@
 </div>
 
 <!-- ===== 设置 ===== -->
-<!-- 遮罩直接挂在 body 上（不在任何 transform 容器内），并用 flex 居中 + 安全区 padding，
-     避免 iOS 主屏幕版被底部悬浮工具栏压住或偏移 -->
-<div class="modal" id="dlg">
-  <div class="panel">
-    <h2>
-      <span>设置</span>
-      <span style="display:flex;align-items:center;gap:10px">
-        <small id="verLabel" style="color:var(--dim);font-size:11px;font-weight:400"></small>
-        <button class="iconbtn" id="btnCloseX" title="关闭" aria-label="关闭"
-          style="width:30px;height:30px;font-size:15px"><span>&#10005;</span></button>
-      </span>
-    </h2>
-    <div class="sec-h">每日目标</div>
-    <div class="fld"><label>热量 kcal</label><input id="sKcal" type="number" inputmode="numeric"></div>
-    <div class="fld"><label>蛋白质 g</label><input id="sP" type="number" inputmode="numeric"></div>
-    <div class="fld"><label>脂肪 g</label><input id="sF" type="number" inputmode="numeric"></div>
-    <div class="fld"><label>碳水 g</label><input id="sC" type="number" inputmode="numeric"></div>
-    <div class="row" style="margin-top:14px">
-      <button class="wide primary" id="btnSaveSet">保存</button>
-      <button class="wide ghost" id="btnCloseSet">取消</button>
+<div class="modal" id="dlg" role="dialog" aria-modal="true" aria-labelledby="settingsNavTitle">
+  <div class="panel settings-panel" tabindex="-1">
+    <header class="settings-nav">
+      <button class="iconbtn" id="btnCloseX" title="关闭设置" aria-label="关闭设置"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+      <h2 id="settingsNavTitle">设置</h2>
+      <button class="textbtn" id="btnSaveSet">保存</button>
+    </header>
+    <div class="settings-content">
+      <div class="settings-title" aria-hidden="true">设置</div>
+      <section class="settings-section" aria-labelledby="goalTitle">
+        <h3 id="goalTitle">每日目标</h3>
+        <div class="settings-group">
+          <div class="fld"><label for="sKcal">热量 <small>kcal</small></label><input id="sKcal" type="number" min="0" inputmode="numeric"></div>
+          <div class="fld"><label for="sP">蛋白质 <small>g</small></label><input id="sP" type="number" min="0" inputmode="numeric"></div>
+          <div class="fld"><label for="sF">脂肪 <small>g</small></label><input id="sF" type="number" min="0" inputmode="numeric"></div>
+          <div class="fld"><label for="sC">碳水 <small>g</small></label><input id="sC" type="number" min="0" inputmode="numeric"></div>
+        </div>
+        <p class="settings-note">目标由你设置，公式与趋势推算不会自动调整目标。</p>
+      </section>
+      <section class="settings-section" aria-labelledby="bodyTitle">
+        <h3 id="bodyTitle">身体数据</h3>
+        <div class="settings-group">
+          <div class="fld"><label for="bSex">性别</label><select id="bSex" class="pick"><option value="male">男</option><option value="female">女</option></select></div>
+          <div class="fld"><label for="bYear">出生年份</label><input id="bYear" type="number" inputmode="numeric" placeholder="未填写"></div>
+          <div class="fld"><label for="bHeight">身高 <small>cm</small></label><input id="bHeight" type="number" inputmode="decimal" placeholder="未填写"></div>
+          <div class="fld"><label for="bFat">体脂率 <small>%</small></label><input id="bFat" type="number" inputmode="decimal" placeholder="可选"></div>
+          <div class="fld stacked"><label for="bActivity">日常活动水平</label>
+            <select id="bActivity" class="pick">
+              <option value="1.2">久坐 · 几乎不运动</option><option value="1.375">轻度 · 每周 1–3 次轻运动</option>
+              <option value="1.55">中度 · 每周 3–5 次运动</option><option value="1.725">高度 · 每周 6–7 次高强度</option>
+              <option value="1.9">极高 · 体力劳动或一天两练</option>
+            </select>
+          </div>
+        </div>
+        <p class="settings-note">用于公式估算。每日体重在「代谢与消耗」中记录。</p>
+      </section>
+      <section class="settings-section" aria-labelledby="backupTitle">
+        <h3 id="backupTitle">数据与备份</h3>
+        <div class="settings-group">
+          <button class="settings-action" id="btnBackup"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-down"/></svg><span class="action-label">备份全部数据</span></button>
+          <button class="settings-action" id="btnRestore"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-up"/></svg><span class="action-label">恢复备份</span></button>
+          <button class="settings-action" id="btnImport"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-doc"/></svg><span class="action-label">从对话或文档导入</span><svg viewBox="0 0 24 24" class="ui-icon action-chevron" aria-hidden="true"><use href="#i-back" transform="rotate(180 12 12)"/></svg></button>
+          <button class="settings-action" id="btnExport"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-chart"/></svg><span class="action-label">导出所选日期的 CSV</span></button>
+        </div>
+        <div class="settings-note" id="riskBox"></div>
+        <p class="settings-note">JSON 可完整恢复；CSV 仅用于查看饮食明细。</p>
+      </section>
+      <section class="settings-section" aria-labelledby="advancedTitle">
+        <h3 id="advancedTitle">应用</h3>
+        <div class="settings-group">
+          <div class="fld stacked"><label for="sScheme">DeepSeek 唤起链接</label><input id="sScheme" type="text" inputmode="url" placeholder="可选，默认使用网页链接" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <button class="settings-action" id="btnUpdate"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-refresh"/></svg><span class="action-label">检查更新</span></button>
+        </div>
+        <p class="settings-note">有实测可用的 App 唤起链接时再填写，没有就留空。</p>
+      </section>
+      <section class="settings-section" aria-labelledby="manageTitle">
+        <h3 id="manageTitle">管理所选日期</h3>
+        <div class="settings-group"><button class="settings-action danger" id="btnReset"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-trash"/></svg><span class="action-label">清空所选日期的饮食</span></button></div>
+        <p class="settings-note" id="settingsDate"></p>
+      </section>
+      <div class="settings-footer" id="verLabel"></div>
     </div>
-
-    <div class="sec-h">身体数据</div>
-    <div class="fld"><label>性别</label>
-      <select id="bSex" class="pick">
-        <option value="male">男</option>
-        <option value="female">女</option>
-      </select>
-    </div>
-    <div class="fld"><label>出生年份</label><input id="bYear" type="number" inputmode="numeric" placeholder="例 1995"></div>
-    <div class="fld"><label>身高 cm</label><input id="bHeight" type="number" inputmode="decimal" placeholder="例 175"></div>
-    <div class="fld"><label>体脂率 %（可选）</label><input id="bFat" type="number" inputmode="decimal" placeholder="填了更准"></div>
-    <div class="fld" style="align-items:flex-start;flex-direction:column;gap:4px">
-      <label style="font-size:13px">日常活动水平（用于估算总消耗）</label>
-      <select id="bActivity" class="pick" style="width:100%">
-        <option value="1.2">久坐：办公室，几乎不运动</option>
-        <option value="1.375">轻度：每周 1–3 次轻运动</option>
-        <option value="1.55">中度：每周 3–5 次中等运动</option>
-        <option value="1.725">高度：每周 6–7 次高强度</option>
-        <option value="1.9">极高：体力劳动或一天两练</option>
-      </select>
-    </div>
-
-    <div class="sec-h">数据与备份</div>
-    <div class="alertbox" id="riskBox"></div>
-    <div class="row" style="margin-top:0">
-      <button class="wide" id="btnBackup">⬇️ 备份全部数据</button>
-      <button class="wide" id="btnRestore">⬆️ 恢复备份</button>
-    </div>
-    <div class="row">
-      <button class="wide ghost" id="btnImport">📋 从对话/文档导入记录</button>
-    </div>
-    <div class="row">
-      <button class="wide ghost" id="btnExport">导出所选日期的 CSV</button>
-      <button class="wide ghost" id="btnReset">清空所选日期</button>
-    </div>
-    <div class="hint">
-      备份是 JSON 文件，含全部历史记录与目标设置；换手机、清理数据、重装图标后都能还原。<br>
-      「从对话/文档导入」可粘贴含日期的多条记录，自动按日期拆开写入。
-    </div>
-
-    <div class="sec-h">其他</div>
-    <div class="fld" style="align-items:flex-start;flex-direction:column;gap:4px">
-      <label style="font-size:13px">DeepSeek 唤起链接（可选）</label>
-      <input id="sScheme" type="text" inputmode="url" placeholder="例：deepseek:// 或 shortcuts://run-shortcut?name=记热量"
-        style="width:100%;text-align:left">
-      <div class="hint" style="margin:0">
-        默认已尝试 <code>chat.deepseek.com</code> 通用链接。若你有实测可用的 App URL scheme，
-        填在这里会优先使用；没有就留空。
-      </div>
-    </div>
-    <div class="row">
-      <button class="wide ghost" id="btnUpdate">🔄 检查更新</button>
-    </div>
-    <div class="hint">参考：轻体力活动成年人约 1800–2200 kcal；减脂期常见 1200–1600 kcal，
-      蛋白质建议 1.2–1.6 g/kg 体重。</div>
   </div>
 </div>
 
@@ -592,8 +635,7 @@
   <div class="panel" style="max-width:460px">
     <h2>
       <span>导入记录</span>
-      <button class="iconbtn" id="btnImportClose" title="关闭" aria-label="关闭"
-        style="width:30px;height:30px;font-size:15px"><span>&#10005;</span></button>
+      <button class="iconbtn" id="btnImportClose" title="关闭" aria-label="关闭导入窗口"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     </h2>
     <div class="hint" style="margin:0 0 10px">
       把含日期的记录整段粘贴进来，会自动按日期和餐次拆开。<br>
@@ -636,6 +678,7 @@ const N = v => Number.isFinite(v) ? Math.round(v * 10) / 10 : 0;
 /* ---------------- 存储（全部本地，file:// 也能用） ---------------- */
 const LSK = 'kcal.entries.v1', LSS = 'kcal.settings.v1', LSM = 'kcal.meta.v1';
 const LSB = 'kcal.body.v1', LSW = 'kcal.weight.v1', LSE = 'kcal.burn.v1';
+const LSD = 'kcal.data.v5'; // 单个快照：恢复与普通保存均为一次原子写入。
 const todayKey = () => new Date().toLocaleDateString('sv-SE');   // YYYY-MM-DD 本地时区
 
 /* 日期加减：必须定义在记录/渲染之前 —— render() 会用到它，
@@ -679,6 +722,29 @@ let body = { sex: 'male', birthYear: '', heightCm: '', bodyFat: '', activity: 1.
 let weight = {};
 /* 每日手动录入的 Apple 健康能量；独立存储，不改动饮食记录。 */
 let burnByDay = {};
+let completion = {};
+let storageReadError = false;
+let storageStale = false;
+const DEFAULT_SETTINGS = { ...settings }, DEFAULT_BODY = { ...body };
+const cloneData = value => JSON.parse(JSON.stringify(value));
+function isDayKey(k){ return /^\d{4}-\d{2}-\d{2}$/.test(k) && shiftDay(k, 0) === k; }
+function isObject(v){ return !!v && typeof v === 'object' && !Array.isArray(v); }
+function readLocal(key, fallback){
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    const value = JSON.parse(raw);
+    if (!isObject(value)) throw new Error('invalid data');
+    return value;
+  } catch (e) { storageReadError = true; return fallback; }
+}
+function normalizeCompletion(raw){
+  const out = {};
+  for (const [k, v] of Object.entries(isObject(raw) ? raw : {})){
+    if (isDayKey(k) && isObject(v)) out[k] = { food: v.food === true, energy: v.energy === true };
+  }
+  return out;
+}
 function validEnergy(v){ return typeof v === 'number' && Number.isFinite(v) && v >= 0; }
 function normalizeBurn(raw){
   const out = {};
@@ -687,20 +753,24 @@ function normalizeBurn(raw){
     const v = raw[k];
     if (/^\d{4}-\d{2}-\d{2}$/.test(k) && shiftDay(k, 0) === k && v && validEnergy(v.active) && validEnergy(v.basal)){
       out[k] = { active: v.active, basal: v.basal };
+      if (typeof v.updatedAt === 'string' && Number.isFinite(Date.parse(v.updatedAt))) out[k].updatedAt = v.updatedAt;
     }
   }
   return out;
 }
-try { burnByDay = normalizeBurn(JSON.parse(localStorage.getItem(LSE) || '{}')); } catch (e) {}
 function saveBurn(next){
-  try { localStorage.setItem(LSE, JSON.stringify(next)); burnByDay = next; return true; }
-  catch (e) { toast('保存失败，请先备份并检查浏览器存储空间'); return false; }
+  const status = cloneData(completion);
+  for (const k of new Set([...Object.keys(burnByDay), ...Object.keys(next)])){
+    if (JSON.stringify(burnByDay[k]) !== JSON.stringify(next[k])) status[k] = { ...status[k], energy: false };
+  }
+  return commitData({ burn: next, completion: status });
 }
 let energyEditDate = '';
 function renderEnergyInputs(){
   const saved = burnByDay[editDate];
   $('energyDate').textContent = (editDate === todayKey() ? '今天 · ' : '') + editDate;
-  $('energyStatus').textContent = saved ? '已保存 · 手动录入' : '未录入';
+  const time = saved?.updatedAt ? new Date(saved.updatedAt).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}) : '';
+  $('energyStatus').textContent = saved ? (editDate === todayKey() ? '今日累计' : '历史录入') + (time ? ' · 录入于 ' + time : ' · 已保存') : '未录入';
   $('btnClearEnergy').hidden = !saved;
   if (energyEditDate !== editDate){
     $('energyActive').value = saved ? saved.active : '';
@@ -713,20 +783,13 @@ function renderEnergyInputs(){
   }
 }
 
-try { store = JSON.parse(localStorage.getItem(LSK) || '{}') || {}; } catch (e) { store = {}; }
-try { Object.assign(settings, JSON.parse(localStorage.getItem(LSS) || '{}')); } catch (e) {}
-try { Object.assign(body, JSON.parse(localStorage.getItem(LSB) || '{}')); } catch (e) {}
-try {
-  const w = JSON.parse(localStorage.getItem(LSW) || '{}') || {};
-  for (const k of Object.keys(w)){ const v = +w[k]; if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v > 0) weight[k] = v; }
-} catch (e) { weight = {}; }
-try {
-  const meta = JSON.parse(localStorage.getItem(LSM) || '{}') || {};
-  if (meta.lastBackup) lastBackup = String(meta.lastBackup);
-} catch (e) {}
-const saveMeta = () => { try { localStorage.setItem(LSM, JSON.stringify({ lastBackup: lastBackup })); } catch (e) {} };
-const saveBody = () => { try { localStorage.setItem(LSB, JSON.stringify(body)); } catch (e) {} };
-const saveWeight = () => { try { localStorage.setItem(LSW, JSON.stringify(weight)); } catch (e) {} };
+function normalizeWeight(raw){
+  const out = {};
+  for (const [k, v] of Object.entries(isObject(raw) ? raw : {})){
+    if (isDayKey(k) && Number.isFinite(+v) && +v > 0 && +v <= 400) out[k] = +v;
+  }
+  return out;
+}
 
 /* 旧版每条记录没有 meal 字段（整日一个列表）——
    迁移时统一归到「晚餐」桶之外的一个兼容桶 __legacy，展示时归入"未分餐"，
@@ -760,16 +823,70 @@ function normalizeStore(raw){
   }
   return out;
 }
-store = normalizeStore(store);
-
-// 只保留最近 30 天
-(function prune(){
-  const keys = Object.keys(store).sort();
-  while (keys.length > 30) delete store[keys.shift()];
-})();
-
-const save = () => { try { localStorage.setItem(LSK, JSON.stringify(store)); } catch (e) {} };
-const saveSet = () => { try { localStorage.setItem(LSS, JSON.stringify(settings)); } catch (e) {} };
+/* 长期保留全部历史；浏览/统计的日期范围不改变存储范围。 */
+function dataSnapshot(){
+  return { app: 'kcal', version: 5, entries: store, settings, body, weight,
+    burn: burnByDay, completion, meta: { lastBackup } };
+}
+function applySnapshot(data){
+  store = data.entries; settings = data.settings; body = data.body;
+  weight = data.weight; burnByDay = data.burn; completion = data.completion;
+  lastBackup = data.meta.lastBackup || '';
+}
+let initialData;
+try { initialData = localStorage.getItem(LSD); } catch (e) { storageReadError = true; }
+if (initialData !== null && initialData !== undefined){
+  try {
+    const data = JSON.parse(initialData);
+    if (data.app !== 'kcal' || data.version !== 5 ||
+        !['entries','settings','body','weight','burn','completion','meta'].every(k => isObject(data[k]))) throw new Error('invalid snapshot');
+    applySnapshot({ ...data, ...validateBackup(data) });
+  } catch (e) { storageReadError = true; }
+} else {
+  store = normalizeStore(readLocal(LSK, {}));
+  settings = { ...settings, ...readLocal(LSS, {}) };
+  body = { ...body, ...readLocal(LSB, {}) };
+  weight = normalizeWeight(readLocal(LSW, {}));
+  burnByDay = normalizeBurn(readLocal(LSE, {}));
+  lastBackup = String(readLocal(LSM, {}).lastBackup || '');
+}
+let committedData = cloneData(dataSnapshot());
+let persistedRaw = initialData ?? null;
+try { validateBackup(committedData); } catch (e) { storageReadError = true; }
+function commitData(patch, recovering = false){
+  if (storageReadError && !recovering){ applySnapshot(cloneData(committedData)); toast('本地数据读取异常，请先导出原始数据，再恢复有效备份'); return false; }
+  try {
+    if (localStorage.getItem(LSD) !== persistedRaw){
+      storageStale = true; applySnapshot(cloneData(committedData)); renderStorageWarning();
+      toast('其他窗口已更新数据，请重新加载后再保存'); return false;
+    }
+    const next = cloneData({ ...dataSnapshot(), ...patch });
+    next.completion = normalizeCompletion(next.completion);
+    const serialized = JSON.stringify(next);
+    localStorage.setItem(LSD, serialized); // setItem 失败不会部分写入快照。
+    persistedRaw = serialized;
+    applySnapshot(next); committedData = cloneData(next); storageReadError = false; storageStale = false;
+    return true;
+  } catch (e) {
+    applySnapshot(cloneData(committedData));
+    toast('保存失败，原数据已保留。请先备份并检查浏览器存储空间');
+    return false;
+  }
+}
+const save = () => {
+  const status = cloneData(completion);
+  for (const k of new Set([...Object.keys(committedData.entries), ...Object.keys(store)])){
+    if (JSON.stringify(committedData.entries[k]) !== JSON.stringify(store[k])) status[k] = { ...status[k], food: false };
+  }
+  return commitData({ entries: store, completion: status });
+};
+function renderStorageWarning(){
+  $('storageError').hidden = !storageReadError && !storageStale;
+  $('storageError').textContent = storageReadError
+    ? '本地数据读取异常，已停止保存。请到设置导出原始数据，再恢复有效备份。'
+    : '其他窗口已更新数据，当前页面已停止写入。请重新加载后继续，尚未保存的输入不会保留。';
+  $('btnReloadData').hidden = !storageStale;
+}
 /* 确保某日期存在并返回其数据对象 */
 const ensureDay = k => (store[k] = store[k] || {});
 const today = () => ensureDay(todayKey());
@@ -1103,12 +1220,12 @@ function renderWeekStrip(){
   const WD = '日一二三四五六';
   let h = '<div class="weekstrip">';
   for (let i = 6; i >= 0; i--){
-    const k = dayBack(i);
+    const k = shiftDay(editDate, -i);
     const wd = new Date(k + 'T00:00:00').getDay();
     const kcal = summarize(k).kcal;
     const cls = 'wk' + (k === todayKey() ? ' today' : '') + (k === editDate ? ' sel' : '');
     h += '<button class="' + cls + '" data-date="' + k + '">' +
-           '<small>' + (i === 0 ? '今天' : '周' + WD[wd]) + '</small>' +
+           '<small>' + (k === todayKey() ? '今天' : '周' + WD[wd]) + '</small>' +
            calRing(settings.kcal ? kcal / settings.kcal : 0, calColour(kcal)) +
            '<span class="wknum">' + (+k.slice(8)) + '</span>' +
          '</button>';
@@ -1192,7 +1309,8 @@ function renderMeals(){
   const box = $('meals');
   if (!box) return;
   box.innerHTML = '';
-  for (const m of MEALS){
+  const groups = MEALS.concat((dateFor(editDate)[LEGACY] || []).length ? [{ k: LEGACY, name: '未分餐', icon: '📋' }] : []);
+  for (const m of groups){
     const list = dateFor(editDate)[m.k] || [];
     const t = sum(list);
     const open = openMeals[m.k] === true;
@@ -1200,21 +1318,26 @@ function renderMeals(){
     const row = document.createElement('div');
     row.className = 'mrow' + (open ? ' open' : '');
     row.innerHTML =
-      '<span class="micon"></span>' +
-      '<span class="mname"></span>' +
-      '<span class="mkcal"></span>' +
+      '<button class="meal-toggle"><span class="micon" aria-hidden="true"></span>' +
+      '<span class="mname"></span><span class="mkcal"></span><span class="mchev" aria-hidden="true">›</span></button>' +
       '<button class="addbtn" title="添加">+</button>' +
-      '<span class="mchev">›</span>';
+      '';
     row.querySelector('.micon').textContent = m.icon;
     row.querySelector('.mname').textContent = m.name;
     row.querySelector('.mkcal').textContent = Math.round(t.kcal) + ' kcal';
+    row.querySelector('.addbtn').hidden = m.k === LEGACY;
+    row.querySelector('.addbtn').setAttribute('aria-label','添加' + m.name);
+    row.querySelector('.meal-toggle').setAttribute('aria-expanded',String(open));
+    if (open) row.querySelector('.meal-toggle').setAttribute('aria-controls','meal-list-' + m.k);
+    row.querySelector('.meal-toggle').dataset.meal = m.k;
     row.querySelector('.addbtn').addEventListener('click', e => {
       e.stopPropagation();
       openRec(m.k);
     });
-    row.addEventListener('click', () => {
+    row.querySelector('.meal-toggle').addEventListener('click', () => {
       openMeals[m.k] = !open;
       render();
+      $('meals').querySelector('[data-meal="' + m.k + '"]').focus();
     });
     box.appendChild(row);
 
@@ -1222,6 +1345,7 @@ function renderMeals(){
 
     const wrap = document.createElement('div');
     wrap.className = 'mlist';
+    wrap.id = 'meal-list-' + m.k;
     if (!list.length){
       wrap.innerHTML = '<div class="mempty">还没有记录，点右上角 ＋ 添加</div>';
     } else {
@@ -1236,6 +1360,8 @@ function renderMeals(){
           '<small class="m"></small></div>' +
           '<button class="del" title="删除">✕</button>';
         el.querySelector('strong').textContent = it.name;
+        el.querySelector('input').setAttribute('aria-label',it.name + '重量（g）');
+        el.querySelector('.del').setAttribute('aria-label','删除' + it.name);
         el.querySelector('.sub').textContent = it.grams ? ('约 ' + it.grams + ' g') : '';
         el.querySelector('.m').textContent = '蛋' + N(it.protein) + ' 脂' + N(it.fat) + ' 碳' + N(it.carbs);
         el.querySelector('input').addEventListener('change', e => {
@@ -1276,14 +1402,14 @@ function renderDateRow(){
   if (inp){
     inp.value = editDate;
     inp.max = todayKey();
-    inp.min = shiftDay(todayKey(), -29);
+    inp.min = '1900-01-01';
   }
   const isToday = editDate === todayKey();
   const [, mm, dd] = editDate.split('-');
 
   // 顶部大标题：今天 / 具体日期
   const dt = $('dayTitle');
-  if (dt) dt.textContent = isToday ? '今天' : ((+mm) + '月' + (+dd) + '日');
+  if (dt) dt.textContent = isToday ? '今天' : (editDate.slice(0,4) !== todayKey().slice(0,4) ? editDate.slice(0,4) + '年' : '') + ((+mm) + '月' + (+dd) + '日');
   const g = $('gKcalTxt');
   if (g) g.textContent = '目标 ' + settings.kcal;
 
@@ -1299,9 +1425,8 @@ function renderDateRow(){
 }
 
 function setEditDate(k){
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+  if (!isDayKey(k) || k < '1900-01-01') return;
   if (k > todayKey()) k = todayKey();            // clamp 未来
-  if (k < shiftDay(todayKey(), -29)) k = shiftDay(todayKey(), -29);
   editDate = k;
   // 切到历史日期时默认选中午餐（按当前时间猜只对今天有意义）
   if (k !== todayKey() && MEAL_KEYS.indexOf(currentMeal) === -1) currentMeal = 'lunch';
@@ -1317,6 +1442,7 @@ function render(){
   $('barKcal').style.background = t.kcal > settings.kcal ? '#ff5c5c' : 'var(--acc)';
   $('tP').textContent = N(t.p); $('tF').textContent = N(t.f); $('tC').textContent = N(t.c);
   renderDateRow();
+  renderStorageWarning();
 
   // 主页面上的圆环：跟随所选日期，随记录实时更新
   const svg = $('ringSvg');
@@ -1343,7 +1469,8 @@ function addItems(items){
   if (!items.length){ toast('没解析出数据，试试让 DeepSeek 按格式重发一次'); return 0; }
   const list = day();
   for (const it of items) list.push(it);
-  save(); render();
+  const saved = save(); render();
+  if (!saved) return 0;
   toast('已记入' + mealName(currentMeal) + ' ' + items.length + ' 项，共 ' + Math.round(sum(items).kcal) + ' kcal');
   return items.length;
 }
@@ -1353,18 +1480,19 @@ function bodyReady(){
   return !!body.sex && +body.heightCm > 0 && ageFrom(body) > 0 && currentWeight() > 0;
 }
 /* 当前体重：优先最近一次体重记录，其次身体档案里的值 */
-function currentWeight(){
-  const ws = Object.keys(weight).filter(k => +weight[k] > 0).sort();
+function currentWeight(date = editDate){
+  const ws = Object.keys(weight).filter(k => k <= date && +weight[k] > 0).sort();
   if (ws.length) return +weight[ws[ws.length - 1]];
   return +body.weightKg || 0;
 }
 
+let weightEditDate = '';
 function renderBurn(){
   const isToday = editDate === todayKey();
   renderEnergyInputs();
   const eb = energyBalance(editDate, body, weight, burnByDay);
   const hasBody = eb.hasBody;
-  const sourceLabel = eb.source === 'manual' ? '手动录入' : '估算';
+  const sourceLabel = eb.source === 'manual' ? '健康能量录入' : '公式估算';
 
   // ---- 身体数据摘要 ----
   const bs = $('bodySummary');
@@ -1379,7 +1507,7 @@ function renderBurn(){
       const lvl = (ACTIVITY_LEVELS.find(a => Math.abs(a.v - (+body.activity || 1.2)) < 0.001) || {}).label || '';
       let h = '';
       h += '<div class="brow"><span class="bk">体重</span><span class="bv">' +
-           N(w) + ' kg' + (weight[todayKey()] ? '' : '<span class="bnote">（档案值）</span>') + '</span></div>';
+           N(w) + ' kg' + (Object.keys(weight).some(k => k <= editDate && +weight[k] > 0) ? '<span class="bnote">（最近记录）</span>' : '<span class="bnote">（档案值）</span>') + '</span></div>';
       h += '<div class="brow"><span class="bk">身高 / 年龄 / 性别</span><span class="bv">' +
            N(+body.heightCm) + ' cm · ' + ageFrom(body) + ' 岁 · ' + (normSex(body.sex) === 'female' ? '女' : '男') + '</span></div>';
       if (+body.bodyFat > 0) h += '<div class="brow"><span class="bk">体脂率</span><span class="bv">' + N(+body.bodyFat) + ' %</span></div>';
@@ -1404,7 +1532,7 @@ function renderBurn(){
         txt += normSex(body.sex) === 'female'
           ? '10×体重 + 6.25×身高 − 5×年龄 − 161'
           : '10×体重 + 6.25×身高 − 5×年龄 + 5';
-        txt += '\n（填上体脂率会自动改用更准的 Katch-McArdle）';
+        txt += '\n（填上体脂率会改用 Katch-McArdle；准确性取决于体脂率测量）';
       } else {
         txt += 'Harris-Benedict 修订式';
       }
@@ -1418,80 +1546,67 @@ function renderBurn(){
     if (!eb.hasBurn){
       bb.innerHTML = '<div class="empty2">录入两项健康能量，或填写身体数据与体重后显示</div>';
     } else {
-      const intake = eb.intake;
-      const burn = eb.burn;
-      const gap = eb.deficit;
-      const sug = suggestTarget(burn, body.sex);
       let h = '';
-      h += '<div class="kcal"><b>' + (gap >= 0 ? '−' : '+') + Math.abs(Math.round(gap)) + '</b>' +
-           '<span>' + (gap >= 0 ? 'kcal 缺口' : 'kcal 盈余') + '</span></div>';
-      if (!allItemsOf(editDate).length) h += '<div class="hint">这一天还没有饮食记录，摄入 0 不代表没有进食。</div>';
-      if (gap > 0 && allItemsOf(editDate).length){
-        const perWeek = gap * 7 / KCAL_PER_KG_FAT;
-        h += '<div class="hint" style="margin-top:2px">按此节奏，预计每周约 <b>' + perWeek.toFixed(2) + ' kg</b></div>';
-      }
-      h += '<div style="margin-top:12px">';
-      h += '<div class="brow"><span class="bk">饮食摄入</span><span class="bv">' + Math.round(intake) + ' kcal</span></div>';
-      h += '<div class="brow"><span class="bk">总消耗（' + sourceLabel + '）</span><span class="bv">' + Math.round(burn) + ' kcal</span></div>';
-      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--p)"></span>' + (eb.source === 'manual' ? '静息能量' : '基础代谢') + '</span><span class="bv">' + N(eb.rest) + ' kcal</span></div>';
-      h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--c)"></span>' + (eb.source === 'manual' ? '活动能量' : '日常与运动') + '</span><span class="bv">' + N(eb.active) + ' kcal</span></div>';
-      if (eb.source === 'estimate') h += '<div class="brow"><span class="bk"><span class="dot" style="background:var(--f)"></span>食物热效应</span><span class="bv">' + Math.round(eb.tef) + ' kcal</span></div>';
-      h += '</div>';
-      if (sug.ok && hasBody){
-        h += '<div class="hint" style="margin-top:12px">按' + sourceLabel + '消耗，建议每日摄入 <b>' + sug.target +
-             ' kcal</b>（缺口 ' + sug.gap + '，约每周 −' + sug.weeklyKg.toFixed(2) + ' kg）' +
-             (sug.clipped ? '<br>⚠️ 已按安全下限 ' + sug.floor + ' kcal 抬高，不建议再低' : '') + '</div>';
+      if (eb.canCompare){
+        const gap = eb.deficit;
+        h += '<div class="kcal"><b>' + (gap >= 0 ? '−' : '+') + Math.abs(Math.round(gap)) + '</b><span>kcal ' +
+          (gap >= 0 ? '记录缺口' : '记录盈余') + (eb.source === 'estimate' ? '（公式估算）' : '') + '</span></div>';
+      } else h += '<div class="empty2">' + (isToday ? '今天仍在累计，全天差额次日查看' : '尚无饮食记录，暂不计算差额') + '</div>';
+      h += '<div class="brow"><span class="bk">已记录摄入</span><span class="bv">' +
+        (eb.hasIntake ? Math.round(eb.intake) + ' kcal' : '未记录') + '</span></div>';
+      h += '<div class="brow"><span class="bk">总消耗（' + sourceLabel + '）</span><span class="bv">' + Math.round(eb.burn) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk">' + (eb.source === 'manual' ? '静息能量' : '基础代谢估算') + '</span><span class="bv">' + N(eb.rest) + ' kcal</span></div>';
+      h += '<div class="brow"><span class="bk">' + (eb.source === 'manual' ? '活动能量' : '活动等其他消耗估算') + '</span><span class="bv">' + N(eb.active) + ' kcal</span></div>';
+      h += '<div class="hint">' + (eb.source === 'manual' ? (isToday ? '能量为录入时的日内累计。' : '历史能量按录入值统计，请使用该日全天累计，之后可修正。') : '总消耗来自全天公式估算。') +
+        ' 差额基于已记录饮食，漏记会影响结果，不代表实际减重。</div>';
+      const reference = hasBody ? suggestTarget(calcTDEE(eb.bmr,body.activity),body.sex) : { ok:false };
+      if (reference.ok){
+        h += '<div class="hint">按身体档案估算的参考摄入：<b>' + reference.target + ' kcal</b>（' +
+          (reference.gap >= 0 ? '估算缺口 ' : '估算盈余 ') + Math.abs(reference.gap) + ' kcal）。' +
+          (reference.clipped ? '已按原有参考下限调整；下限不保证个人适用。' : '') + '不会自动修改你的目标。</div>';
       }
       bb.innerHTML = h;
     }
   }
 
-  // ---- 近 14 天 摄入 vs 消耗 ----
+  // ---- 所选日期截止的近 14 天 ----
   const db = $('duoBox');
+  $('duoTitle').textContent = '截至 ' + editDate + ' 的近 14 天：摄入与消耗';
   if (db){
-    if (!hasBody && !Object.keys(burnByDay).some(k => k >= dayBack(13) && k <= todayKey())){
-      db.innerHTML = '<div class="empty2">录入健康能量或填写身体数据后显示</div>';
-    } else {
-      const cells = [];
-      for (let i = 13; i >= 0; i--){
-        const k = dayBack(i);
-        const e = energyBalance(k, body, weight, burnByDay);
-        cells.push({ key: k, intake: e.intake, burn: e.hasBurn ? e.burn : 0, hasBurn: e.hasBurn });
-      }
-      const max = Math.max(1, ...cells.map(c => Math.max(c.intake, c.burn)));
-      let h = '<div class="duo">';
-      for (const c of cells){
-        const hi = Math.max(2, Math.round(c.intake / max * 100));
-        const ho = Math.max(2, Math.round(c.burn / max * 100));
-        h += '<div class="dcol">' +
-               '<div class="dbar in" style="height:' + hi + '%"></div>' +
-               '<div class="dbar out" style="height:' + ho + '%;visibility:' + (c.hasBurn ? 'visible' : 'hidden') + '"></div>' +
-             '</div>';
-      }
-      h += '</div><div class="duo-x">';
-      cells.forEach((c, i) => {
-        h += '<span>' + (i % 2 === 0 ? (+c.key.slice(8)) : '') + '</span>';
-      });
-      h += '</div>';
-      const withIn = cells.filter(c => c.intake > 0);
-      const avgIn = withIn.length ? withIn.reduce((a, c) => a + c.intake, 0) / withIn.length : 0;
-      const withOut = cells.filter(c => c.hasBurn);
-      const avgOut = withOut.length ? withOut.reduce((a, c) => a + c.burn, 0) / withOut.length : 0;
-      h += '<div class="legend-inline"><span><i style="background:var(--p)"></i>摄入</span>' +
-           '<span><i style="background:var(--c)"></i>消耗</span></div>';
-      h += '<div class="hint">有数据日平均：摄入 <b>' + Math.round(avgIn) + '</b>（' + withIn.length + ' 天）/ 消耗 <b>' +
-           Math.round(avgOut) + '</b> kcal（' + withOut.length + ' 天' + (cells.some(c => c.hasBurn && !burnByDay[c.key]) ? '，含估算' : '') + '）</div>';
-      db.innerHTML = h;
+    const cells = [];
+    for (let i = 13; i >= 0; i--) cells.push(energyBalance(shiftDay(editDate,-i),body,weight,burnByDay));
+    const max = Math.max(1,...cells.map(c => Math.max(c.intake,c.hasBurn ? c.burn : 0)));
+    let h = '<div class="duo" aria-hidden="true">';
+    for (const c of cells){
+      h += '<div class="dcol"><div class="dbar in" style="height:' + Math.max(2,Math.round(c.intake/max*100)) + '%;visibility:' +
+        (c.hasIntake ? 'visible' : 'hidden') + ';opacity:' + (c.closedDay ? '1' : '.35') + '"></div>' +
+        '<div class="dbar out" style="height:' + Math.max(2,Math.round(c.burn/max*100)) + '%;visibility:' +
+        (c.hasBurn ? 'visible' : 'hidden') + ';opacity:' + (c.hasDayEnergy ? '1' : '.35') + '"></div></div>';
     }
+    h += '</div><div class="duo-x" aria-hidden="true">';
+    cells.forEach((c,i) => { h += '<span>' + (i%2 === 0 ? +c.date.slice(8) : '') + '</span>'; });
+    h += '</div><div class="legend-inline"><span><i style="background:var(--p)"></i>摄入</span><span><i style="background:var(--c)"></i>消耗</span></div>';
+    const average = (list,key) => list.length ? Math.round(list.reduce((a,c) => a+c[key],0)/list.length) + ' kcal' : '暂无';
+    const foods = cells.filter(c => c.closedDay && c.hasIntake), energies = cells.filter(c => c.hasDayEnergy);
+    const paired = cells.filter(c => c.hasDayEnergy && c.hasIntake), estimated = cells.filter(c => c.closedDay && c.source === 'estimate' && c.hasBurn);
+    h += '<div class="hint">已记录摄入平均：<b>' + average(foods,'intake') + '</b>（' + foods.length + ' 天）<br>' +
+      '已录入健康能量平均：<b>' + average(energies,'burn') + '</b>（' + energies.length + ' 天）<br>' +
+      '同日饮食与健康能量：' + paired.length + ' 天' + (paired.length ? ' · 平均差额（消耗 − 摄入）' + average(paired,'deficit') : '，暂无平均差额') +
+      '<br>公式估算消耗：' + average(estimated,'burn') + '（' + estimated.length + ' 天），单独统计。平均值不含今天；缺失日不当成零。淡色柱表示今日累计或公式估算。饮食漏记、能量未录入全天值会影响统计。</div>';
+    h += '<details class="hint"><summary>查看每日数值与来源</summary>';
+    for (const c of cells) h += '<div>' + c.date + '：摄入 ' + (c.hasIntake ? Math.round(c.intake) + ' kcal' : '未记录') +
+      (c.closedDay ? '' : '（今日累计）') + '；消耗 ' + (c.hasBurn ? Math.round(c.burn) + ' kcal' : '无数据') +
+      (c.source === 'estimate' ? '（公式估算）' : c.closedDay ? '（历史录入）' : '（今日累计）') + '</div>';
+    db.innerHTML = h + '</details>';
   }
 
   // ---- 体重 ----
   const wb = $('weightBox');
   if (wb){
-    const keys = Object.keys(weight).filter(k => +weight[k] > 0).sort();
+    const keys = Object.keys(weight).filter(k => isDayKey(k) && k <= editDate && +weight[k] > 0).sort();
     const last14 = [];
     for (let i = 13; i >= 0; i--){
-      const k = dayBack(i);
+      const k = shiftDay(editDate,-i);
       if (+weight[k] > 0) last14.push({ k: k, kg: +weight[k] });
     }
     let h = '';
@@ -1521,48 +1636,60 @@ function renderBurn(){
         last14.forEach((o, i) => { h += '<span>' + (i % 2 === 0 ? (+o.k.slice(8)) : '') + '</span>'; });
         h += '</div>';
       }
-      // 反推实际 TDEE
-      const rev = reverseTDEE(store, weight, {});
+      const rev = reverseTDEE(store,weight,{ asOf:editDate });
       if (rev.ok){
-        const diff = rev.value - eb.burn;
-        h += '<div class="hint" style="margin-top:14px">实际 TDEE（按 ' + rev.days + ' 天、' +
-             rev.logged + ' 天有记录反推）：<b>' + Math.round(rev.value) + ' kcal</b>' +
-             (eb.hasBurn ? '<br>比所选日期的消耗 ' + Math.round(eb.burn) + ' kcal ' +
-             (diff >= 0 ? '高 ' : '低 ') + Math.abs(Math.round(diff)) + ' kcal' : '') + '</div>';
+        h += '<div class="hint" style="margin-top:14px">近 28 天窗口趋势推算（参考）：<b>' + Math.round(rev.value) + ' kcal/天</b><br>' +
+          rev.from + ' 至 ' + rev.to + '，区间 ' + rev.days + ' 天均有饮食记录。按已记录摄入推算，漏记与体重水分会影响结果，不视为实测消耗，不自动调整目标。</div>';
       } else {
-        const why = { noWeight: '至少需要两次体重记录', tooShort: '记录跨度不足 7 天',
-                      tooLong: '跨度超过 42 天，参考性下降', fewLogs: '饮食记录太少' }[rev.reason] || '数据不足';
-        h += '<div class="hint" style="margin-top:14px">暂时无法反推实际 TDEE：' + why + '</div>';
+        const why = { noWeight:'近 28 天至少需要 4 次体重记录', tooShort:'体重记录跨度不足 14 天',
+          fewLogs:'体重区间内仍有日期没有饮食记录', unstableTrend:'体重趋势波动较大，暂不推算' }[rev.reason] || '数据不足';
+        h += '<div class="hint" style="margin-top:14px">暂不推算消耗：' + why +
+          (rev.reason === 'fewLogs' ? '（' + rev.logged + '/' + rev.days + ' 天）' : '') + '</div>';
       }
     }
     wb.innerHTML = h;
     const wi = $('wInput');
-    if (wi && !wi.value && +weight[editDate] > 0) wi.value = weight[editDate];
+    if (wi && weightEditDate !== editDate){ wi.value = weight[editDate] || ''; weightEditDate = editDate; }
   }
 
   // ---- 主屏入口卡 ----
   const bn = $('balNum'), bsub = $('balSub');
   if (bn && bsub){
-    if (!eb.hasBurn){
+    if (!eb.canCompare){
       bn.textContent = '—';
       bn.className = 'bnum';
-      bsub.textContent = '点击录入健康能量或设置身体数据';
+      bsub.textContent = isToday && eb.hasBurn ? (eb.source === 'manual' ? '今日能量累计 · 全天差额次日查看' : '全天公式估算 · 点击查看') : eb.hasBurn ? '尚无饮食记录 · 点击查看' : '点击录入健康能量或设置身体数据';
     } else {
       const gap = eb.deficit;
       bn.textContent = (gap >= 0 ? '−' : '+') + Math.abs(Math.round(gap));
       bn.className = 'bnum ' + (gap >= 0 ? 'neg' : 'pos');
       bsub.textContent = (isToday ? '今日' : editDate.slice(5) + ' ') +
-        (gap >= 0 ? '热量缺口' : '热量盈余') + ' kcal · ' + sourceLabel;
+        (gap >= 0 ? '记录缺口' : '记录盈余') + ' kcal · ' + sourceLabel;
     }
   }
 }
 
 function openBurn(){
+  if ($('burn').classList.contains('on')) return;
   $('burn').classList.add('on');
   $('burn').scrollTop = 0;
+  for (const element of document.body.children){
+    if (['burn','dlg','rec','toast','alert','impor'].includes(element.id)) continue;
+    burnInertState.set(element,element.inert); element.inert = true;
+  }
+  $('btnBurnBack').focus();
   renderBurn();
 }
-const closeBurn = () => $('burn').classList.remove('on');
+const burnInertState = new Map();
+const closeBurn = () => {
+  $('burn').classList.remove('on');
+  for (const [element, inert] of burnInertState) element.inert = inert;
+  burnInertState.clear();
+  $('btnBurn').focus();
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('burn').classList.contains('on') && !document.querySelector('.modal.on')){ e.preventDefault(); closeBurn(); }
+});
 
 /* 把某条记录移动到另一餐（也用于把「未分餐」的旧记录归位）。
    按对象引用查找而不是按下标，避免重渲染后下标失效移错条目。 */
@@ -1573,7 +1700,8 @@ function moveItem(fromKey, item, toKey){
   if (idx === -1) return;
   from.splice(idx, 1);
   mealList(toKey).push(item);            // mealList 会自动建桶
-  save(); render();
+  const saved = save(); render();
+  if (!saved) return;
   toast('已移动到' + (toKey === LEGACY ? '未分餐' : mealName(toKey)));
 }
 
@@ -1640,68 +1768,57 @@ function calcTDEE(bmr, activity){
   return bmr > 0 ? bmr * f : 0;
 }
 
-/* 由体重变化反推「实际 TDEE」：
-   实际消耗 = 期间平均摄入 + 减掉的体重×7700/天数
-   需要 ≥7 天数据，且首尾各有一条体重记录 */
-function reverseTDEE(store, weight, opts){
-  const o = opts || {};
-  const minDays = o.minDays || 7;
-  const maxDays = o.maxDays || 42;
-  const dates = Object.keys(weight || {})
-    .filter(k => +weight[k] > 0)
-    .sort();
-  if (dates.length < 2) return { ok: false, reason: 'noWeight' };
-
-  const first = dates[0], last = dates[dates.length - 1];
-  const days = Math.round((new Date(last) - new Date(first)) / 86400000);
-  if (days < minDays) return { ok: false, reason: 'tooShort', days: days };
-  if (days > maxDays) return { ok: false, reason: 'tooLong', days: days };
-
-  // 注意：累加器不能命名成 sum —— 那会遮蔽上面的 sum() 汇总函数（曾经真的踩过）
-  let intakeSum = 0, n = 0;
-  const end = new Date(last);
-  for (const d of Object.keys(store || {})){
-    if (d >= first && d <= last){
-      const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(d)[k] || []), []));
-      if (t.kcal > 0){ intakeSum += t.kcal; n++; }
-    }
+/* 近 28 天滚动趋势参考：至少 4 次称重、跨度 14 天，区间每天均有饮食条目。 */
+function reverseTDEE(entries, weights, opts){
+  const o = opts || {}, asOf = o.asOf || todayKey();
+  const minDays = o.minDays || 14, windowDays = o.windowDays || 28;
+  const start = shiftDay(asOf, -(windowDays - 1));
+  const dates = Object.keys(weights || {}).filter(k => isDayKey(k) && k >= start && k <= asOf && Number.isFinite(+weights[k]) && +weights[k] > 0).sort();
+  if (dates.length < 4) return { ok: false, reason: 'noWeight' };
+  const first = dates[0], last = dates.at(-1);
+  const days = Math.round((Date.parse(last + 'T00:00:00Z') - Date.parse(first + 'T00:00:00Z')) / 86400000);
+  if (days < minDays) return { ok: false, reason: 'tooShort', days };
+  let intakeSum = 0, logged = 0;
+  // 体重区间对应 first 当天到 last 前一天；有条目不等于已记全，展示时说明漏记影响。
+  for (let i = 0; i < days; i++){
+    const date = shiftDay(first,i);
+    const day = entries[date] || {};
+    const items = MEAL_KEYS.concat([LEGACY]).flatMap(k => day[k] || []);
+    if (!items.length) continue;
+    intakeSum += sum(items).kcal;
+    logged++;
   }
-  // 摄入记录太少 → 结果不可信
-  if (n < Math.max(5, Math.floor(days * 0.5))){
-    return { ok: false, reason: 'fewLogs', days: days, logged: n };
-  }
-
-  const avgIntake = intakeSum / n;
-  const dw = (+weight[last]) - (+weight[first]);        // 负值＝掉秤
-  const dailyDelta = -dw * KCAL_PER_KG_FAT / days;      // 正数＝净消耗
-  return {
-    ok: true, days: days, logged: n,
-    from: first, to: last,
-    weightFrom: +weight[first], weightTo: +weight[last],
-    avgIntake: avgIntake,
-    value: avgIntake + dailyDelta,
-    weeklyChangeKg: dw / days * 7
-  };
+  if (logged !== days) return { ok: false, reason: 'fewLogs', days, logged };
+  // 最小二乘体重趋势，降低只取首尾单次称重的影响；仍是粗略参考。
+  const points = dates.map(k => ({ x: (Date.parse(k + 'T00:00:00Z') - Date.parse(first + 'T00:00:00Z')) / 86400000, y: +weights[k] }));
+  const mx = points.reduce((a,p) => a + p.x,0) / points.length;
+  const my = points.reduce((a,p) => a + p.y,0) / points.length;
+  const slope = points.reduce((a,p) => a + (p.x-mx)*(p.y-my),0) / points.reduce((a,p) => a + (p.x-mx)**2,0);
+  const avgIntake = intakeSum / logged, value = avgIntake - slope * KCAL_PER_KG_FAT;
+  if (!Number.isFinite(value) || value <= 0) return { ok:false, reason:'unstableTrend' };
+  return { ok:true, days, logged, from:first, to:last, avgIntake, value,
+    weightFrom: +weights[first], weightTo: +weights[last], weeklyChangeKg:slope*7 };
 }
 
 /* 目标摄入建议：缺口取 TDEE 的 20%，限制在 300~750，且不低于安全下限 */
 const SAFE_MIN_INTAKE = { male: 1500, female: 1200 };
 function suggestTarget(tdee, sex){
-  if (!(tdee > 0)) return { ok: false };
-  const gap = Math.min(750, Math.max(300, tdee * 0.20));
+  if (!Number.isFinite(tdee) || !(tdee > 0)) return { ok: false };
+  const requestedGap = Math.min(750, Math.max(300, tdee * 0.20));
   const floor = SAFE_MIN_INTAKE[normSex(sex)] || 1200;
-  const raw = tdee - gap;
-  const target = Math.max(raw, floor);
+  const raw = tdee - requestedGap;
+  const target = Math.round(Math.max(raw, floor));
+  const gap = tdee - target;
   return {
     ok: true, tdee: tdee, gap: Math.round(gap), target: Math.round(target),
-    clipped: target > raw,                       // 被安全下限抬高过
+    clipped: raw < floor,                        // 下限生效，不把四舍五入误标成下限调整。
     floor: floor,
     weeklyKg: gap * 7 / KCAL_PER_KG_FAT
   };
 }
 
 /* 某天的能量平衡：摄入 / 消耗 / 缺口 */
-function energyBalance(dateKey, body, weight, burnByDay){
+function energyBalance(dateKey, body, weight, burnByDay, legacyStates = null, entries = store){
   const b = body || {};
   const weightDates = Object.keys(weight || {}).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= dateKey && +weight[k] > 0).sort();
   const wOn = weightDates.length ? +weight[weightDates[weightDates.length - 1]] : +b.weightKg;
@@ -1711,11 +1828,12 @@ function energyBalance(dateKey, body, weight, burnByDay){
   const real = burnByDay && burnByDay[dateKey];
   const hasManual = !!real && validEnergy(real.active) && validEnergy(real.basal);
 
-  const t = sum(MEAL_KEYS.concat([LEGACY]).reduce((a, k) => a.concat(dateFor(dateKey)[k] || []), []));
+  const items = MEAL_KEYS.concat([LEGACY]).flatMap(k => (entries[dateKey] || {})[k] || []);
+  const t = sum(items);
   const intake = t.kcal;
 
   // 手动 Apple 健康日累计：直接相加，不重复加入运动或食物热效应。
-  // 无真实数据：总消耗 = BMR × 活动系数 + 食物热效应
+  // 公式总消耗 = BMR × 活动系数；不再额外添加食物热效应。
   let rest, act, source;
   if (hasManual){
     rest = real.basal;
@@ -1726,8 +1844,10 @@ function energyBalance(dateKey, body, weight, burnByDay){
     act = rest * ((+b.activity || 1.2) - 1);
     source = 'estimate';
   }
-  const tef = hasManual ? 0 : intake * 0.10;
+  const tef = 0;
   const burn = rest + act + tef;
+  const closedDay = dateKey < todayKey();
+  const hasDayEnergy = hasManual && closedDay;
   const balance = intake - burn;                 // 负值＝缺口
   return {
     date: dateKey, intake: intake, burn: burn,
@@ -1736,7 +1856,9 @@ function energyBalance(dateKey, body, weight, burnByDay){
     source: source,
     bmr: bmrR.value, formula: bmrR.formula, formulaKey: bmrR.key,
     hasBody: bmrR.value > 0,
-    hasBurn: hasManual || bmrR.value > 0
+    hasBurn: hasManual || bmrR.value > 0,
+    hasIntake: items.length > 0, closedDay, hasDayEnergy,
+    canCompare: items.length > 0 && closedDay && (hasManual || bmrR.value > 0)
   };
 }
 /* TEST-EXTRACT-BURN-B */                   // 测试用提取标记，勿删
@@ -1836,7 +1958,7 @@ $('dayPick').addEventListener('change', e => setEditDate(e.target.value));
 
 $('btnReset').addEventListener('click', () => {
   if (!allItems().length) return;
-  if (window.confirm('清空今天的全部记录（含各餐）？')){ store[todayKey()] = {}; save(); render(); }
+  if (window.confirm('清空 ' + editDate + ' 的全部饮食记录（含各餐）？')){ delete store[editDate]; save(); render(); refreshRisk(); }
 });
 
 $('btnExport').addEventListener('click', () => {
@@ -1867,8 +1989,19 @@ $('btnExport').addEventListener('click', () => {
 });
 
 /* 设置弹窗（自绘遮罩，不依赖 <dialog>） */
-const closeSet = () => $('dlg').classList.remove('on');
+let settingsReturnFocus = null;
+const settingsInertState = new Map();
+const closeSet = () => {
+  const wasOpen = $('dlg').classList.contains('on');
+  $('dlg').classList.remove('on');
+  document.body.classList.remove('settings-open');
+  for (const [element, inert] of settingsInertState) element.inert = inert;
+  settingsInertState.clear();
+  if (wasOpen) settingsReturnFocus?.focus();
+};
 const openSet = () => {
+  if ($('dlg').classList.contains('on')) return;
+  settingsReturnFocus = document.activeElement;
   $('sKcal').value = settings.kcal; $('sP').value = settings.p;
   $('sF').value = settings.f; $('sC').value = settings.c;
   $('sScheme').value = settings.dsScheme || '';
@@ -1879,7 +2012,15 @@ const openSet = () => {
   $('bFat').value = body.bodyFat || '';
   $('bActivity').value = String(body.activity || 1.375);
   refreshRisk();
+  $('settingsDate').textContent = '当前选择：' + editDate + '。清空仅影响这一天的饮食，体重与能量保留。';
+  $('dlg').querySelector('.settings-panel').scrollTop = 0;
   $('dlg').classList.add('on');
+  document.body.classList.add('settings-open');
+  for (const element of document.body.children){
+    if (['dlg','toast','alert','impor'].includes(element.id)) continue;
+    settingsInertState.set(element,element.inert); element.inert = true;
+  }
+  $('btnCloseX').focus();
 };
 function onBackdrop(e){
   // 只有点在面板外面才关闭（点面板内部不关）
@@ -1888,21 +2029,34 @@ function onBackdrop(e){
 $('btnSet').addEventListener('click', openSet);
 $('dlg').addEventListener('click', onBackdrop);
 $('btnCloseX').addEventListener('click', closeSet);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSet(); });
-$('btnCloseSet').addEventListener('click', closeSet);
+document.addEventListener('keydown', e => {
+  if (!$('dlg').classList.contains('on') || $('alert').classList.contains('on') || $('impor').classList.contains('on')) return;
+  if (e.key === 'Escape'){ e.preventDefault(); closeSet(); }
+  if (e.key === 'Tab'){
+    const controls = [...$('dlg').querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled])')].filter(n => n.getClientRects().length);
+    const first = controls[0], last = controls.at(-1);
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last?.focus(); }
+    else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first?.focus(); }
+  }
+});
 $('btnSaveSet').addEventListener('click', () => {
-  settings.kcal = parseFloat($('sKcal').value) || 0;
-  settings.p = parseFloat($('sP').value) || 0;
-  settings.f = parseFloat($('sF').value) || 0;
-  settings.c = parseFloat($('sC').value) || 0;
-  settings.dsScheme = $('sScheme').value.trim();
+  const nextSettings = { ...settings };
+  for (const [key, id] of [['kcal','sKcal'], ['p','sP'], ['f','sF'], ['c','sC']]){
+    const value = Number($(id).value);
+    if (!Number.isFinite(value) || value < 0){ toast('目标需填写非负数'); return; }
+    nextSettings[key] = value;
+  }
+  nextSettings.dsScheme = $('sScheme').value.trim();
   // 身体数据一并保存
-  body.sex = $('bSex').value;
-  body.birthYear = parseFloat($('bYear').value) || '';
-  body.heightCm = parseFloat($('bHeight').value) || '';
-  body.bodyFat = parseFloat($('bFat').value) || '';
-  body.activity = parseFloat($('bActivity').value) || 1.375;
-  saveSet(); saveBody(); render(); closeSet(); toast('已保存');
+  const nextBody = { ...body, sex: $('bSex').value };
+  for (const [key, id] of [['birthYear','bYear'], ['heightCm','bHeight'], ['bodyFat','bFat']]){
+    const text = $(id).value.trim(), value = Number(text);
+    if (text && (!Number.isFinite(value) || value <= 0)){ toast('身体数据需填写正数或留空'); return; }
+    nextBody[key] = text ? value : '';
+  }
+  nextBody.activity = parseFloat($('bActivity').value) || 1.375;
+  if (!commitData({ settings: nextSettings, body: nextBody })) return;
+  render(); closeSet(); toast('已保存');
 });
 
 /* ---- 身体数据 & 体重 ---- */
@@ -1918,7 +2072,7 @@ $('btnSaveEnergy').addEventListener('click', () => {
   if (!active || !basal || !validEnergy(Number(active)) || !validEnergy(Number(basal))){
     toast('请填写两项有效能量（kcal，不能为负数，0 可以保存）'); return;
   }
-  const next = { ...burnByDay, [editDate]: { active: Number(active), basal: Number(basal) } };
+  const next = { ...burnByDay, [editDate]: { active: Number(active), basal: Number(basal), updatedAt: new Date().toISOString() } };
   if (!saveBurn(next)) return;
   energyEditDate = ''; render(); refreshRisk();
   toast('已保存 ' + editDate + ' 健康能量');
@@ -1935,8 +2089,8 @@ $('btnClearEnergy').addEventListener('click', async () => {
 $('btnSaveWeight').addEventListener('click', () => {
   const v = parseFloat($('wInput').value);
   if (!(v > 0) || v > 400){ toast('请输入有效的体重（kg）'); return; }
-  weight[editDate] = Math.round(v * 10) / 10;
-  saveWeight();
+  if (!Number.isFinite(v)){ toast('请输入有效的体重（kg）'); return; }
+  if (!commitData({ weight: { ...weight, [editDate]: Math.round(v * 10) / 10 } })) return;
   $('wInput').value = '';
   render();
   toast('已记录 ' + editDate + ' 体重 ' + weight[editDate] + ' kg');
@@ -1953,7 +2107,7 @@ function boot(){
   try { refreshRisk(); } catch (e) { errs.push(e); }
   try {
     (function backupReminder(){
-      if (!Object.keys(store).length && !Object.keys(burnByDay).length) return;
+      if (!Object.keys(store).length && !Object.keys(burnByDay).length && !Object.keys(weight).length) return;
       const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
       if (since === null || since > 7){
         setTimeout(() => toast(since === null
@@ -2145,7 +2299,7 @@ function askChoice(opts){
 /* 「合并 / 覆盖 / 取消」三选一；默认动作放最上面且加粗 */
 function askMergeOrReplace(headline, detail){
   const merge = { label: '合并（保留现有数据）', value: 'merge', strong: true };
-  const replace = { label: '覆盖（清空后写入）', value: 'replace', danger: true };
+  const replace = { label: '覆盖备份中包含的数据', value: 'replace', danger: true };
   return askChoice({
     title: '导入方式',
     message: headline + (detail ? '\n' + detail : ''),
@@ -2156,14 +2310,13 @@ function askMergeOrReplace(headline, detail){
 /* ================= 备份与恢复 ================= */
 /* TEST-EXTRACT-A */                       // 测试用提取标记，勿删
 function buildBackup(){
-  return JSON.stringify({
-    app: 'kcal', version: 4, exportedAt: new Date().toISOString(),
-    settings: settings,
-    body: body,            // 身体档案（v3 新增）
-    weight: weight,        // 体重记录（v3 新增）
-    burn: burnByDay,       // 每日手动能量（v4 新增）
-    entries: store
-  }, null, 2);
+  if (!storageReadError && localStorage.getItem(LSD) !== persistedRaw) throw new Error('其他窗口已更新数据，请重新加载后导出最新备份');
+  if (storageReadError){
+    const raw = {};
+    for (const key of [LSD, LSK, LSS, LSB, LSW, LSE, LSM]) raw[key] = localStorage.getItem(key);
+    return JSON.stringify({ app: 'kcal-recovery', exportedAt: new Date().toISOString(), raw }, null, 2);
+  }
+  return JSON.stringify({ ...dataSnapshot(), exportedAt: new Date().toISOString() }, null, 2);
 }
 
 function refreshRisk(){
@@ -2172,126 +2325,194 @@ function refreshRisk(){
   const since = lastBackup ? Math.floor((new Date(todayKey()) - new Date(lastBackup)) / 86400000) : null;
   const rb = $('riskBox');
   if (!rb) return;
-  rb.innerHTML = '⚠️ <b>数据只存在这台手机的浏览器里</b><br>' +
+  rb.innerHTML = '<b>数据保存在当前浏览器或主屏幕应用中</b><br>' +
     '共 <b>' + days + '</b> 天、<b>' + total + '</b> 条饮食记录，<b>' + Object.keys(burnByDay).length + '</b> 天健康能量，与账号无关、不上云。<br>' +
-    '删除主屏幕图标、清理浏览器数据、换手机都会丢失。' +
+    '<b>' + Object.keys(weight).length + '</b> 天体重。全部历史持续保留，受浏览器存储空间限制。<br>' +
+    '删除图标、清理浏览器数据或换手机可能丢失数据，请先保存完整备份。' +
     '<small>' + backupHint(since) + '</small>';
 }
 
 function backupHint(since){
-  if (since === null) return '⚠️ 还没有备份过，建议现在备份一次';
-  if (since <= 0) return '✅ 今天已备份（' + lastBackup + '）';
-  if (since <= 7) return '上次备份：' + lastBackup + '（' + since + ' 天前）';
-  return '⚠️ 已有 ' + since + ' 天没备份，建议现在备份';
+  if (since === null) return '尚未导出备份，建议先保存一份';
+  if (since <= 0) return '今天已发起导出（' + lastBackup + '），请确认文件已保存';
+  if (since <= 7) return '上次发起导出：' + lastBackup + '（' + since + ' 天前），请确认文件已保存';
+  return '已有 ' + since + ' 天未导出备份，建议现在保存一份';
 }
 
 function doBackup(){
-  const json = buildBackup();
-  lastBackup = todayKey(); saveMeta();
+  let json;
+  try { json = buildBackup(); } catch (e) { toast(e.message || '无法读取数据，请保留当前应用并检查浏览器权限'); return; }
   try {
     const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'kcal-backup-' + todayKey() + '.json';
+    a.download = (storageReadError ? 'kcal-recovery-' : 'kcal-backup-') + todayKey() + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast('已导出备份文件，请存到「文件」App 或发给自己');
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    if (storageReadError){ toast('已导出原始数据用于恢复，请保存此文件'); }
+    else if (commitData({ meta: { lastBackup: todayKey() } })) toast('已发起导出，请确认备份已存到「文件」App');
   } catch (e) {
     // 兜底：把 JSON 放进输入框让用户手动复制保存
     $('desc').value = json;
+    closeSet(); openRec(currentMeal);
     $('desc').focus(); $('desc').select();
     toast('已填入输入框，请长按全选复制并保存');
   }
   refreshRisk();
 }
 
-function applyImport(text){
-  let data = null, entries = null, fromDoc = false;
-
-  // 先按 JSON 备份解析；不是 JSON 就当成「对话/文档文本」按日期解析
-  try { data = JSON.parse(text); } catch (e) { data = null; }
-
-  if (data && typeof data === 'object'){
-    const rawEntries = data.entries || data.store || data;
-    entries = normalizeStore(rawEntries);
-  } else {
-    entries = normalizeStore(parseChatDoc(text));
-    fromDoc = true;
-  }
-
-  const days = Object.keys(entries).length;
-  // 备份里可能只有体重/身体数据而没有饮食记录，这种情况也要允许导入
-  const importedBurn = !fromDoc ? normalizeBurn(data && data.burn) : {};
-  const hasBurnField = !fromDoc && data && data.burn && typeof data.burn === 'object';
-  const hasExtra = !fromDoc && ((data.body && Object.keys(data.body).length) ||
-                                (data.weight && Object.keys(data.weight).length) || Object.keys(importedBurn).length);
-  if (!days && !hasExtra){
-    toast(fromDoc ? '没解析出带日期的记录，请确认有日期行' : '备份或文档里没有可识别的记录');
-    return;
-  }
-
-  // 等用户选定方式再恢复全部数据；取消不得修改身体档案或健康能量。
-  function restoreExtras(mode){
-    if (hasBurnField && !saveBurn(mode === 'replace' ? importedBurn : { ...burnByDay, ...importedBurn })){
-      throw new Error('健康能量未能写入，导入已停止');
-    }
-    if (!fromDoc && data.settings && typeof data.settings === 'object'){
-      for (const k of ['kcal', 'p', 'f', 'c']) if (data.settings[k] != null) settings[k] = +data.settings[k] || 0;
-      if (data.settings.dsScheme != null) settings.dsScheme = String(data.settings.dsScheme);
-      saveSet();
-    }
-    if (!fromDoc && data.body && typeof data.body === 'object'){
-      for (const k of Object.keys(body)) if (data.body[k] != null && data.body[k] !== '') body[k] = data.body[k];
-      saveBody();
-    }
-    if (!fromDoc && data.weight && typeof data.weight === 'object'){
-      for (const k of Object.keys(data.weight)){
-        const v = +data.weight[k];
-        if (/^\d{4}-\d{2}-\d{2}$/.test(k) && v > 0 && v < 400) weight[k] = v;   // 覆盖式合并
-      }
-      saveWeight();
-    }
-    energyEditDate = '';
-  }
-
-  const stat = countParsed(entries);
-  const range = stat.dates.length ? (stat.dates[0] + ' ~ ' + stat.dates[stat.dates.length - 1]) : '';
-
-  const headline = (fromDoc ? '解析到 ' : '备份包含 ') + days + ' 天、共 ' + stat.total + ' 条饮食记录' +
-    (hasExtra ? '\n以及身体数据 / 体重 / ' + Object.keys(importedBurn).length + ' 天健康能量' : '');
-
-  return askMergeOrReplace(headline, range ? '日期范围：' + range : '').then(mode => {
-    if (!mode) return;                                  // 取消
-    restoreExtras(mode);
-    if (mode === 'replace' && days){
-      store = entries;
-    } else {
-      for (const date of Object.keys(entries)){
-        const cur = store[date] || {};
-        for (const meal of Object.keys(entries[date])){
-          const ex = cur[meal] || [];
-          if (!ex.length){ cur[meal] = entries[date][meal].slice(); continue; }
-          // 同名+同热量的视为同一条，避免重复导入
-          for (const it of entries[date][meal]){
-            const dup = ex.some(o => o.name === it.name && Math.abs((+o.kcal || 0) - (+it.kcal || 0)) < 0.01);
-            if (!dup) ex.push(it);
-          }
-          cur[meal] = ex;
+function validateBackup(data){
+  if (!isObject(data)) throw new Error('不是有效的备份对象');
+  if (data.app && data.app !== 'kcal') throw new Error('文件不是本应用的完整备份；原始恢复文件需另行分析');
+  if (data.version != null && (!Number.isInteger(data.version) || data.version < 1 || data.version > 5)) throw new Error('不支持的备份版本');
+  if (data.version === 5 && !['entries','settings','body','weight','burn','completion','meta'].every(k => isObject(data[k]))) throw new Error('v5 完整备份缺少必要数据');
+  const fields = {};
+  const has = key => Object.hasOwn(data, key);
+  const rawEntries = has('entries') ? data.entries : has('store') ? data.store :
+    Object.keys(data).length && Object.keys(data).every(isDayKey) ? data : undefined;
+  if (rawEntries !== undefined){
+    if (!isObject(rawEntries)) throw new Error('饮食记录格式错误');
+    for (const [date, day] of Object.entries(rawEntries)){
+      if (!isDayKey(date) || (!Array.isArray(day) && !isObject(day))) throw new Error('饮食日期或结构无效');
+      if (!Array.isArray(day) && Object.values(day).some(v => !Array.isArray(v) && !isObject(v))) throw new Error('餐次记录格式错误');
+      const items = Array.isArray(day) ? day : Object.values(day).flatMap(asList);
+      for (const item of items){
+        if (!isObject(item) || (!item.name && item.kcal == null)) throw new Error('存在无效饮食条目');
+        for (const k of ['kcal','grams','protein','fat','carbs']){
+          if (item[k] != null && (!Number.isFinite(+item[k]) || +item[k] < 0)) throw new Error('饮食数值无效');
         }
-        store[date] = cur;
       }
     }
-    save(); render(); refreshRisk();
-    const after = Object.keys(store).length;
-    const done = '已' + (mode === 'replace' ? '覆盖' : '合并') + '：' + days + ' 天、' + stat.total + ' 条（现有 ' + after + ' 天）';
-    toast(done);
-    if (typeof __dshTestHook === 'function') __dshTestHook('importDone', { mode: mode, days: days });
-  }).catch(err => {
-    // 不能静默失败：导入过程中的任何异常都要让用户看见
-    toast('导入失败：' + ((err && err.message) || err));
-    if (typeof __dshTestHook === 'function') __dshTestHook('importError', String((err && err.message) || err));
-  });
+    fields.entries = normalizeStore(rawEntries);
+  }
+  for (const [key, normalizer] of [['weight',normalizeWeight], ['burn',normalizeBurn], ['completion',normalizeCompletion]]){
+    if (!has(key)) continue;
+    if (!isObject(data[key])) throw new Error(key + ' 数据格式错误');
+    const normalized = normalizer(data[key]);
+    if (Object.keys(normalized).length !== Object.keys(data[key]).length) throw new Error(key + ' 存在无效日期或数值');
+    if (key === 'completion' && Object.values(data[key]).some(v => typeof v.food !== 'boolean' || typeof v.energy !== 'boolean')) throw new Error('旧版完成状态格式错误');
+    if (key === 'burn' && Object.values(data[key]).some(v => v.updatedAt != null && (typeof v.updatedAt !== 'string' || !Number.isFinite(Date.parse(v.updatedAt))))) throw new Error('能量录入时间无效');
+    fields[key] = normalized;
+  }
+  if (has('settings')){
+    if (!isObject(data.settings)) throw new Error('目标设置格式错误');
+    fields.settings = {};
+    for (const k of ['kcal','p','f','c']){
+      if (!Object.hasOwn(data.settings,k)) continue;
+      const value = +data.settings[k];
+      if (!Number.isFinite(value) || value < 0) throw new Error('目标设置数值无效');
+      fields.settings[k] = value;
+    }
+    if (data.settings.dsScheme != null) fields.settings.dsScheme = String(data.settings.dsScheme);
+  }
+  if (has('body')){
+    if (!isObject(data.body)) throw new Error('身体档案格式错误');
+    fields.body = {};
+    for (const k of Object.keys(DEFAULT_BODY)){
+      if (!Object.hasOwn(data.body,k)) continue;
+      const v = data.body[k];
+      if (k === 'sex'){
+        if (!['male','female'].includes(v)) throw new Error('性别设置无效');
+      } else if (k === 'preferHarris'){
+        if (typeof v !== 'boolean') throw new Error('代谢公式设置无效');
+      } else if (v !== '' && (!Number.isFinite(+v) || +v < 0)) throw new Error('身体档案数值无效');
+      fields.body[k] = v;
+    }
+  }
+  if (has('meta')){
+    if (!isObject(data.meta) || (data.meta.lastBackup && !isDayKey(data.meta.lastBackup))) throw new Error('备份元数据无效');
+    fields.meta = { lastBackup: data.meta.lastBackup || '' };
+  }
+  if (!Object.keys(fields).length) throw new Error('文件没有可识别的记录或设置');
+  return fields;
+}
+function itemSignature(item){
+  const normalized = { ...item };
+  for (const k of ['kcal','grams','protein','fat','carbs']) if (normalized[k] != null) normalized[k] = +normalized[k];
+  return JSON.stringify(normalized, Object.keys(normalized).sort());
+}
+function mergeEntries(existing, incoming){
+  const next = cloneData(existing);
+  for (const [date, day] of Object.entries(incoming)){
+    const cur = next[date] || {};
+    for (const [meal, items] of Object.entries(day)){
+      const list = cur[meal] || [], counts = new Map(), seen = new Map();
+      for (const item of list){ const key = itemSignature(item); counts.set(key, (counts.get(key) || 0) + 1); }
+      for (const item of items){
+        const key = itemSignature(item), n = (seen.get(key) || 0) + 1;
+        seen.set(key,n);
+        if (n > (counts.get(key) || 0)) list.push(cloneData(item));
+      }
+      cur[meal] = list;
+    }
+    next[date] = cur;
+  }
+  return next;
+}
+function importedSnapshot(fields, mode){
+  const current = cloneData(dataSnapshot()), next = cloneData(current);
+  for (const [key, value] of Object.entries(fields)){
+    if (key === 'completion') continue;
+    if (key === 'entries') next.entries = mode === 'replace' ? value : mergeEntries(current.entries, value);
+    else if (key === 'settings') next.settings = { ...(mode === 'replace' ? DEFAULT_SETTINGS : current.settings), ...value };
+    else if (key === 'body') next.body = { ...(mode === 'replace' ? DEFAULT_BODY : current.body), ...value };
+    else next[key] = mode === 'replace' ? value : { ...current[key], ...value };
+  }
+  // 旧备份没有的类别保留；替换或合并改变记录时，旧完成标记失效。
+  for (const date of new Set([...Object.keys(current.entries), ...Object.keys(next.entries), ...Object.keys(current.burn), ...Object.keys(next.burn)])){
+    const status = next.completion[date] || {};
+    if (JSON.stringify(current.entries[date]) !== JSON.stringify(next.entries[date])) status.food = false;
+    if (JSON.stringify(current.burn[date]) !== JSON.stringify(next.burn[date])) status.energy = false;
+    if (status.food !== undefined || status.energy !== undefined) next.completion[date] = { food: status.food === true, energy: status.energy === true };
+  }
+  if (fields.completion){
+    if (mode === 'replace') next.completion = {};
+    for (const [date, state] of Object.entries(fields.completion)){
+      const foodMatches = Object.hasOwn(fields,'entries') && JSON.stringify(next.entries[date] || {}) === JSON.stringify(fields.entries[date] || {});
+      const burnMatches = Object.hasOwn(fields,'burn') && JSON.stringify(next.burn[date]) === JSON.stringify(fields.burn[date]);
+      next.completion[date] = { food: state.food && foodMatches, energy: state.energy && burnMatches && !!next.burn[date] };
+    }
+  }
+  return next;
+}
+async function applyImport(text){
+  try {
+    let data, fields, fromDoc = false;
+    text = text.replace(/^\uFEFF/,'').trim();
+    try { data = JSON.parse(text); }
+    catch (e){
+      if (/^[\[{]/.test(text)) throw new Error('JSON 文件不完整或格式错误');
+      fromDoc = true;
+    }
+    if (fromDoc){
+      const entries = normalizeStore(parseChatDoc(text));
+      if (!countParsed(entries).total) throw new Error('没解析出带日期的饮食记录');
+      fields = { entries };
+    } else fields = validateBackup(data);
+    const stat = countParsed(fields.entries || {});
+    const dates = [...new Set(['entries','weight','burn','completion'].flatMap(k => Object.keys(fields[k] || {})))].sort();
+    const headline = (fromDoc ? '解析到 ' : '备份包含 ') + stat.dates.length + ' 天、' + stat.total + ' 条饮食记录\n' +
+      Object.keys(fields.weight || {}).length + ' 天体重 · ' + Object.keys(fields.burn || {}).length + ' 天健康能量\n' +
+      '包含的数据将一起恢复' +
+      (fields.settings ? ' · 目标设置' : '') + (fields.body ? ' · 身体档案' : '');
+    const detail = (dates.length ? '日期：' + dates[0] + ' ~ ' + dates.at(-1) + '\n' : '') +
+      '覆盖会替换备份包含的整类数据；旧备份没有的类别保留。\n合并时，同一天的体重和能量以备份为准。';
+    const mode = await askMergeOrReplace(headline, detail);
+    if (!mode) return false;
+    if (storageReadError && (mode !== 'replace' || !data || data.version !== 5)) throw new Error('本地读取异常，请先保存原始恢复文件，再覆盖恢复有效的 v5 完整备份');
+    const next = importedSnapshot(fields,mode);
+    if (!commitData(next, storageReadError)) { render(); return false; }
+    energyEditDate = ''; render(); refreshRisk(); closeSet();
+    toast('已' + (mode === 'replace' ? '覆盖' : '合并') + '恢复，现有 ' + Object.keys(store).length + ' 天饮食记录');
+    if (typeof __dshTestHook === 'function') __dshTestHook('importDone', { mode, days: stat.dates.length });
+    return true;
+  } catch (err){
+    toast('导入失败：' + err.message);
+    if (typeof __dshTestHook === 'function') __dshTestHook('importError', String(err.message));
+    return false;
+  }
 }
 
 /* ---- 从对话/文档导入的弹窗 ---- */
@@ -2381,7 +2602,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-05.3';
+const APP_VERSION = '2026-10-07.2';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
@@ -2417,6 +2638,10 @@ function applyUpdate(){
 }
 
 $('btnUpdate').addEventListener('click', () => checkUpdate(true));
+$('btnReloadData').addEventListener('click', () => location.reload());
+window.addEventListener('storage', e => {
+  if (e.key === LSD || e.key === null){ storageStale = true; renderStorageWarning(); }
+});
 
 /* 注册 Service Worker */
 if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

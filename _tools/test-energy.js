@@ -8,9 +8,9 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 new vm.Script(script); // 完整生产脚本语法检查。
 const slice = (a, b) => script.slice(script.indexOf(a), script.indexOf(b, script.indexOf(a)));
 function harness(seed = {}) {
-  const storage = new Map(Object.entries(seed));
+  const storage = seed instanceof Map ? seed : new Map(Object.entries(seed));
   const nodes = new Map(), messages = [];
-  let failWrite = false, choice = 'merge';
+  let failWrite = false, choice = 'merge', writes = 0;
   const node = id => {
     if (!nodes.has(id)) nodes.set(id, { value: '', hidden: false, textContent: '', innerHTML: '',
       handlers: {}, addEventListener(event, handler) { this.handlers[event] = handler; },
@@ -19,22 +19,29 @@ function harness(seed = {}) {
   };
   const ctx = vm.createContext({ Date, console, $: node,
     N: v => Math.round(v * 10) / 10,
-    toast: msg => messages.push(msg), render: () => {},
+    toast: msg => messages.push(msg), render: () => {}, closeSet: () => {},
+    window: { confirm: () => choice === true },
     askMergeOrReplace: async () => choice, askChoice: async () => choice,
     parseChatDoc: () => ({}),
     localStorage: { getItem: k => storage.get(k) ?? null, setItem(k, v) {
-      if (failWrite) throw Error('quota'); storage.set(k, v);
+      writes++; if (failWrite) throw Error('quota'); storage.set(k, v);
     } }
   });
-  vm.runInContext(slice("const LSK =", '// 只保留最近 30 天'), ctx);
-  vm.runInContext(slice('const save =', '/* ---------------- 提示词'), ctx);
-  vm.runInContext(slice('/* TEST-EXTRACT-BURN-A */', '/* TEST-EXTRACT-BURN-B */'), ctx);
-  vm.runInContext(slice('function countParsed(', 'function askChoice('), ctx);
-  vm.runInContext(slice('function buildBackup(', '/* ---- 从对话/文档导入的弹窗'), ctx);
-  vm.runInContext(slice('function allItemsOf(', '/* TEST-EXTRACT-B */'), ctx);
-  vm.runInContext(slice("for (const id of ['energyActive'", "$('btnSaveWeight').addEventListener"), ctx);
+  vm.runInContext([
+    slice("const LSK =", '/* ---------------- 提示词'),
+    slice('/* TEST-EXTRACT-BURN-A */', '/* TEST-EXTRACT-BURN-B */'),
+    slice('function countParsed(', 'function askChoice('),
+    slice('function buildBackup(', '/* ---- 从对话/文档导入的弹窗'),
+    slice('function allItemsOf(', '/* TEST-EXTRACT-B */'),
+    slice("for (const id of ['energyActive'", '/* 启动：分步容错'),
+    slice('function setEditDate(', 'function render(){'),
+    slice('function addItems(', '/* ================= 第二屏'),
+    slice("$('btnSaveSet').addEventListener", '/* ---- 身体数据 & 体重 ---- */'),
+    slice("$('btnReset').addEventListener", "$('btnExport').addEventListener")
+  ].join('\n'), ctx);
   const run = code => vm.runInContext(code, ctx);
-  return { run, node, storage, messages, fail: v => { failWrite = v; }, choose: v => { choice = v; } };
+  return { run, node, storage, messages, writes: () => writes,
+    fail: v => { failWrite = v; }, choose: v => { choice = v; } };
 }
 async function main() {
   const day = '2026-10-05';
@@ -48,7 +55,7 @@ async function main() {
   assert.equal(eb.burn, 2000); assert.equal(eb.deficit, 500); assert.equal(eb.tef, 0);
   assert.equal(eb.hasBody, false); assert.equal(eb.hasBurn, true); assert.equal(eb.source, 'manual');
   assert.deepEqual(JSON.parse(run('JSON.stringify(store)')), food);
-  assert.equal(h.storage.get('kcal.entries.v1'), JSON.stringify(food));
+  assert.equal(h.storage.get('kcal.entries.v1'), JSON.stringify(food)); // 旧数据保留，不覆写迁移来源。
   assert.equal(run(`energyBalance('2026-10-04',body,weight,burnByDay).hasBurn`), false);
   const fresh = harness(Object.fromEntries(h.storage));
   assert.equal(fresh.run(`energyBalance('${day}',body,weight,burnByDay).burn`),2000);
@@ -59,10 +66,10 @@ async function main() {
   // 不用未来体重推算过去；允许使用所选日期之前最近的体重。
   run(`weight={'2026-10-03':68,'2026-10-06':90}`);
   assert.equal(run(`energyBalance('2026-10-04',body,weight,burnByDay).bmr`),1628.75);
-  const saved = h.storage.get('kcal.burn.v1');
+  const saved = h.storage.get('kcal.data.v5');
   for (const [a,b] of [['','1344'],['-1','1344'],['Infinity','1344'],['abc','1344'],['616','']]) {
     h.node('energyActive').value=a; h.node('energyBasal').value=b;
-    h.node('btnSaveEnergy').click(); assert.equal(h.storage.get('kcal.burn.v1'),saved);
+    h.node('btnSaveEnergy').click(); assert.equal(h.storage.get('kcal.data.v5'),saved);
   }
   h.node('energyActive').value='0'; h.node('energyBasal').value='0';
   h.node('btnSaveEnergy').click();
@@ -78,7 +85,7 @@ async function main() {
   run("editDate='2026-10-04';renderEnergyInputs()"); assert.equal(h.node('energyActive').value,'');
   run(`editDate='${day}'`);
   const backup = JSON.parse(run('buildBackup()'));
-  assert.equal(backup.version,4); assert.equal(backup.burn[day].active,0);
+  assert.equal(backup.version,5); assert.equal(backup.burn[day].active,0);
   const restore = harness(); await restore.run(`applyImport(${JSON.stringify(JSON.stringify(backup))})`);
   assert.deepEqual(JSON.parse(restore.run('buildBackup()')).burn,backup.burn);
   // 取消恢复时所有数据都不变，包括身体档案与能量。
@@ -101,4 +108,5 @@ async function main() {
   assert.equal(run(`Object.keys(normalizeBurn({'2026-02-30':{active:1,basal:2},'2026-10-05':{active:-1,basal:2},'2026-10-04':{active:Infinity,basal:2},'2026-10-03':{active:'',basal:2},'2026-10-02':{active:0,basal:0}})).length`),1);
   console.log('PASS: energy calculation, date isolation, validation, storage failure, reload, backup/restore, cancellation and clearing');
 }
-main().catch(err => { console.error(err); process.exitCode=1; });
+module.exports = { harness };
+if (require.main === module) main().catch(err => { console.error(err); process.exitCode=1; });
