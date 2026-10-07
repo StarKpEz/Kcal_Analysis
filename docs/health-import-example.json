@@ -1,0 +1,20 @@
+{
+  "app": "kcal-health",
+  "version": 1,
+  "exportedAt": "2026-10-06T08:00:00+08:00",
+  "days": [
+    {
+      "date": "2026-10-05",
+      "energy": { "active": 600, "basal": 1400 },
+      "training": [
+        { "id": "sample-run-20261005", "type": "跑步", "durationMinutes": 45, "distanceKm": 5.2, "energyKcal": 350, "startAt": "2026-10-05T18:00:00+08:00" }
+      ],
+      "sleep": {
+        "asleepMinutes": 420,
+        "startAt": "2026-10-04T23:00:00+08:00",
+        "endAt": "2026-10-05T07:00:00+08:00",
+        "stages": { "core": 260, "deep": 70, "rem": 90 }
+      }
+    }
+  ]
+}

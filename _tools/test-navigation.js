@@ -31,14 +31,14 @@ function harness(hash = ''){
     back(){if(index){location.hash=stack[--index].hash;events.get('popstate')?.();}},
     forward(){if(index+1<stack.length){location.hash=stack[++index].hash;events.get('popstate')?.();}}
   };
-  const body = node('body'); body.children=['appMain','primaryNav','burn','dlg','rec','alert','impor','iosStatusStrip'].map(node);
+  const body = node('body'); body.children=['appMain','primaryNav','burn','wellness','dlg','rec','alert','impor','iosStatusStrip'].map(node);
   const window = {get scrollY(){return position;},scrollTo(x,y){position=y;},addEventListener:(k,v)=>events.set(k,v)};
   const ctx = vm.createContext({$,console,document:{body},window,location,history,
-    render:()=>{},renderBurn:()=>{},closeSet:()=>node('dlg').classList.remove('on'),
+    render:()=>{},renderBurn:()=>{},renderWellness:()=>{},closeSet:()=>node('dlg').classList.remove('on'),
     closeRec:()=>node('rec').classList.remove('on'),N:v=>Math.round(v*10)/10,todayKey:()=> '2026-10-07'});
   function $(id){return node(id);}
   const run = code => vm.runInContext(code,ctx);
-  run("let editDate='2026-10-05'; const store={fixture:true}; let burnByDay={}, weight={}, body={};");
+  run("let editDate='2026-10-05'; const store={fixture:true}; let burnByDay={}, weight={}, body={},trainingByDay={},sleepByDay={};");
   run(slice('function renderHealth(){','function openBurn(){'));
   run(slice('/* TEST-EXTRACT-NAV-A */','/* TEST-EXTRACT-NAV-B */'));
   return {run,node,history,location,window,focus:()=>focus,
@@ -69,6 +69,13 @@ assert.equal(h.location.hash,'#/health');
 assert.equal(h.focus(),'btnBurn');
 h.history.back(); assert.equal(h.location.hash,'#/diet');
 h.history.forward(); assert.equal(h.location.hash,'#/health');
+for (const [button,route] of [['btnHealthTraining','training'],['btnHealthSleep','sleep'],['btnHealthImport','import']]){
+  h.click(button);assert.equal(h.location.hash,'#/health/'+route);
+  assert.equal(h.node('wellness').classList.contains('on'),true);assert.equal(h.node('primaryNav').inert,false);
+  h.node('wellness').scrollTop=200;h.click('navDiet');h.click('navHealth');
+  assert.equal(h.node('wellness').scrollTop,200);h.run('returnToHealth()');
+  assert.equal(h.focus(),button);assert.equal(h.node('wellness').classList.contains('on'),false);
+}
 h.click('btnHealthWeight');
 assert.equal(h.node('burn').scrollTop,700);
 assert.equal(h.focus(),'weightSection');

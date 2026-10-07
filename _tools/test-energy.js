@@ -85,7 +85,7 @@ async function main() {
   run("editDate='2026-10-04';renderEnergyInputs()"); assert.equal(h.node('energyActive').value,'');
   run(`editDate='${day}'`);
   const backup = JSON.parse(run('buildBackup()'));
-  assert.equal(backup.version,5); assert.equal(backup.burn[day].active,0);
+  assert.equal(backup.version,6); assert.equal(backup.burn[day].active,0);
   const restore = harness(); await restore.run(`applyImport(${JSON.stringify(JSON.stringify(backup))})`);
   assert.deepEqual(JSON.parse(restore.run('buildBackup()')).burn,backup.burn);
   // 取消恢复时所有数据都不变，包括身体档案与能量。
