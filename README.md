@@ -42,6 +42,16 @@ DeepSeek **官方目前没有公开的 URL scheme**（社区里还在提这个�
 - 深浅外观、减少动态效果、输入标签与底部安全区适配。暂不引入 Liquid Glass；记录弹窗沿用普通背景模糊。
 - 设计依据：[Apple HIG — Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons)、[Settings](https://developer.apple.com/design/human-interface-guidelines/settings)、[Layout](https://developer.apple.com/design/human-interface-guidelines/layout)。无底色按钮是本项目按用户偏好选择的样式，不声称是最新 HIG 对所有按钮的要求。
 
+## 健康页与底部导航（2026-10-07.5）
+
+底部固定 **饮食 / 健康** 两个栏目，采用不透明背景、线条图标和文字，所选栏目为蓝色，适配底部安全区。健康详情保留底栏；设置和临时表单覆盖底栏。参考 [Apple HIG — Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)，本项目暂不使用 Liquid Glass。
+
+健康页展示所选日期的活动能量、静息能量及体重。能量卡片进入原有代谢详情，体重卡片直接定位到记录区，保留已有数据和计算口径。缺失能量显示“—”，0 是有效记录；体重显示该日或此前最近的记录，并注明日期，不使用未来称重。
+
+两个栏目共用所选日期；切换时保留各自滚动位置和健康详情位置。支持浏览器前进、后退与 `#/health`、`#/health/energy`、`#/health/weight` 链接。刷新沿用原有逻辑选择今天。训练、睡眠仅显示“暂未接入”，尚无表单或健康数据导入。
+
+验证：四组 Node 回归测试通过；桌面浏览器以 393×852 和 320×568 验证切换、日期共享、详情返回、能量保存与体重入口，[健康页预览](docs/previews/health-navigation-2026-10-07.jpg)使用虚构测试数据。顶部模糊问题按用户决定停止继续调整。
+
 ## iOS 主屏幕顶部模糊兼容（2026-10-07.4）
 
 真机反馈：v2026-10-07.3 在 iOS 27.0.1 的主屏幕应用中仍模糊，同网址 Safari 正常，因此上一版的布局和状态栏调整没有解决该问题。
@@ -74,7 +84,7 @@ DeepSeek **官方目前没有公开的 URL scheme**（社区里还在提这个�
 
 ## 代谢与消耗
 
-首页“代谢与消耗”进入详情。先选择日期，再录入 Apple 健康中同一天的 **活动能量** 和 **静息能量**，两项均需填写，0 区别于空白。网页目前不会直接读取 Apple 健康。
+底部“健康”→“健康能量”进入代谢详情。先选择日期，再录入 Apple 健康中同一天的 **活动能量** 和 **静息能量**，两项均需填写，0 区别于空白。网页目前不会直接读取 Apple 健康。
 
 - 健康能量总消耗 = 活动 + 静息，不另加训练热量、活动系数或食物热效应。
 - 未录入时，使用 BMR × 活动系数估算全天消耗，不再添加摄入的 10%。BMR 使用 Mifflin-St Jeor；填写体脂率时改用 Katch-McArdle，准确性取决于输入与测量。
@@ -89,6 +99,7 @@ DeepSeek **官方目前没有公开的 URL scheme**（社区里还在提这个�
 node _tools/test-energy.js
 node _tools/test-foundation.js
 node _tools/test-offline.js
+node _tools/test-navigation.js
 ```
 
 训练、睡眠和 Apple 健康导入尚未实现，方案见 [基础版与训练睡眠接续方案](docs/基础版与训练睡眠接续方案.md)。设计参考 [Apple HIG](https://developer.apple.com/design/human-interface-guidelines/)，暂不引入 Liquid Glass。
@@ -99,8 +110,8 @@ node _tools/test-offline.js
 
 ## 主页面结构
 
-从上到下：**顶部日期 + 日历 → 摄入热量 → 饮食记录 → 营养摄入 → 代谢与消耗**。
-记录保存后即可查看；食物输入在弹窗里，备份和管理操作在设置页。
+底部切换 **饮食 / 健康**，顶部日期和日历共用。饮食页从上到下为 **摄入热量 → 饮食记录 → 营养摄入**；健康页为 **健康能量 → 体重 → 训练 / 睡眠占位**。
+记录保存后即可查看；食物输入在弹窗里，能量和体重复用健康详情中的表单，备份和管理操作在设置页。
 
 **顶部日期就是统计入口**（参考 iOS 饮食 App）：
 
@@ -109,6 +120,7 @@ node _tools/test-offline.js
   - **展开 = 整月日历**：‹ › 翻月份（不能翻到未来），每格小圆环表示当天热量完成度，点某天切过去并自动收起
 - 右侧「今天」按钮一键回到今天
 - 圆环配色：🔴 超标 · 🟢 达标 · 🟠 偏少 · 🟡 很少 · 灰 未记录
+- 健康页使用纯日期日历，隐藏饮食热量圆环，避免误作健康记录完成度。
 
 **饮食记录**（早餐 / 午餐 / 晚餐 / 加餐四行）：
 

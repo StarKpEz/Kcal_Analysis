@@ -36,7 +36,7 @@
   html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
     font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
     -webkit-font-smoothing:antialiased}
-  body{padding:calc(14px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom));
+  body{padding:calc(14px + env(safe-area-inset-top)) 14px calc(88px + env(safe-area-inset-bottom));
     max-width:640px;margin:0 auto}
   body.settings-open,body:has(#burn.on){overflow:hidden}
   .ios-status-strip{display:none}
@@ -142,7 +142,7 @@
     color:var(--fg);border-radius:11px;padding:9px 11px;font:inherit;
     -webkit-appearance:none;appearance:none;text-align:right}
   .fld .pick:focus{outline:none;box-shadow:0 0 0 3px rgba(48,209,88,.3)}
-  .toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));
+  .toast{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom));
     transform:translateX(-50%) translateY(20px);
     background:rgba(28,28,30,.92);color:#fff;padding:11px 18px;border-radius:99px;font-size:13.5px;
     opacity:0;pointer-events:none;transition:.25s;z-index:99;
@@ -287,7 +287,7 @@
     background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
   #burn.on{display:block}
   .scrwrap{max-width:640px;margin:0 auto;
-    padding:calc(12px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom))}
+    padding:calc(12px + env(safe-area-inset-top)) 14px calc(88px + env(safe-area-inset-bottom))}
   .scrhead{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px;margin-bottom:18px}
   .scrhead h1{font-size:17px;margin:0;display:block;text-align:center}
   .backbtn{flex:0 0 auto;width:44px;height:44px;border-radius:8px;background:transparent;
@@ -405,6 +405,43 @@
   .settings-action.danger{color:var(--danger)}
   .settings-action:active{background:var(--card2);transform:none}
   .settings-footer{text-align:center;font-size:12px;color:var(--dim);margin-top:18px}
+  /* 主要栏目使用不透明底栏；临时表单覆盖底栏，健康详情保留底栏。 */
+  [hidden]{display:none!important}
+  .tabbar{position:fixed;inset:auto 0 0;z-index:85;background:var(--card);
+    border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  .tabbar-inner{max-width:640px;margin:0 auto;display:flex;min-height:58px}
+  .tabbar a{flex:1;min-width:44px;min-height:58px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:3px;color:var(--dim);text-decoration:none;
+    font-size:11px;font-weight:500;line-height:1.2}
+  .tabbar a .ui-icon{width:25px;height:25px}
+  .tabbar a[aria-current="page"]{color:var(--tint);font-weight:600}
+  .tabbar a:focus-visible{outline:2px solid var(--tint);outline-offset:-4px}
+  .tabbar a:active{opacity:.7}
+  .health-link{display:block;width:100%;text-align:left;color:var(--fg);font-weight:400}
+  .health-link:active{transform:none}
+  .health-card-head{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;margin-bottom:16px}
+  .health-card-head .ui-icon{width:21px;height:21px}
+  .health-card-head .bchev{margin-left:auto;width:16px;height:16px;color:var(--dim)}
+  .health-metrics{display:flex;gap:16px}
+  .health-metric{flex:1;min-width:0}
+  .health-metric .metric-label{display:block;font-size:13px;color:var(--dim);margin-bottom:3px}
+  .health-metric strong,.health-weight strong{font-size:32px;font-weight:700;letter-spacing:-.025em}
+  .health-metric small,.health-weight small{font-size:13px;color:var(--dim);margin-left:4px}
+  .health-note{display:block;font-size:12.5px;line-height:1.6;color:var(--dim);margin:10px 0 0}
+  .health-balance{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+  .health-balance .bl{flex:1;min-width:0}
+  .health-balance .bl b{display:block;font-size:14px;font-weight:500}
+  .health-balance .bl small{display:block;font-size:12px;color:var(--dim);margin-top:3px}
+  .health-balance .bnum{font-size:22px}
+  .health-state{margin-left:auto;font-size:12px;color:var(--dim);font-weight:400}
+  .health-upcoming .health-card-head{margin-bottom:8px}
+  .health-upcoming h2.health-card-head{font-size:16px;font-weight:600;text-transform:none;
+    letter-spacing:normal;color:var(--fg)}
+  .health-upcoming p{margin:0;font-size:13px;line-height:1.65;color:var(--dim)}
+  body.health-view #calArea .wk svg,body.health-view #calArea .cday svg{display:none}
+  body.health-view #calArea .wk{min-height:58px;justify-content:center}
+  body.health-view #calArea .cday{min-height:44px;justify-content:center}
   @media (max-width:360px){#dlg .fld label{font-size:15px}.energy-row{gap:8px}.energy-row label{font-size:15px}}
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
@@ -423,13 +460,19 @@
     <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 3v18h17M8 16v-5m5 5V7m5 9v-3"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 9a8 8 0 0 0-13-4L3 9m0-6v6h6M4 15a8 8 0 0 0 13 4l4-4m0 6v-6h-6"/></symbol>
+    <symbol id="i-food" viewBox="0 0 24 24"><path d="M4 3v6m3-6v6m3-6v6M4 7h6v2a3 3 0 0 1-6 0M7 12v9M20 3c-4 2-5 5-5 9h5m0-9v18"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+    <symbol id="i-weight" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 9a5 5 0 0 1 10 0M12 10l2-3"/></symbol>
+    <symbol id="i-training" viewBox="0 0 24 24"><path d="M8 12h8M3 9v6m3-9v12m12-12v12m3-9v6M3 12h3m12 0h3"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.8 14A9 9 0 0 1 10 3.2 9 9 0 1 0 20.8 14Z"/></symbol>
   </defs>
 </svg>
 
-<div class="top">
-  <h1>🍽️ 饮食</h1>
+<main id="appMain">
+<header class="top">
+  <h1 id="pageTitle" tabindex="-1">🍽️ 饮食</h1>
   <button class="iconbtn" id="btnSet" title="设置" aria-label="设置"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-gear"/></svg></button>
-</div>
+</header>
 
 <!-- ===== 日期标题（点开选日期） ===== -->
 <!-- ===== 顶部日期：点击在「周视图 / 整月日历」之间切换 ===== -->
@@ -446,6 +489,7 @@
 
 <div class="storage-error" id="storageError" role="alert" hidden></div>
 <button id="btnReloadData" class="wide" hidden>重新加载数据</button>
+<section id="dietPage" aria-labelledby="pageTitle">
 <!-- ===== 摄入热量 ===== -->
 <div class="card">
   <div class="kcal-hd"><span>🍽️ 摄入热量</span><span class="kcal-goal" id="gKcalTxt">目标 2000</span></div>
@@ -467,18 +511,47 @@
   <div class="hint" id="mealTotals"></div>
 </div>
 
-<!-- ===== 代谢与消耗（入口卡，详情在第二屏） ===== -->
-<button class="balcard" id="btnBurn">
-  <span class="bl"><b>代谢与消耗</b><small id="balSub">设置身体数据后计算</small></span>
-  <span class="bnum" id="balNum">—</span>
-  <span class="bchev">›</span>
+</section>
+
+<!-- ===== 健康概览：复用现有日期、能量、体重与备份 ===== -->
+<section id="healthPage" aria-labelledby="pageTitle" hidden>
+<button class="card health-link" id="btnBurn">
+  <span class="health-card-head"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true" style="color:var(--c)"><use href="#i-heart"/></svg>健康能量<svg viewBox="0 0 24 24" class="ui-icon bchev" aria-hidden="true"><use href="#i-back" transform="rotate(180 12 12)"/></svg></span>
+  <span class="health-metrics">
+    <span class="health-metric"><span class="metric-label">活动能量</span><strong id="healthActive" style="color:var(--c)">—</strong><small>kcal</small></span>
+    <span class="health-metric"><span class="metric-label">静息能量</span><strong id="healthBasal" style="color:var(--p)">—</strong><small>kcal</small></span>
+  </span>
+  <span class="health-note" id="healthEnergyNote">尚未录入 · 点击填写两项能量</span>
+  <span class="health-balance"><span class="bl"><b>代谢与消耗</b><small id="balSub">设置身体数据后计算</small></span><span class="bnum" id="balNum">—</span></span>
 </button>
+<button class="card health-link" id="btnHealthWeight">
+  <span class="health-card-head"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true" style="color:var(--acc)"><use href="#i-weight"/></svg>体重<svg viewBox="0 0 24 24" class="ui-icon bchev" aria-hidden="true"><use href="#i-back" transform="rotate(180 12 12)"/></svg></span>
+  <span class="health-weight"><strong id="healthWeightValue">—</strong><small>kg</small></span>
+  <span class="health-note" id="healthWeightDate">尚无体重记录 · 点击记录</span>
+</button>
+<section class="card health-upcoming" aria-labelledby="healthTrainingTitle">
+  <h2 class="health-card-head" id="healthTrainingTitle" style="color:var(--fg);letter-spacing:normal"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true" style="color:var(--c)"><use href="#i-training"/></svg>训练<span class="health-state">暂未接入</span></h2>
+  <p>后续在这里查看训练类型、时长和历史记录。</p>
+</section>
+<section class="card health-upcoming" aria-labelledby="healthSleepTitle">
+  <h2 class="health-card-head" id="healthSleepTitle" style="color:var(--fg);letter-spacing:normal"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true" style="color:var(--p)"><use href="#i-moon"/></svg>睡眠<span class="health-state">暂未接入</span></h2>
+  <p>后续在这里查看睡眠时长、时间与阶段。</p>
+</section>
+</section>
+</main>
+
+<nav class="tabbar" id="primaryNav" aria-label="主要栏目">
+  <div class="tabbar-inner">
+    <a href="#/diet" id="navDiet" aria-current="page"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-food"/></svg><span>饮食</span></a>
+    <a href="#/health" id="navHealth"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-heart"/></svg><span>健康</span></a>
+  </div>
+</nav>
 
 <!-- ===== 第二屏：代谢与消耗 ===== -->
-<div id="burn">
+<section id="burn" aria-label="代谢与消耗详情">
   <div class="scrwrap">
     <div class="scrhead">
-      <button class="backbtn" id="btnBurnBack" aria-label="返回饮食"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-back"/></svg></button>
+      <button class="backbtn" id="btnBurnBack" aria-label="返回健康"><svg viewBox="0 0 24 24" class="ui-icon" aria-hidden="true"><use href="#i-back"/></svg></button>
       <h1>代谢与消耗</h1>
       <span aria-hidden="true"></span>
     </div>
@@ -521,7 +594,7 @@
       <div id="duoBox"></div>
     </div>
 
-    <div class="sechd">体重</div>
+    <div class="sechd" id="weightSection" tabindex="-1">体重 <span class="energy-date" id="weightDate"></span></div>
     <div class="card">
       <div class="winline">
         <input type="number" inputmode="decimal" step="0.1" id="wInput" placeholder="体重 kg" aria-label="体重（kg）">
@@ -536,7 +609,7 @@
       手表能量也是估算值；当前记录差额不代表实际减重，不自动修改你的摄入目标。
     </div>
   </div>
-</div>
+</section>
 
 <!-- 供脚本写入的隐藏数据出口（不显示，仅供导出/调试读取） -->
 <div style="display:none">
@@ -1481,6 +1554,7 @@ function render(){
   renderCalArea();
   renderMeals();
   try { renderBurn(); } catch (e) { /* 第二屏渲染失败不影响主屏 */ }
+  try { renderHealth(); } catch (e) { showFatal(e); }
 }
 
 function addItems(items){
@@ -1506,6 +1580,7 @@ function currentWeight(date = editDate){
 
 let weightEditDate = '';
 function renderBurn(){
+  $('weightDate').textContent = editDate;
   const isToday = editDate === todayKey();
   renderEnergyInputs();
   const eb = energyBalance(editDate, body, weight, burnByDay);
@@ -1629,7 +1704,7 @@ function renderBurn(){
     }
     let h = '';
     if (!keys.length){
-      h += '<div class="empty2">还没有体重记录<br>填在今天，坚持记录才能看出趋势</div>';
+      h += '<div class="empty2">还没有体重记录<br>记录所选日期的体重，坚持记录才能看出趋势</div>';
     } else {
       const first = +weight[keys[0]], last = +weight[keys[keys.length - 1]];
       const delta = last - first;
@@ -1687,24 +1762,39 @@ function renderBurn(){
   }
 }
 
-function openBurn(){
+function renderHealth(){
+  const saved = burnByDay[editDate];
+  $('healthActive').textContent = saved ? N(saved.active) : '—';
+  $('healthBasal').textContent = saved ? N(saved.basal) : '—';
+  $('healthEnergyNote').textContent = saved
+    ? (editDate === todayKey() ? '今日累计' : '历史录入') + ' · 合计 ' + N(saved.active + saved.basal) + ' kcal'
+    : '尚未录入 · 点击填写两项能量';
+  const latest = Object.keys(weight).filter(k => k <= editDate && +weight[k] > 0).sort().at(-1);
+  const value = latest ? +weight[latest] : +body.weightKg || 0;
+  $('healthWeightValue').textContent = value > 0 ? N(value) : '—';
+  $('healthWeightDate').textContent = latest
+    ? (latest === editDate ? '所选日期已记录 · ' : '最近记录 · ') + latest
+    : value > 0 ? '身体档案中的体重 · 点击记录' : '尚无体重记录 · 点击记录';
+}
+
+/* 详情仍复用原有能量、体重表单；底部主要导航保持可用。 */
+function showBurnPane(){
   if ($('burn').classList.contains('on')) return;
   $('burn').classList.add('on');
-  $('burn').scrollTop = 0;
   for (const element of document.body.children){
-    if (['burn','dlg','rec','toast','alert','impor','iosStatusStrip'].includes(element.id)) continue;
+    if (['burn','dlg','rec','toast','alert','impor','iosStatusStrip','primaryNav'].includes(element.id)) continue;
     burnInertState.set(element,element.inert); element.inert = true;
   }
-  $('btnBurnBack').focus();
   renderBurn();
 }
 const burnInertState = new Map();
-const closeBurn = () => {
+function hideBurnPane(){
   $('burn').classList.remove('on');
   for (const [element, inert] of burnInertState) element.inert = inert;
   burnInertState.clear();
-  $('btnBurn').focus();
-};
+}
+function openBurn(){ navigateApp('energy'); }
+const closeBurn = () => returnToHealth();
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && $('burn').classList.contains('on') && !document.querySelector('.modal.on')){ e.preventDefault(); closeBurn(); }
 });
@@ -2118,10 +2208,91 @@ $('wInput').addEventListener('keydown', e => {
 });
 
 /* 启动：分步容错 —— 任何一步失败都不该让整个界面变成"全 0 且点不动" */
+/* TEST-EXTRACT-NAV-A */
+let appRoute = '';
+let lastHealthRoute = 'health';
+const sectionScroll = { diet:0, health:0 };
+const detailScroll = { energy:0, weight:0 };
+const seenDetails = new Set();
+const routeHashes = { diet:'#/diet', health:'#/health', energy:'#/health/energy', weight:'#/health/weight' };
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+function routeFromHash(hash){
+  return Object.keys(routeHashes).find(k => routeHashes[k] === hash) || 'diet';
+}
+function navigateApp(route, { replace = false } = {}){
+  if (!Object.hasOwn(routeHashes,route)) return;
+  if (appRoute === route) return;
+  const state = { kcalFrom:appRoute };
+  history[replace ? 'replaceState' : 'pushState'](state,'',routeHashes[route]);
+  syncAppRoute();
+}
+function returnToHealth(){
+  if (!['energy','weight'].includes(appRoute)) return;
+  if (history.state?.kcalFrom === 'health') history.back();
+  else navigateApp('health',{replace:true});
+}
+function syncAppRoute({ initial = false } = {}){
+  const next = routeFromHash(location.hash);
+  if (appRoute === next) return;
+  // 确认/导入尚未结束时保持当前页面，避免导航打断正在等待的恢复事务。
+  if (appRoute && ($('alert').classList.contains('on') || $('impor').classList.contains('on'))){
+    history.replaceState(history.state,'',routeHashes[appRoute]); return;
+  }
+  const previous = appRoute;
+  if (previous === 'diet' || previous === 'health') sectionScroll[previous] = window.scrollY;
+  if (previous === 'energy' || previous === 'weight') detailScroll[previous] = $('burn').scrollTop;
+  if ($('dlg').classList.contains('on')) closeSet();
+  if ($('rec').classList.contains('on')) closeRec();
+  hideBurnPane();
+  appRoute = next;
+  const isHealth = next !== 'diet';
+  if (isHealth) lastHealthRoute = next;
+  $('dietPage').hidden = isHealth;
+  $('healthPage').hidden = !isHealth;
+  document.body.classList.toggle('health-view',isHealth);
+  $('pageTitle').textContent = isHealth ? '健康' : '🍽️ 饮食';
+  for (const [id, selected] of [['navDiet',!isHealth],['navHealth',isHealth]]){
+    if (selected) $(id).setAttribute('aria-current','page');
+    else $(id).removeAttribute('aria-current');
+  }
+  $('navHealth').setAttribute('href',routeHashes[lastHealthRoute]);
+  // 同一日期、同一数据源；导航只改变浏览状态，不创建或写入记录。
+  render();
+  if (next === 'energy' || next === 'weight'){
+    showBurnPane();
+    if (next === 'weight' && !seenDetails.has(next)){
+      $('weightSection').scrollIntoView({block:'start'});
+      $('weightSection').focus({preventScroll:true});
+    } else {
+      $('burn').scrollTop = detailScroll[next];
+      $('btnBurnBack').focus({preventScroll:true});
+    }
+    seenDetails.add(next);
+  } else {
+    window.scrollTo(0,sectionScroll[next]);
+    if (!initial){
+      const backTarget = next === 'health' && ['energy','weight'].includes(previous)
+        ? $(previous === 'weight' ? 'btnHealthWeight' : 'btnBurn') : $('pageTitle');
+      backTarget.focus({preventScroll:true});
+    }
+  }
+  if (location.hash !== routeHashes[next]) history.replaceState(history.state,'',routeHashes[next]);
+}
+for (const [id, section] of [['navDiet','diet'],['navHealth','health']]){
+  $(id).addEventListener('click', e => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    navigateApp(section === 'health' && appRoute === 'diet' ? lastHealthRoute : section);
+  });
+}
+$('btnHealthWeight').addEventListener('click', () => navigateApp('weight'));
+window.addEventListener('popstate',syncAppRoute);
+window.addEventListener('hashchange',syncAppRoute);
+/* TEST-EXTRACT-NAV-B */
 function boot(){
   const errs = [];
   try { $('todayLabel').textContent = '今日总计 · ' + todayKey(); } catch (e) { errs.push(e); }
-  try { render(); } catch (e) { errs.push(e); }
+  try { syncAppRoute({initial:true}); } catch (e) { errs.push(e); }
   try { refreshRisk(); } catch (e) { errs.push(e); }
   try {
     (function backupReminder(){
@@ -2620,7 +2791,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-07.4';
+const APP_VERSION = '2026-10-07.5';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
