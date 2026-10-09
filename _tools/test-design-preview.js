@@ -56,11 +56,14 @@ const server = http.createServer((req,res)=>{
       if(nav.supported){
         const lensStyle = await child.evaluate(()=>{
           const s=getComputedStyle(document.getElementById('tabGlassLens'));
-          return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};
+          return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter,
+            borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],shadow:s.boxShadow};
         });
         assert.equal(lensStyle.fill,'rgba(0, 0, 0, 0)','Selected lens must have a fully transparent fill');
         assert.equal(lensStyle.image,'none','Selected lens must not add a gradient overlay');
         assert.equal(lensStyle.filter,'none','Selected lens must not add another glass layer');
+        assert(lensStyle.borders.every(width=>width==='0px'),'Selected lens must not draw an inner frame');
+        assert.equal(lensStyle.shadow,'none','Selected lens must not recreate a frame with edge highlights or shadows');
       }
       const noContentGlass = await child.evaluate(()=>[document.querySelector('.card'),document.querySelector('.tabbar a')].every(el=>getComputedStyle(el).backdropFilter==='none'));
       assert(noContentGlass,'Content and individual tabs must not add extra glass layers');

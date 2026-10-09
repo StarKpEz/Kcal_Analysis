@@ -81,9 +81,9 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 .tabbar-inner{position:relative;max-width:none;min-height:56px;gap:4px}
 .tab-glass-lens{
   position:absolute;left:0;top:2px;height:calc(100% - 4px);border-radius:999px;
-  background:var(--tab-selected);border:1px solid var(--line);pointer-events:none;
+  background:var(--tab-selected);border:0;pointer-events:none;
   transform:translateX(var(--lens-x,0px));width:var(--lens-width,0px);
-  transform-origin:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+  transform-origin:center;box-shadow:none;
 }
 .tabbar a{
   position:relative;z-index:1;
@@ -110,8 +110,8 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
     opacity:.65;transition:opacity .16s ease;
   }
   .tabbar-inner{position:relative;z-index:1}
-  /* Transparent selection lens: no fill, gradient, or second backdrop filter. */
-  .tab-glass-lens{background:transparent;border-color:var(--tab-edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 6px rgba(0,0,0,.05)}
+  /* Transparent, borderless selection: only the outer capsule has a contour. */
+  .tab-glass-lens{background:transparent;border:0;box-shadow:none}
   .tabbar a{color:var(--fg);text-shadow:0 1px 2px var(--tab-ink-halo),0 0 5px var(--tab-ink-halo)}
   .tabbar a .ui-icon{filter:drop-shadow(0 1px 1px var(--tab-ink-halo))}
   .tabbar a[aria-current="page"]{background:transparent;color:var(--tint);box-shadow:none}
@@ -120,7 +120,7 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 @media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
   .tabbar{background:var(--tab-surface);border-color:var(--line);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--tab-shadow)}
   .tabbar:before{display:none}
-  .tab-glass-lens{background:var(--tab-selected);border-color:var(--line)}
+  .tab-glass-lens{background:var(--tab-selected);border:0;box-shadow:none}
   .tabbar a{color:var(--fg);text-shadow:none}
   .tabbar a .ui-icon{filter:none}
   .tabbar a[aria-current="page"]{background:transparent;color:var(--tint);box-shadow:none}
