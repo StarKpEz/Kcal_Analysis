@@ -340,11 +340,31 @@
   .legend-inline{display:flex;gap:14px;font-size:12px;color:var(--dim);margin-top:10px}
   .legend-inline i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
   /* 体重趋势 */
-  .weight-line{display:block;width:100%;height:auto;margin-top:16px;overflow:visible}
+  .weight-line{display:block;width:100%;height:auto;margin-top:16px;overflow:visible;cursor:crosshair}
   .weight-line text{fill:var(--dim);font:11px -apple-system,BlinkMacSystemFont,sans-serif}
   .weight-line .axis{stroke:var(--line);stroke-width:1}
   .weight-line .trend{fill:none;stroke:var(--acc);stroke-width:2;stroke-linejoin:round}
   .weight-line .point{fill:var(--card);stroke:var(--acc);stroke-width:2}
+  .weight-line .selected-point{fill:var(--card);stroke:var(--acc);stroke-width:3;pointer-events:none}
+  .weight-line .selected-guide{stroke:var(--acc);stroke-width:1;stroke-dasharray:3 4;opacity:.5;pointer-events:none}
+  .weight-tabs{display:flex;gap:2px;padding:3px;background:var(--card2);border-radius:11px;margin-top:18px}
+  .weight-tabs button{flex:1;min-width:0;min-height:44px;padding:7px 0;background:transparent;color:var(--dim);border-radius:8px;font-size:15px}
+  .weight-tabs button[aria-pressed="true"]{background:var(--card);color:var(--fg);box-shadow:var(--shadow)}
+  .weight-period{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:10px;min-height:44px}
+  .weight-period span{flex:1;text-align:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+  .weight-period button:disabled{opacity:.3;cursor:default}
+  .weight-change{text-align:center;padding:16px 0 6px}
+  .weight-change small{display:block;color:var(--dim);font-size:12px}
+  .weight-change strong{display:block;font-size:42px;line-height:1.25;letter-spacing:-.035em;font-variant-numeric:tabular-nums;margin:5px 0}
+  .weight-change strong span{font-size:18px;font-weight:500;letter-spacing:0;margin-left:5px}
+  .weight-readout{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--card2);border-radius:12px;padding:10px 12px;margin-top:12px;font-size:13px;font-variant-numeric:tabular-nums}
+  .weight-readout small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
+  .weight-readout strong{font-size:22px;white-space:nowrap}
+  .weight-readout strong small{display:inline;font-size:12px;font-weight:400;margin-left:4px}
+  .weight-scrub{display:block;width:100%;min-height:44px;margin:0;accent-color:var(--acc);padding:0}
+  .weight-record{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;background:transparent;color:var(--fg);border-radius:0;border-bottom:1px solid var(--line);min-height:44px;padding:10px 0;text-align:left;font-size:13px;font-weight:400}
+  .weight-record small{display:block;color:var(--dim);font-size:11px;margin-top:2px}
+  .weight-record b{white-space:nowrap;font-weight:600}
   .winline{display:flex;align-items:center;gap:10px;margin-top:12px}
   .winline input{flex:1;min-width:0;background:var(--card2);border:none;color:var(--fg);
     border-radius:12px;padding:12px;font:inherit;font-size:17px;text-align:center}
@@ -616,13 +636,14 @@
       <div id="duoBox"></div>
     </div>
 
-    <div class="sechd" id="weightSection" tabindex="-1">体重 <span class="energy-date" id="weightDate"></span></div>
+    <div class="sechd" id="weightSection" tabindex="-1">体重趋势</div>
     <div class="card">
+      <div id="weightBox"></div>
+      <label class="hint" for="wInput" style="display:block;margin-top:20px">记录 <span id="weightDate"></span> 的体重（kg）</label>
       <div class="winline">
         <input type="number" inputmode="decimal" step="0.1" id="wInput" placeholder="体重 kg" aria-label="体重（kg）">
         <button id="btnSaveWeight">记录</button>
       </div>
-      <div id="weightBox"></div>
     </div>
 
     <div class="hint" style="margin-top:16px">
@@ -1244,19 +1265,54 @@ function healthImportPlan(fields){
 }
 function formatSleep(minutes){ const n = Math.round(minutes); return Math.floor(n/60)+' 小时 '+n%60+' 分'; }
 function healthSource(record){return record?.source === 'health-json' ? '健康 JSON 导入' : record?.source === 'mixed' ? '导入后手动修正' : '手动记录';}
-function weightLineChart(records, asOf){
-  if (!records.length) return '<div class="hint">近 14 天没有体重记录</div>';
-  const values=records.map(r=>r.kg),lo=Math.min(...values)-.5,hi=Math.max(...values)+.5;
-  const x=k=>42+(Date.parse(k+'T12:00:00Z')-Date.parse(shiftDay(asOf,-13)+'T12:00:00Z'))/86400000/13*256;
-  const y=v=>16+(hi-v)/(hi-lo)*104;
-  let h='<svg class="weight-line" viewBox="0 0 320 156" role="img" aria-label="近14天体重折线图，绿色空心圆为实际称重，缺失日期未补值"><title>按日期间隔显示实际体重，单位 kg</title>';
-  for (const v of [hi,(hi+lo)/2,lo]) h+='<line class="axis" x1="42" y1="'+y(v)+'" x2="298" y2="'+y(v)+'"/><text x="2" y="'+(y(v)+4)+'">'+N(v)+'</text>';
+function weightWindow(weights, mode, anchor, asOf){
+  const keys=Object.keys(weights).filter(k=>isDayKey(k)&&k<=asOf&&Number.isFinite(+weights[k])&&+weights[k]>0&&+weights[k]<=400).sort();
+  anchor=anchor>asOf?asOf:anchor;
+  let from, end, previous='', next='';
+  if(mode==='week'){
+    const weekday=new Date(anchor+'T12:00:00Z').getUTCDay();
+    from=shiftDay(anchor,-((weekday+6)%7));end=shiftDay(from,6);
+    previous=shiftDay(from,-7);next=shiftDay(from,7);
+  }else if(mode==='month'){
+    from=anchor.slice(0,7)+'-01';
+    const d=new Date(from+'T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);
+    next=d.toISOString().slice(0,10);end=shiftDay(next,-1);previous=shiftDay(from,-1);
+  }else if(mode==='year'){
+    from=anchor.slice(0,4)+'-01-01';next=(+anchor.slice(0,4)+1)+'-01-01';
+    end=shiftDay(next,-1);previous=shiftDay(from,-1);
+  }else{
+    from=keys[0]||asOf;end=keys.at(-1)||asOf;
+  }
+  const through=end>asOf?asOf:end;
+  const records=keys.filter(k=>k>=from&&k<=through).map(k=>({k,kg:+weights[k]}));
+  return {from,through,records,previous,next,canPrevious:mode!=='all'&&keys.length>0&&from>keys[0],canNext:mode!=='all'&&end<asOf,
+    first:records[0]?.kg??null,last:records.at(-1)?.kg??null,delta:records.length>1?records.at(-1).kg-records[0].kg:null};
+}
+function weightChartGeometry(records, from, through){
+  const values=records.map(r=>r.kg),pad=Math.max(.5,(Math.max(...values)-Math.min(...values))*.08);
+  const lo=Math.min(...values)-pad,hi=Math.max(...values)+pad;
+  const span=Math.max(0,(Date.parse(through+'T12:00:00Z')-Date.parse(from+'T12:00:00Z'))/86400000);
+  const x=k=>span?46+(Date.parse(k+'T12:00:00Z')-Date.parse(from+'T12:00:00Z'))/86400000/span*298:195;
+  const y=v=>16+(hi-v)/(hi-lo)*148;
+  return {lo,hi,span,x,y};
+}
+function weightLineChart(records, asOf, from=shiftDay(asOf,-13), selectedDay=''){
+  if (!records.length) return '<div class="empty2">这个区间没有体重记录<br>可以查看全部历史，或切换到上一个区间</div>';
+  const {lo,hi,span,x,y}=weightChartGeometry(records,from,asOf);
+  const selected=records.find(r=>r.k===selectedDay)||records.at(-1);
+  let h='<svg class="weight-line" viewBox="0 0 360 204" role="img" aria-label="'+from+' 至 '+asOf+' 体重趋势，'+records.length+' 条实际记录；可用下方滑块逐条查看"><title>绿色空心圆为实际称重，日期间隔按日历显示，单位 kg</title>';
+  for (const v of [hi,(hi+lo)/2,lo]) h+='<line class="axis" x1="46" y1="'+y(v)+'" x2="344" y2="'+y(v)+'"/><text x="2" y="'+(y(v)+4)+'">'+N(v)+'</text>';
+  h+='<line id="weightSelectedGuide" class="selected-guide" x1="'+x(selected.k)+'" x2="'+x(selected.k)+'" y1="16" y2="164"/>';
   if(records.length>1) h+='<polyline class="trend" points="'+records.map(r=>x(r.k)+','+y(r.kg)).join(' ')+'"/>';
-  for(const r of records)h+='<circle class="point" cx="'+x(r.k)+'" cy="'+y(r.kg)+'" r="4"><title>'+r.k+'：'+N(r.kg)+' kg</title></circle>';
-  for(const n of [13,7,0]){const k=shiftDay(asOf,-n);h+='<text x="'+x(k)+'" y="145" text-anchor="middle">'+k.slice(5).replace('-','/')+'</text>';}
-  h+='</svg><details class="hint"><summary>查看称重数值（kg）</summary>';
-  for(const r of records)h+='<div>'+r.k+'：'+N(r.kg)+' kg</div>';
-  return h+'</details>';
+  const radius=records.length>90?2.5:4;
+  for(const r of records)h+='<circle class="point" cx="'+x(r.k)+'" cy="'+y(r.kg)+'" r="'+radius+'"><title>'+r.k+'：'+N(r.kg)+' kg</title></circle>';
+  h+='<circle id="weightSelectedPoint" class="selected-point" cx="'+x(selected.k)+'" cy="'+y(selected.kg)+'" r="6"/>';
+  const ticks=span===0?1:span>60?5:3;
+  for(let i=0;i<ticks;i++){
+    const k=shiftDay(from,ticks===1?0:Math.round(span*i/(ticks-1)));
+    h+='<text x="'+x(k)+'" y="192" text-anchor="'+(ticks===1?'middle':i===0?'start':i===ticks-1?'end':'middle')+'">'+(span>365?k.slice(0,7):k.slice(5).replace('-','/'))+'</text>';
+  }
+  return h+'</svg>';
 }
 /* TEST-EXTRACT-HEALTH-MODEL-B */
 function dataSnapshot(){
@@ -1925,6 +1981,83 @@ function currentWeight(date = editDate){
   return +body.weightKg || 0;
 }
 
+/* 时间范围只控制图表，不写入记录，也不改变表单所选日期。 */
+let weightView = {mode:'all',anchor:'',asOf:'',selectedDay:''};
+function currentWeightWindow(){
+  if(weightView.asOf!==editDate){weightView.asOf=editDate;weightView.anchor=editDate;weightView.selectedDay='';}
+  return weightWindow(weight,weightView.mode,weightView.anchor,editDate);
+}
+function weightRecordDescription(record){
+  const meta=weightMeta[record.k],time=meta?.measuredAt?.slice(11,16);
+  return (time?time+' · ':'')+(meta?.source==='health-json'?'健康导入':meta?.source==='manual'?'手动记录':'已有记录');
+}
+function weightReadoutHTML(record){
+  return '<div>'+record.k+'<small>'+esc(weightRecordDescription(record))+'</small></div><strong>'+N(record.kg)+'<small>kg</small></strong>';
+}
+function renderWeightPanel(){
+  const box=$('weightBox');if(!box)return;
+  const view=currentWeightWindow(),{records,from,through,delta}=view;
+  const selected=records.find(r=>r.k===weightView.selectedDay)||records.at(-1);
+  weightView.selectedDay=selected?.k||'';
+  let h='<div class="weight-tabs" role="group" aria-label="体重时间范围">';
+  for(const [mode,label] of [['all','全部'],['week','周'],['month','月'],['year','年']]){
+    h+='<button type="button" data-weight-mode="'+mode+'" aria-pressed="'+(weightView.mode===mode)+'">'+label+'</button>';
+  }
+  const dateLabel=k=>k.replaceAll('-','/');
+  h+='</div><div class="weight-period"><button type="button" class="iconbtn" data-weight-step="previous" aria-label="上一个区间"'+(view.canPrevious?'':' disabled')+'><svg class="ui-icon" aria-hidden="true"><use href="#i-back"/></svg></button><span>'+dateLabel(from)+(through===from?'':' – '+dateLabel(through))+'</span><button type="button" class="iconbtn" data-weight-step="next" aria-label="下一个区间"'+(view.canNext?'':' disabled')+'><svg class="ui-icon" aria-hidden="true"><use href="#i-back" transform="rotate(180 12 12)"/></svg></button></div>';
+  h+='<div class="weight-change"><small>'+(weightView.mode==='all'?'累计':'区间')+'体重变化</small><strong'+(delta!==null&&delta<0?' style="color:var(--acc)"':'')+'>'+(delta===null?'—':(N(delta)>0?'+':'')+N(delta)+'<span>kg</span>')+'</strong><small>'+(records.length>1?'实际首末记录之差':records.length===1?'只有一次称重，暂不计算变化':'这个区间尚无称重')+'</small></div>';
+  h+='<div class="wstats"><div><b>'+(view.first===null?'—':N(view.first))+'</b><small>首次 kg</small></div><div><b>'+(view.last===null?'—':N(view.last))+'</b><small>末次 kg</small></div><div><b>'+records.length+'</b><small>记录天数</small></div></div>';
+  h+=weightLineChart(records,through,from,weightView.selectedDay);
+  if(selected){
+    h+='<div id="weightReadout" class="weight-readout" aria-live="polite" aria-atomic="true">'+weightReadoutHTML(selected)+'</div>';
+    h+='<input id="weightScrub" class="weight-scrub" type="range" min="0" max="'+(records.length-1)+'" step="1" value="'+records.indexOf(selected)+'" aria-label="逐条查看称重记录" aria-valuetext="'+selected.k+'，'+N(selected.kg)+' kg"'+(records.length===1?' disabled':'')+'>';
+    h+='<div class="hint">点选图表或移动滑块查看每次称重。仅连接实际记录，未称重日期不补值。</div><details class="hint" style="margin-top:14px"><summary>查看这个区间的全部记录（'+records.length+' 天）</summary>';
+    for(const r of records.toReversed())h+='<button type="button" class="weight-record" data-weight-day="'+r.k+'" aria-label="查看 '+r.k+' 体重 '+N(r.kg)+' kg"><span>'+r.k+'<small>'+esc(weightRecordDescription(r))+'</small></span><b>'+N(r.kg)+' kg</b></button>';
+    h+='</details>';
+  }
+  const rev=reverseTDEE(store,weight,{asOf:editDate});
+  h+='<details class="hint" style="margin-top:16px"><summary>近 28 天消耗推算 · 截至 '+editDate+'</summary>';
+  if(rev.ok){
+    h+='<p>趋势推算（参考）：<b>'+Math.round(rev.value)+' kcal/天</b><br>'+rev.from+' 至 '+rev.to+'，区间 '+rev.days+' 天均有饮食记录。按已记录摄入推算，漏记与体重水分会影响结果，不视为实测消耗，不自动调整目标。</p>';
+  }else{
+    const why={noWeight:'近 28 天至少需要 4 次体重记录',tooShort:'体重记录跨度不足 14 天',fewLogs:'体重区间内仍有日期没有饮食记录',unstableTrend:'体重趋势波动较大，暂不推算'}[rev.reason]||'数据不足';
+    h+='<p>暂不推算消耗：'+why+(rev.reason==='fewLogs'?'（'+rev.logged+'/'+rev.days+' 天）':'')+'</p>';
+  }
+  box.innerHTML=h+'</details>';
+}
+function selectWeightPoint(index){
+  const view=currentWeightWindow(),r=view.records[index];if(!r)return;
+  weightView.selectedDay=r.k;
+  $('weightReadout').innerHTML=weightReadoutHTML(r);
+  const slider=$('weightScrub');slider.value=index;slider.setAttribute('aria-valuetext',r.k+'，'+N(r.kg)+' kg');
+  const {x,y}=weightChartGeometry(view.records,view.from,view.through);
+  $('weightSelectedPoint').setAttribute('cx',x(r.k));$('weightSelectedPoint').setAttribute('cy',y(r.kg));
+  $('weightSelectedGuide').setAttribute('x1',x(r.k));$('weightSelectedGuide').setAttribute('x2',x(r.k));
+}
+$('weightBox').addEventListener('click',e=>{
+  const button=e.target.closest('button');
+  if(button?.disabled)return;
+  if(button?.dataset.weightMode){
+    weightView.mode=button.dataset.weightMode;weightView.anchor=editDate;weightView.selectedDay='';renderWeightPanel();
+    $('weightBox').querySelector('[data-weight-mode="'+weightView.mode+'"]').focus({preventScroll:true});
+  }else if(button?.dataset.weightStep){
+    const view=currentWeightWindow(),step=button.dataset.weightStep;
+    if((step==='previous'&&!view.canPrevious)||(step==='next'&&!view.canNext))return;
+    weightView.anchor=step==='previous'?view.previous:view.next;weightView.selectedDay='';renderWeightPanel();
+    $('weightBox').querySelector('[data-weight-step="'+step+'"]').focus({preventScroll:true});
+  }else if(button?.dataset.weightDay){
+    selectWeightPoint(currentWeightWindow().records.findIndex(r=>r.k===button.dataset.weightDay));
+  }else{
+    const svg=e.target.closest('svg.weight-line');if(!svg)return;
+    const matrix=svg.getScreenCTM();if(!matrix)return;
+    const point=svg.createSVGPoint();point.x=e.clientX;point.y=e.clientY;
+    const at=point.matrixTransform(matrix.inverse()).x,view=currentWeightWindow();
+    const {x}=weightChartGeometry(view.records,view.from,view.through);
+    let nearest=0;for(let i=1;i<view.records.length;i++)if(Math.abs(x(view.records[i].k)-at)<Math.abs(x(view.records[nearest].k)-at))nearest=i;
+    selectWeightPoint(nearest);
+  }
+});
+$('weightBox').addEventListener('input',e=>{if(e.target.id==='weightScrub')selectWeightPoint(+e.target.value);});
 let weightEditDate = '';
 function renderBurn(){
   $('weightDate').textContent = editDate;
@@ -2043,37 +2176,7 @@ function renderBurn(){
   // ---- 体重 ----
   const wb = $('weightBox');
   if (wb){
-    const keys = Object.keys(weight).filter(k => isDayKey(k) && k <= editDate && +weight[k] > 0).sort();
-    const last14 = [];
-    for (let i = 13; i >= 0; i--){
-      const k = shiftDay(editDate,-i);
-      if (+weight[k] > 0) last14.push({ k: k, kg: +weight[k] });
-    }
-    let h = '';
-    if (!keys.length){
-      h += '<div class="empty2">还没有体重记录<br>记录所选日期的体重，坚持记录才能看出趋势</div>';
-    } else {
-      const first = +weight[keys[0]], last = +weight[keys[keys.length - 1]];
-      const delta = last - first;
-      h += '<div class="wstats">' +
-             '<div><b>' + N(last) + '</b><small>最新 kg</small></div>' +
-             '<div><b style="color:' + (delta <= 0 ? 'var(--acc)' : '#ff453a') + '">' +
-               (delta > 0 ? '+' : '') + N(delta) + '</b><small>较首次 kg</small></div>' +
-             '<div><b>' + keys.length + '</b><small>已记录天数</small></div>' +
-           '</div>';
-      h += weightLineChart(last14,editDate);
-      const rev = reverseTDEE(store,weight,{ asOf:editDate });
-      if (rev.ok){
-        h += '<div class="hint" style="margin-top:14px">近 28 天窗口趋势推算（参考）：<b>' + Math.round(rev.value) + ' kcal/天</b><br>' +
-          rev.from + ' 至 ' + rev.to + '，区间 ' + rev.days + ' 天均有饮食记录。按已记录摄入推算，漏记与体重水分会影响结果，不视为实测消耗，不自动调整目标。</div>';
-      } else {
-        const why = { noWeight:'近 28 天至少需要 4 次体重记录', tooShort:'体重记录跨度不足 14 天',
-          fewLogs:'体重区间内仍有日期没有饮食记录', unstableTrend:'体重趋势波动较大，暂不推算' }[rev.reason] || '数据不足';
-        h += '<div class="hint" style="margin-top:14px">暂不推算消耗：' + why +
-          (rev.reason === 'fewLogs' ? '（' + rev.logged + '/' + rev.days + ' 天）' : '') + '</div>';
-      }
-    }
-    wb.innerHTML = h;
+    renderWeightPanel();
     const wi = $('wInput');
     if (wi && weightEditDate !== editDate){ wi.value = weight[editDate] || ''; weightEditDate = editDate; }
   }
@@ -3308,7 +3411,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-07.7';
+const APP_VERSION = '2026-10-09.1';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
