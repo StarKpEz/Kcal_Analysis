@@ -46,7 +46,7 @@ const server = http.createServer((req,res)=>{
         const bounds = document.getElementById('primaryNav').getBoundingClientRect();
         return {width:bounds.width,left:bounds.left,right:bounds.right,bottom:innerHeight-bounds.bottom,
           viewport:innerWidth,targets:[...document.querySelectorAll('.tabbar a')].map(el=>({height:el.getBoundingClientRect().height,width:el.getBoundingClientRect().width})),
-          filter:getComputedStyle(document.getElementById('primaryNav')).backdropFilter,
+          filter:getComputedStyle(document.getElementById('primaryNav'),'::before').backdropFilter,
           supported:CSS.supports('backdrop-filter','blur(1px)')};
       });
       assert(nav.width<=288 && nav.left>=16 && nav.right<=nav.viewport-16,'Floating navigation must fit small viewports');
@@ -59,10 +59,9 @@ const server = http.createServer((req,res)=>{
           return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter,
             borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],shadow:s.boxShadow};
         });
-        const lensAlpha=Number(lensStyle.fill.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)?.[1]);
-        assert(lensAlpha>0 && lensAlpha<1,'Selected oval must remain visible and translucent after removing its outline');
+        assert.equal(lensStyle.fill,'rgba(0, 0, 0, 0)','Selected lens must have zero background fill');
         assert.equal(lensStyle.image,'none','Selected lens must not add a gradient overlay');
-        assert.equal(lensStyle.filter,'none','Selected lens must not add another glass layer');
+        assert(lensStyle.filter.includes('brightness(') && lensStyle.filter.includes('contrast(') && !lensStyle.filter.includes('blur('),'The zero-fill oval must use subtle backdrop optics without additional blur');
         assert(lensStyle.borders.every(width=>width==='0px'),'Selected lens must not draw an inner frame');
         assert.equal(lensStyle.shadow,'none','Selected lens must not recreate a frame with edge highlights or shadows');
       }
@@ -70,6 +69,8 @@ const server = http.createServer((req,res)=>{
       assert(noContentGlass,'Content and individual tabs must not add extra glass layers');
       await page.emulateMedia({contrast:'more'});
       assert.equal(await child.evaluate(()=>getComputedStyle(document.getElementById('primaryNav')).backdropFilter),'none','Increased contrast must use the solid fallback');
+      assert.equal(await child.evaluate(()=>getComputedStyle(document.getElementById('primaryNav'),'::before').backdropFilter),'none','Increased contrast must disable the outer glass surface');
+      assert.equal(await child.evaluate(()=>getComputedStyle(document.getElementById('tabGlassLens')).backdropFilter),'none','Increased contrast must disable selection optics');
       await page.emulateMedia({contrast:'no-preference'});
       await frame.locator('#navDiet').click();
       await frame.locator('#dietPage').waitFor({state:'visible'});
@@ -104,7 +105,11 @@ const server = http.createServer((req,res)=>{
           sample.style.cssText='position:fixed;z-index:84;pointer-events:none;left:'+nav.left+'px;top:'+(nav.top-30)+'px;width:'+nav.width+'px;height:'+(nav.height+60)+'px;background:linear-gradient(90deg,#22c55e,#06b6d4 50%,#8b5cf6);border-radius:16px';
           document.body.append(sample);
         });
-        await frame.locator('#primaryNav').screenshot({path:path.join(root,'.preview-check','glass-transmission-'+scheme+'.png'),animations:'disabled'});
+        const visibleLens=await frame.locator('#primaryNav').screenshot({path:path.join(root,'.preview-check','glass-transmission-'+scheme+'.png'),animations:'disabled'});
+        await child.evaluate(()=>document.getElementById('tabGlassLens').style.visibility='hidden');
+        const hiddenLens=await frame.locator('#primaryNav').screenshot({animations:'disabled'});
+        await child.evaluate(()=>document.getElementById('tabGlassLens').style.removeProperty('visibility'));
+        assert(!visibleLens.equals(hiddenLens),'The transparent oval must still affect the rendered backdrop instead of disappearing');
         await child.evaluate(()=>document.getElementById('glass-color-fixture').remove());
       }
       await child.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));

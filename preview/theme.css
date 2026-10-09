@@ -5,7 +5,7 @@
   --acc:#30d158;--p:#64a8ff;--f:#ffd60a;--c:#ffb45b;
   --tab-surface:#2c2c2e;--tab-selected:#1c1c1e;--tab-label:#e5e5ea;
   --tab-shadow:0 8px 24px rgba(0,0,0,.32);
-  --tab-glass:rgba(24,24,28,.24);--tab-lens-surface:rgba(255,255,255,.10);
+  --tab-glass:rgba(24,24,28,.24);--tab-lens-optics:brightness(1.03) contrast(.94);
   --tab-edge:rgba(255,255,255,.32);--tab-sheen:rgba(255,255,255,.16);
   --tab-ink-halo:rgba(0,0,0,.9);
   --radius:18px;--radius-sm:10px;--shadow:none;
@@ -16,7 +16,7 @@
   --acc:#248a3d;--p:#0062cc;--f:#916a00;--c:#a95700;
   --tab-surface:#fff;--tab-selected:#eaf1ff;--tab-label:#636366;
   --tab-shadow:0 8px 24px rgba(24,32,48,.12);
-  --tab-glass:rgba(255,255,255,.18);--tab-lens-surface:rgba(32,40,56,.08);
+  --tab-glass:rgba(255,255,255,.18);--tab-lens-optics:brightness(.985) contrast(.985);
   --tab-edge:rgba(255,255,255,.72);--tab-sheen:rgba(255,255,255,.24);
   --tab-ink-halo:rgba(255,255,255,.95);
   --shadow:none;
@@ -97,21 +97,28 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 .tabbar #navHealth[aria-current="page"] .ui-icon{fill:currentColor;stroke-width:1.5}
 .tabbar a:focus-visible{outline:2px solid var(--tint);outline-offset:-3px}
 .tabbar a:active{opacity:1;transform:none}
-.tabbar.is-pressing:before{opacity:1}
+.tabbar.is-pressing:after{opacity:1}
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   .tabbar{
-    background:var(--tab-glass);border-color:var(--tab-edge);overflow:hidden;
-    backdrop-filter:blur(10px) saturate(180%);-webkit-backdrop-filter:blur(10px) saturate(180%);
+    background:transparent;border-color:var(--tab-edge);overflow:hidden;
     box-shadow:var(--tab-shadow),inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.08);
   }
   .tabbar:before{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:var(--tab-glass);
+    backdrop-filter:blur(10px) saturate(180%);-webkit-backdrop-filter:blur(10px) saturate(180%);
+  }
+  .tabbar:after{
     content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
     background:linear-gradient(165deg,var(--tab-sheen),transparent 32%,rgba(255,255,255,.025));
     opacity:.65;transition:opacity .16s ease;
   }
   .tabbar-inner{position:relative;z-index:1}
-  /* Visible, translucent selection surface; no stroke or inset edge highlight. */
-  .tab-glass-lens{background:var(--tab-lens-surface);border:0;box-shadow:none}
+  /* Zero-fill selection lens: shape comes from backdrop optics, never a painted pill. */
+  .tab-glass-lens{
+    background:transparent;border:0;box-shadow:none;
+    backdrop-filter:var(--tab-lens-optics);-webkit-backdrop-filter:var(--tab-lens-optics);
+  }
   .tabbar a{color:var(--fg);text-shadow:0 1px 2px var(--tab-ink-halo),0 0 5px var(--tab-ink-halo)}
   .tabbar a .ui-icon{filter:drop-shadow(0 1px 1px var(--tab-ink-halo))}
   .tabbar a[aria-current="page"]{background:transparent;color:var(--tint);box-shadow:none}
@@ -119,8 +126,9 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 /* Keep labels readable when the browser exposes accessibility preferences. */
 @media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
   .tabbar{background:var(--tab-surface);border-color:var(--line);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--tab-shadow)}
-  .tabbar:before{display:none}
-  .tab-glass-lens{background:var(--tab-selected);border:0;box-shadow:none}
+  .tabbar:before{display:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .tabbar:after{display:none}
+  .tab-glass-lens{background:var(--tab-selected);border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
   .tabbar a{color:var(--fg);text-shadow:none}
   .tabbar a .ui-icon{filter:none}
   .tabbar a[aria-current="page"]{background:transparent;color:var(--tint);box-shadow:none}
