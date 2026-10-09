@@ -12,6 +12,7 @@ require('./build-design-preview');
 assert.deepEqual(['index.html','sw.js'].map(digest),original,'Builder must not change production');
 const html = fs.readFileSync(path.join(root,'preview/app.html'),'utf8');
 assert(!/navigator\.serviceWorker|localStorage|sessionStorage|rel="manifest"/.test(html),'Preview must not use production persistence');
+assert(!html.includes('./app.css') && !html.includes('src="./navigation.js'),'Preview must not load production design assets alongside its own');
 const host = fs.readFileSync(path.join(root,'preview/index.html'),'utf8');
 assert(host.includes('sandbox="allow-scripts allow-downloads"'));
 const server = http.createServer((req,res)=>{

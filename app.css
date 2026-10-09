@@ -1,0 +1,148 @@
+/* Approved app design. Native HTML/CSS/JS; no UI framework. */
+:root{
+  --bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:#38383a;
+  --fg:#fff;--dim:#aeaeb2;--tint:#64a8ff;--danger:#ff6961;
+  --acc:#30d158;--p:#64a8ff;--f:#ffd60a;--c:#ffb45b;
+  --tab-surface:#2c2c2e;--tab-selected:#1c1c1e;--tab-label:#e5e5ea;
+  --tab-shadow:0 8px 24px rgba(0,0,0,.32);
+  --tab-glass:rgba(24,24,28,.24);--tab-lens-optics:brightness(1.03) contrast(.94);
+  --tab-edge:rgba(255,255,255,.32);--tab-sheen:rgba(255,255,255,.16);
+  --tab-ink-halo:rgba(0,0,0,.9);
+  --radius:18px;--radius-sm:10px;--shadow:none;
+}
+@media(prefers-color-scheme:light){:root{
+  --bg:#f2f2f7;--card:#fff;--card2:#f6f6fa;--line:#e2e2e7;
+  --fg:#17171b;--dim:#636366;--tint:#0062cc;--danger:#c62828;
+  --acc:#248a3d;--p:#0062cc;--f:#916a00;--c:#a95700;
+  --tab-surface:#fff;--tab-selected:#eaf1ff;--tab-label:#636366;
+  --tab-shadow:0 8px 24px rgba(24,32,48,.12);
+  --tab-glass:rgba(255,255,255,.18);--tab-lens-optics:brightness(.985) contrast(.985);
+  --tab-edge:rgba(255,255,255,.72);--tab-sheen:rgba(255,255,255,.24);
+  --tab-ink-halo:rgba(255,255,255,.95);
+  --shadow:none;
+}}
+html,body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+body{padding:calc(16px + env(safe-area-inset-top)) 16px calc(104px + env(safe-area-inset-bottom))}
+h1{font-size:30px;font-weight:700;letter-spacing:-.025em}
+.top{margin-bottom:20px}.iconbtn,.backbtn{background:transparent;border-radius:8px}
+.ui-icon,.top .iconbtn .ui-icon{width:24px;height:24px;stroke-width:1.8}
+.card{padding:16px;margin-bottom:16px;box-shadow:none}
+.sechd{font-size:20px;font-weight:600;letter-spacing:-.015em;margin:24px 0 12px}
+.card h2{font-size:14px;letter-spacing:0;text-transform:none}
+button{min-height:44px;touch-action:manipulation;transition:background-color .12s ease,opacity .12s ease}
+button:active{transform:none;opacity:.75}
+button.primary{background:#0062cc;color:#fff}
+button.ghost{background:var(--card2);color:var(--tint);opacity:1}
+.row{gap:12px}.hint,.health-note,.well-source,.formula{font-size:13px;line-height:1.6}
+input,select,textarea{border-radius:10px;font-size:16px}
+input:not([type=range]),select{min-height:44px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--tint);outline-offset:3px}
+textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline:2px solid var(--tint);outline-offset:2px;box-shadow:none}
+.kcal-hd{font-size:16px;margin-bottom:4px}.kcal-goal{font-size:13px}.kcal b{font-size:40px}.kcal span{font-size:14px}
+.macro{font-size:14px}.macro b{font-size:20px}.macro small{font-size:12px}
+.mrow{padding:8px 16px}.mrow .micon{display:none}.meal-toggle{gap:8px}
+.item .nm strong{font-size:16px}.item .right b{font-size:16px}.item .right small,.item .nm small{font-size:13px}
+.mealchip{min-height:48px}.mealchip.on{background:var(--tint);color:var(--card)}.mealchip.on small{color:var(--card);opacity:1}
+.mealchip small{font-size:12px}
+#healthPage:not([hidden]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#healthPage>.card{margin:0}#btnBurn,#btnHealthWeight,#btnHealthImport{grid-column:1/-1}
+.health-card-head{font-size:16px;margin-bottom:12px;gap:8px}.health-card-head .ui-icon{width:22px;height:22px}
+.health-metric strong,.health-weight strong{font-size:36px;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.health-metric .metric-label,.health-metric small,.health-weight small{font-size:13px}
+.health-balance{margin-top:16px;padding-top:12px}.health-balance .bl small{font-size:13px}
+.health-balance .bnum{font-size:24px}.health-note{margin-top:8px}
+#btnHealthTraining .health-weight strong,#btnHealthSleep .health-weight strong{font-size:28px}
+#btnHealthTraining .health-weight small,#btnHealthSleep .health-weight small{margin-left:3px;font-size:12px}
+.health-import-link{margin:0;color:var(--tint);font-size:15px;justify-content:center}
+.scrwrap{padding:calc(12px + env(safe-area-inset-top)) 16px calc(104px + env(safe-area-inset-bottom))}
+.scrhead{margin-bottom:20px}.scrhead h1{font-size:17px;font-weight:600}
+.energy-row{gap:8px}.energy-row input{font-size:20px}.energy-actions{gap:12px}
+.wstats b{font-size:20px}.wstats small{font-size:12px}
+.weight-tabs{background:var(--card2);padding:3px;border-radius:12px}.weight-tabs button{border-radius:10px;font-size:14px}
+.weight-period{margin:12px 0}.weight-period-title{font-size:14px}
+.weight-change strong{font-size:40px}.weight-change small{font-size:13px}
+.weight-line text{font-size:13px}.weight-readout{border-radius:12px;padding:12px;font-size:14px}
+.weight-readout b{font-size:24px}.weight-record small{font-size:12px}
+.sleep-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sleep-stages span{background:var(--card2);border-radius:10px;padding:12px 8px;font-size:13px;text-align:center}
+.well-value{font-size:36px;font-variant-numeric:tabular-nums}.well-form .fld{margin:0;padding:14px 0}
+.well-form .fld label{font-size:16px}.session{padding:16px 0}.session .well-source{font-size:14px}
+.settings-content{padding-left:16px;padding-right:16px}.settings-title{font-size:30px}
+.settings-section{margin-top:24px}.settings-group{border-radius:18px}.settings-note{font-size:13px}
+.settings-nav{background:var(--bg)}.settings-nav button{background:transparent}
+/* Floating tab bar: solid fallback; glass is confined to this navigation layer. */
+.tabbar{
+  inset:auto auto calc(12px + env(safe-area-inset-bottom));left:50%;
+  transform:translateX(-50%);width:min(288px,calc(100% - 32px));
+  padding:4px;border:1px solid var(--line);border-radius:999px;
+  background:var(--tab-surface);box-shadow:var(--tab-shadow);
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+}
+.tabbar-inner{position:relative;max-width:none;min-height:56px;gap:4px}
+.tab-glass-lens{
+  position:absolute;left:0;top:2px;height:calc(100% - 4px);border-radius:999px;
+  background:var(--tab-selected);border:0;pointer-events:none;
+  transform:translateX(var(--lens-x,0px));width:var(--lens-width,0px);
+  transform-origin:center;box-shadow:none;
+}
+.tabbar a{
+  position:relative;z-index:1;
+  min-height:56px;padding:6px 12px;border-radius:999px;
+  gap:3px;font-size:12px;line-height:1.2;font-weight:500;
+  color:var(--tab-label);background:transparent;
+  transition:background-color .12s ease,color .12s ease,opacity .12s ease;
+}
+.tabbar a .ui-icon{width:24px;height:24px}
+.tabbar a[aria-current="page"]{background:transparent;color:var(--tint);font-weight:600}
+.tabbar #navHealth[aria-current="page"] .ui-icon{fill:currentColor;stroke-width:1.5}
+.tabbar a:focus-visible{outline:2px solid var(--tint);outline-offset:-3px}
+.tabbar a:active{opacity:1;transform:none}
+.tabbar.is-pressing:after{opacity:1}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .tabbar{
+    background:transparent;border-color:var(--tab-edge);overflow:hidden;
+    box-shadow:var(--tab-shadow),inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.08);
+  }
+  .tabbar:before{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:var(--tab-glass);
+    backdrop-filter:blur(10px) saturate(180%);-webkit-backdrop-filter:blur(10px) saturate(180%);
+  }
+  .tabbar:after{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(165deg,var(--tab-sheen),transparent 32%,rgba(255,255,255,.025));
+    opacity:.65;transition:opacity .16s ease;
+  }
+  .tabbar-inner{position:relative;z-index:1}
+  /* Zero-fill selection lens: shape comes from backdrop optics, never a painted pill. */
+  .tab-glass-lens{
+    background:transparent;border:0;box-shadow:none;
+    backdrop-filter:var(--tab-lens-optics);-webkit-backdrop-filter:var(--tab-lens-optics);
+  }
+  .tabbar a{color:var(--fg);text-shadow:0 1px 2px var(--tab-ink-halo),0 0 5px var(--tab-ink-halo)}
+  .tabbar a .ui-icon{filter:drop-shadow(0 1px 1px var(--tab-ink-halo))}
+  .tabbar a[aria-current="page"]{background:transparent;color:var(--tint);box-shadow:none}
+}
+/* Keep labels readable when the browser exposes accessibility preferences. */
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
+  .tabbar{background:var(--tab-surface);border-color:var(--line);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--tab-shadow)}
+  .tabbar:before{display:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .tabbar:after{display:none}
+  .tab-glass-lens{background:var(--tab-selected);border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .tabbar a{color:var(--fg);text-shadow:none}
+  .tabbar a .ui-icon{filter:none}
+  .tabbar a[aria-current="page"]{background:transparent;color:var(--tint);box-shadow:none}
+}
+.toast{bottom:calc(96px + env(safe-area-inset-bottom))}
+.modal{background:rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
+.modal .panel{box-shadow:none}.toast{background:var(--card);color:var(--fg);border:1px solid var(--line);backdrop-filter:none;-webkit-backdrop-filter:none}
+.preview-emoji{display:none}
+@media(min-width:560px){body{padding-left:24px;padding-right:24px}.scrwrap{padding-left:24px;padding-right:24px}}
+@media(max-width:360px){
+  #healthPage:not([hidden]){grid-template-columns:1fr}
+  .health-card-head{margin-bottom:10px}.health-metric strong{font-size:32px}
+  .well-form .fld:not(.timefield){display:block}.well-form .fld label{display:block;margin-bottom:8px}
+  .well-form .fld input,.well-form .fld select{max-width:100%;width:100%}
+  .well-form .duration-inputs{max-width:100%}.well-form .duration-inputs input{width:72px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

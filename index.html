@@ -484,6 +484,7 @@
   @media (max-width:360px){#dlg .fld label{font-size:15px}.energy-row{gap:8px}.energy-row label{font-size:15px}}
   @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
+<link id="appTheme" rel="stylesheet" href="./app.css?v=2026-10-09.2">
 </head>
 <body>
 <div class="ios-status-strip" id="iosStatusStrip" aria-hidden="true"></div>
@@ -531,7 +532,7 @@
 <section id="dietPage" aria-labelledby="pageTitle">
 <!-- ===== 摄入热量 ===== -->
 <div class="card">
-  <div class="kcal-hd"><span>🍽️ 摄入热量</span><span class="kcal-goal" id="gKcalTxt">目标 2000</span></div>
+  <div class="kcal-hd"><span>摄入热量</span><span class="kcal-goal" id="gKcalTxt">目标 2000</span></div>
   <div class="kcal"><b id="tKcal">0</b><span>kcal</span></div>
   <div class="bar"><i id="barKcal"></i></div>
 </div>
@@ -2830,7 +2831,7 @@ function syncAppRoute({ initial = false } = {}){
   $('dietPage').hidden = isHealth;
   $('healthPage').hidden = !isHealth;
   document.body.classList.toggle('health-view',isHealth);
-  $('pageTitle').textContent = isHealth ? '健康' : '🍽️ 饮食';
+  $('pageTitle').textContent = isHealth ? '健康' : '饮食';
   for (const [id, selected] of [['navDiet',!isHealth],['navHealth',isHealth]]){
     if (selected) $(id).setAttribute('aria-current','page');
     else $(id).removeAttribute('aria-current');
@@ -3411,7 +3412,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-09.1';
+const APP_VERSION = '2026-10-09.2';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;
@@ -3473,5 +3474,6 @@ if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
   });
 }
 </script>
+<script src="./navigation.js?v=2026-10-09.2"></script>
 </body>
 </html>

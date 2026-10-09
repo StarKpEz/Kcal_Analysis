@@ -1,6 +1,6 @@
 # 液态玻璃：官方阅读与预览取舍
 
-2026-10-09。范围仅为预览版的浮动底部导航，保留HTML/CSS/JS。
+2026-10-09。玻璃范围仅为浮动底部导航，保留HTML/CSS/JS。用户已确认并授权应用到正式版2026-10-09.2；预览仍保留用于后续审阅。
 
 已阅读官方资料：[Materials](https://developer.apple.com/design/human-interface-guidelines/materials)、[Color](https://developer.apple.com/design/Human-Interface-Guidelines/color)、[Motion](https://developer.apple.com/design/human-interface-guidelines/motion)、[WWDC25 Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)。以下为概括，非原文引用。
 

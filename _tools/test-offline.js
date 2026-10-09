@@ -20,6 +20,11 @@ async function install(fail){
   else await pending;
   assert.ok(cached.includes('./index.html'));
   assert.ok(cached.includes('./manifest.webmanifest'));
+  const html = fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+  const theme = html.match(/<link id="appTheme"[^>]*href="([^"]+)"/)[1];
+  const navigation = html.match(/<script src="(\.\/navigation\.js[^"]+)"/)[1];
+  assert.ok(cached.includes(theme),'Approved theme must be cached before takeover');
+  assert.ok(cached.includes(navigation),'Navigation feedback must be cached before takeover');
   assert.deepEqual(events,fail?['cache']:['cache','takeover']);
 }
 async function navigate(online){

@@ -27,12 +27,12 @@
 <body>
 <main class="review">
   <header><div class="tools">
-    <div class="heading"><h1>界面预览 · 草案 A</h1><button id="reset">重置演示</button></div>
-    <p>演示数据，刷新重置 · 正式页面和你的记录保持原样</p>
+    <div class="heading"><h1>界面预览 · 已确认设计</h1><button id="reset">重置演示</button></div>
+    <p>演示数据，刷新重置 · 此处修改不会影响正式记录</p>
     <div class="controls">
       <div class="styles" role="group" aria-label="比较界面样式">
-        <button id="currentStyle" aria-pressed="false">当前样式</button>
-        <button id="newStyle" aria-pressed="true">新样式</button>
+        <button id="currentStyle" aria-pressed="false">原有样式</button>
+        <button id="newStyle" aria-pressed="true">已确认样式</button>
       </div>
       <select id="page" aria-label="预览页面">
         <option value="health">健康</option><option value="diet">饮食</option>
@@ -42,7 +42,7 @@
       </select>
     </div>
   </div></header>
-  <div class="stage"><iframe id="appPreview" src="app.html?v=a19e29cf8c3f#/health" sandbox="allow-scripts allow-downloads" title="健康记录交互预览"></iframe></div>
+  <div class="stage"><iframe id="appPreview" src="app.html?v=0f252d918a18#/health" sandbox="allow-scripts allow-downloads" title="健康记录交互预览"></iframe></div>
 </main>
 <script>
   const frame = document.getElementById('appPreview');

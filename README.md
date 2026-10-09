@@ -1,6 +1,6 @@
 # 饮食 · 拍照算热量
 
-一个自包含的网页应用（PWA）：**拍照或描述你这一餐，自动算出热量与蛋白质 / 脂肪 / 碳水**，并把每天的摄入记录在手机本地。
+一个无需外部依赖的网页应用（PWA）：**拍照或描述你这一餐，自动算出热量与蛋白质 / 脂肪 / 碳水**，并把每天的摄入记录在手机本地。
 
 - 🌐 在线使用：**https://starkpez.github.io/Kcal_Analysis/**
 - 📱 手机浏览器打开后「添加到主屏幕」，就像原生 App 一样全屏运行
@@ -39,12 +39,12 @@ DeepSeek **官方目前没有公开的 URL scheme**（社区里还在提这个�
 - **分组列表与轻量卡片**：设置采用不透明的独立页面，按目标、身体数据、备份和应用分组；保存操作固定在顶部。
 - **统一线条图标**：设置、返回、关闭及设置页操作不使用圆形灰底，导航按钮保持至少 44 × 44 CSS px 的触摸区域。
 - **交互层级**：主要保存操作突出，清空操作独立放置并使用危险色；键盘焦点可见，设置关闭后返回原入口。
-- 深浅外观、减少动态效果、输入标签与底部安全区适配。暂不引入 Liquid Glass；记录弹窗沿用普通背景模糊。
+- 深浅外观、减少动态效果、输入标签与底部安全区适配。仅浮动底部导航采用接近 Liquid Glass 的网页视觉效果；卡片、设置和记录弹窗保持实色。
 - 设计依据：[Apple HIG — Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons)、[Settings](https://developer.apple.com/design/human-interface-guidelines/settings)、[Layout](https://developer.apple.com/design/human-interface-guidelines/layout)。无底色按钮是本项目按用户偏好选择的样式，不声称是最新 HIG 对所有按钮的要求。
 
 ## 健康页与底部导航（2026-10-07.5）
 
-底部固定 **饮食 / 健康** 两个栏目，采用不透明背景、线条图标和文字，所选栏目为蓝色，适配底部安全区。健康详情保留底栏；设置和临时表单覆盖底栏。参考 [Apple HIG — Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)，本项目暂不使用 Liquid Glass。
+底部固定 **饮食 / 健康** 两个栏目，所选栏目为蓝色，适配底部安全区。2026-10-09.2起采用用户确认的浮动玻璃胶囊：内层椭圆滑块零填色、无描边，以轻微背景光学变化表现形状，切换时滑动回弹。健康详情保留底栏；设置和临时表单覆盖底栏。参考 [Apple HIG — Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)，采用CSS/JS适配，非原生Liquid Glass组件。
 
 健康页展示所选日期的活动能量、静息能量及体重。能量卡片进入原有代谢详情，体重卡片直接定位到记录区，保留已有数据和计算口径。缺失能量显示“—”，0 是有效记录；体重显示该日或此前最近的记录，并注明日期，不使用未来称重。
 
@@ -136,7 +136,7 @@ node _tools/test-navigation.js
 node _tools/test-health.js
 ```
 
-训练、睡眠手动记录和健康日汇总 JSON 接收端已实现，iPhone 导出与真实数据核对仍待完成，方案见 [基础版与训练睡眠接续方案](docs/基础版与训练睡眠接续方案.md)。设计参考 [Apple HIG](https://developer.apple.com/design/human-interface-guidelines/)，暂不引入 Liquid Glass。
+训练、睡眠手动记录和健康日汇总 JSON 接收端已实现，iPhone 导出与真实数据核对仍待完成，方案见 [基础版与训练睡眠接续方案](docs/基础版与训练睡眠接续方案.md)。设计参考 [Apple HIG](https://developer.apple.com/design/human-interface-guidelines/)，玻璃视觉效果仅限浮动底栏。
 
 ## 本地数据与备份
 
@@ -249,17 +249,23 @@ node _tools/test-health.js
 
 ## 文件说明
 
-### 设计预览（正式版保持原样）
+### 已确认设计与独立预览（2026-10-09.2）
 
-打开 [界面预览](https://starkpez.github.io/Kcal_Analysis/preview/index.html)，可切换当前样式与新样式，并选择饮食、健康、体重、训练、睡眠、导入和设置。仅使用虚构演示数据，刷新或「重置演示」会清除预览修改；不读取正式记录，不注册 Service Worker。请联网查看，不需要重新添加正式主屏幕图标。
+用户已确认预览设计并授权应用到正式版。系统字体、字号间距、分组卡片和浮动胶囊统一应用；沿用原有数据格式、存储键、计算口径及记录工作流。正式样式和导航脚本一起加入v16离线缓存，设置底部版本为2026-10-09.2。
 
-设计规范位于 [`design-system/kcal-analysis/MASTER.md`](design-system/kcal-analysis/MASTER.md)。沿用 HTML/CSS/JS，以 Apple HIG 为参考；仅浮动底部导航按用户最新偏好采用接近 Liquid Glass 的网页视觉效果，内容卡片和表单仍为实色。`preview/theme.css` 是独立主题覆盖，`preview/app.html` 是生成的复制页；审阅后才考虑应用到正式版。
+打开 [界面预览](https://starkpez.github.io/Kcal_Analysis/preview/index.html)，可切换原有样式与已确认样式，并选择饮食、健康、体重、训练、睡眠、导入和设置。仅使用虚构演示数据，刷新或「重置演示」会清除预览修改；不读取正式记录，不注册 Service Worker。请联网查看，不需要重新添加正式主屏幕图标。
+
+设计规范位于 [`design-system/kcal-analysis/MASTER.md`](design-system/kcal-analysis/MASTER.md)。沿用 HTML/CSS/JS，以 Apple HIG 为参考；仅浮动底部导航按用户最新偏好采用接近 Liquid Glass 的网页视觉效果，内容卡片和表单仍为实色。正式资源为`app.css`和`navigation.js`；`preview/theme.css`与`preview/navigation.js`保留供后续设计审阅，`preview/app.html`是生成的复制页。后续仍先预览、用户确认后再发布正式样式。
 
 正式页面有新变化时，运行 `node _tools/build-design-preview.js` 重新生成副本。浏览器验收运行 `node _tools/test-design-preview.js`，需要本机已有 Playwright 和 Chrome；页面本身不依赖它们。项目本地设计检索工具位于忽略目录 `.design-tools/`，不作为应用依赖或线上资源发布。
 
+本次发布已通过七组Node回归，以及正式浏览器深浅色、小屏、旧版升级、记录保留、离线刷新和保存检查。`node _tools/test-release-ui.js`使用独立浏览器及虚构数据；提供`RELEASE_PREVIOUS_HTML`、`RELEASE_PREVIOUS_SW`环境变量指向旧版副本时会额外检查真实缓存升级。iPhone主屏幕应用联网打开后可在设置底部确认v2026-10-09.2，若仍为旧版可使用“检查更新”，无需删除图标或清理记录。
+
 | 文件 | 作用 |
 |---|---|
-| `index.html` | 整个应用（界面 + 逻辑 + 解析器），单文件自包含 |
+| `index.html` | 应用结构、记录逻辑与解析器 |
+| `app.css` | 用户确认的统一样式与浮动玻璃导航 |
+| `navigation.js` | 零填色椭圆滑块位置、回弹与减少动态效果适配 |
 | `manifest.webmanifest` | 让「添加到主屏幕」显示正确的应用名和图标 |
 | `icons/*-v3.png` | 当前蓝色健康记录图标；iOS 使用 PNG 主屏幕图标 |
 | `icon.svg` | 保留的历史图标素材 |
