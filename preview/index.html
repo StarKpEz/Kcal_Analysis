@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>健康记录 · 界面预览</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#f2f2f7;--card:#fff;--fg:#17171b;--dim:#636366;--line:#d4d4dc;--tint:#0062cc}
+    @media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--fg:#fff;--dim:#aeaeb2;--line:#38383a;--tint:#64a8ff}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+    .review{height:100vh;height:100dvh;display:flex;flex-direction:column}
+    header{flex:none;background:var(--card);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+    .tools{max-width:640px;margin:auto}.heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{font-size:18px;line-height:1.4;margin:0;font-weight:650}p{margin:3px 0 10px;font-size:12px;color:var(--dim)}
+    button,select{font:inherit;min-height:44px;border:0;border-radius:10px;padding:8px 12px;background:var(--bg);color:var(--fg);cursor:pointer}
+    button:focus-visible,select:focus-visible{outline:2px solid var(--tint);outline-offset:2px}button:active{opacity:.7}
+    #reset{background:none;color:var(--tint);font-size:14px;padding:8px 0}.controls{display:flex;gap:10px;align-items:center}
+    .styles{display:flex;flex:1;padding:3px;background:var(--bg);border-radius:12px}.styles button{flex:1;min-width:0;white-space:nowrap;font-size:14px;font-weight:600}
+    .styles button[aria-pressed=true]{background:var(--card);box-shadow:0 1px 3px #0002;color:var(--tint)}
+    select{width:90px;font-size:14px}.stage{flex:1;min-height:0;display:flex;justify-content:center;padding:20px}
+    iframe{display:block;width:430px;max-width:100%;height:100%;border:1px solid var(--line);border-radius:20px;background:var(--bg)}
+    @media(max-width:600px){.stage{padding:0}iframe{width:100%;border:0;border-radius:0}.controls{gap:8px}header{padding-left:12px;padding-right:12px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+<main class="review">
+  <header><div class="tools">
+    <div class="heading"><h1>界面预览 · 草案 A</h1><button id="reset">重置演示</button></div>
+    <p>演示数据，刷新重置 · 正式页面和你的记录保持原样</p>
+    <div class="controls">
+      <div class="styles" role="group" aria-label="比较界面样式">
+        <button id="currentStyle" aria-pressed="false">当前样式</button>
+        <button id="newStyle" aria-pressed="true">新样式</button>
+      </div>
+      <select id="page" aria-label="预览页面">
+        <option value="health">健康</option><option value="diet">饮食</option>
+        <option value="weight">体重</option><option value="energy">能量</option>
+        <option value="training">训练</option><option value="sleep">睡眠</option>
+        <option value="import">导入</option><option value="settings">设置</option>
+      </select>
+    </div>
+  </div></header>
+  <div class="stage"><iframe id="appPreview" src="app.html#/health" sandbox="allow-scripts allow-downloads" title="健康记录交互预览"></iframe></div>
+</main>
+<script>
+  const frame = document.getElementById('appPreview');
+  let enabled = true;
+  const send = data => frame.contentWindow.postMessage({type:'kcal-design-preview',...data}, '*');
+  function selectStyle(value){
+    enabled = value;
+    document.getElementById('currentStyle').setAttribute('aria-pressed',String(!value));
+    document.getElementById('newStyle').setAttribute('aria-pressed',String(value));
+    send({action:'style',enabled});
+  }
+  document.getElementById('currentStyle').addEventListener('click',()=>selectStyle(false));
+  document.getElementById('newStyle').addEventListener('click',()=>selectStyle(true));
+  document.getElementById('page').addEventListener('change',event=>send({action:'route',route:event.target.value}));
+  let resetCount = 0;
+  document.getElementById('reset').addEventListener('click',()=>{frame.src='app.html?reset='+(++resetCount)+'#/health';document.getElementById('page').value='health'});
+  window.addEventListener('message',event=>{
+    if(event.source===frame.contentWindow && event.data?.type==='kcal-design-preview-ready') send({action:'style',enabled});
+  });
+</script>
+</body>
+</html>
