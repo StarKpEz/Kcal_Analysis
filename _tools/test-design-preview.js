@@ -42,11 +42,39 @@ const server = http.createServer((req,res)=>{
       const child = page.frames().find(f=>f.url().includes('/preview/app.html'));
       const storageDenied = await child.evaluate(()=>{try{window.localStorage.getItem('kcal.data.v5');return false}catch{return true}});
       assert(storageDenied,'Sandbox must block real origin storage');
+      const nav = await child.evaluate(()=>{
+        const bounds = document.getElementById('primaryNav').getBoundingClientRect();
+        return {width:bounds.width,left:bounds.left,right:bounds.right,bottom:innerHeight-bounds.bottom,
+          viewport:innerWidth,targets:[...document.querySelectorAll('.tabbar a')].map(el=>({height:el.getBoundingClientRect().height,width:el.getBoundingClientRect().width})),
+          filter:getComputedStyle(document.getElementById('primaryNav')).backdropFilter};
+      });
+      assert(nav.width<=288 && nav.left>=16 && nav.right<=nav.viewport-16,'Floating navigation must fit small viewports');
+      assert(nav.bottom>=12 && nav.targets.every(t=>t.height>=44 && t.width>=44),'Touch targets and bottom clearance');
+      assert.equal(nav.filter,'none','Keep the opaque design preference');
+      await frame.locator('#navDiet').click();
+      await frame.locator('#dietPage').waitFor({state:'visible'});
+      assert.equal(await frame.locator('#navDiet').getAttribute('aria-current'),'page');
+      assert.equal(await frame.locator('#navHealth').getAttribute('aria-current'),null);
+      await frame.locator('#navHealth').click();
+      await frame.locator('#healthPage').waitFor({state:'visible'});
+      assert.equal(await frame.locator('#navHealth').getAttribute('aria-current'),'page');
+      await child.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+      const importClear = await child.evaluate(()=>document.getElementById('btnHealthImport').getBoundingClientRect().bottom<=document.getElementById('primaryNav').getBoundingClientRect().top);
+      assert(importClear,'Last health action must scroll above the floating navigation');
+      if(width===393){
+        await frame.locator('#primaryNav').screenshot({path:path.join(root,'.preview-check','floating-nav-'+scheme+'.png')});
+        await page.screenshot({path:path.join(root,'.preview-check','floating-health-'+scheme+'.png')});
+      }
       for(const [route,selector] of [['health','#healthPage'],['diet','#dietPage'],['weight','#weightBox'],['training','#trainingPanel'],['sleep','#sleepPanel'],['settings','#dlg'],['import','#healthImportPanel']]){
         await page.locator('#page').selectOption(route);
         await frame.locator(selector).waitFor({state:'visible'});
         const overflow = await child.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth);
         assert(overflow<=1,`${width} ${scheme} ${route}: horizontal overflow ${overflow}`);
+        if(route==='weight'){
+          await child.evaluate(()=>{const panel=document.getElementById('burn');panel.scrollTop=panel.scrollHeight});
+          assert(await child.evaluate(()=>document.getElementById('btnSaveWeight').getBoundingClientRect().bottom<=document.getElementById('primaryNav').getBoundingClientRect().top),'Weight save must scroll above navigation');
+          await frame.locator('#weightSection').scrollIntoViewIfNeeded();
+        }
         if(width===393 && scheme==='light' && ['health','diet','weight','sleep','settings'].includes(route)){
           await frame.locator(selector).screenshot({path:path.join(root,'.preview-check',route+'.png')});
         }

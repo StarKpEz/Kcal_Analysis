@@ -3,16 +3,20 @@
   --bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:#38383a;
   --fg:#fff;--dim:#aeaeb2;--tint:#64a8ff;--danger:#ff6961;
   --acc:#30d158;--p:#64a8ff;--f:#ffd60a;--c:#ffb45b;
+  --tab-surface:#2c2c2e;--tab-selected:#1c1c1e;--tab-label:#e5e5ea;
+  --tab-shadow:0 8px 24px rgba(0,0,0,.32);
   --radius:18px;--radius-sm:10px;--shadow:none;
 }
 @media(prefers-color-scheme:light){:root{
   --bg:#f2f2f7;--card:#fff;--card2:#f6f6fa;--line:#e2e2e7;
   --fg:#17171b;--dim:#636366;--tint:#0062cc;--danger:#c62828;
   --acc:#248a3d;--p:#0062cc;--f:#916a00;--c:#a95700;
+  --tab-surface:#fff;--tab-selected:#eaf1ff;--tab-label:#636366;
+  --tab-shadow:0 8px 24px rgba(24,32,48,.12);
   --shadow:none;
 }}
 html,body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
-body{padding:calc(16px + env(safe-area-inset-top)) 16px calc(88px + env(safe-area-inset-bottom))}
+body{padding:calc(16px + env(safe-area-inset-top)) 16px calc(104px + env(safe-area-inset-bottom))}
 h1{font-size:30px;font-weight:700;letter-spacing:-.025em}
 .top{margin-bottom:20px}.iconbtn,.backbtn{background:transparent;border-radius:8px}
 .ui-icon,.top .iconbtn .ui-icon{width:24px;height:24px;stroke-width:1.8}
@@ -44,7 +48,7 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 #btnHealthTraining .health-weight strong,#btnHealthSleep .health-weight strong{font-size:28px}
 #btnHealthTraining .health-weight small,#btnHealthSleep .health-weight small{margin-left:3px;font-size:12px}
 .health-import-link{margin:0;color:var(--tint);font-size:15px;justify-content:center}
-.scrwrap{padding:calc(12px + env(safe-area-inset-top)) 16px calc(88px + env(safe-area-inset-bottom))}
+.scrwrap{padding:calc(12px + env(safe-area-inset-top)) 16px calc(104px + env(safe-area-inset-bottom))}
 .scrhead{margin-bottom:20px}.scrhead h1{font-size:17px;font-weight:600}
 .energy-row{gap:8px}.energy-row input{font-size:20px}.energy-actions{gap:12px}
 .wstats b{font-size:20px}.wstats small{font-size:12px}
@@ -60,7 +64,27 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 .settings-content{padding-left:16px;padding-right:16px}.settings-title{font-size:30px}
 .settings-section{margin-top:24px}.settings-group{border-radius:18px}.settings-note{font-size:13px}
 .settings-nav{background:var(--bg)}.settings-nav button{background:transparent}
-.tabbar{background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none}.tabbar a{font-size:12px}
+/* Floating tab bar: opaque surfaces, stable labels, and a selected inner capsule. */
+.tabbar{
+  inset:auto auto calc(12px + env(safe-area-inset-bottom));left:50%;
+  transform:translateX(-50%);width:min(288px,calc(100% - 32px));
+  padding:4px;border:1px solid var(--line);border-radius:999px;
+  background:var(--tab-surface);box-shadow:var(--tab-shadow);
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+}
+.tabbar-inner{max-width:none;min-height:56px;gap:4px}
+.tabbar a{
+  min-height:56px;padding:6px 12px;border-radius:999px;
+  gap:3px;font-size:12px;line-height:1.2;font-weight:500;
+  color:var(--tab-label);background:transparent;
+  transition:background-color .12s ease,color .12s ease,opacity .12s ease;
+}
+.tabbar a .ui-icon{width:24px;height:24px}
+.tabbar a[aria-current="page"]{background:var(--tab-selected);color:var(--tint);font-weight:600}
+.tabbar #navHealth[aria-current="page"] .ui-icon{fill:currentColor;stroke-width:1.5}
+.tabbar a:focus-visible{outline:2px solid var(--tint);outline-offset:-3px}
+.tabbar a:active{opacity:.7;transform:none}
+.toast{bottom:calc(96px + env(safe-area-inset-bottom))}
 .modal{background:rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
 .modal .panel{box-shadow:none}.toast{background:var(--card);color:var(--fg);border:1px solid var(--line);backdrop-filter:none;-webkit-backdrop-filter:none}
 .preview-emoji{display:none}

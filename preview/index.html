@@ -42,10 +42,11 @@
       </select>
     </div>
   </div></header>
-  <div class="stage"><iframe id="appPreview" src="app.html#/health" sandbox="allow-scripts allow-downloads" title="健康记录交互预览"></iframe></div>
+  <div class="stage"><iframe id="appPreview" src="app.html?v=36ba469ba83a#/health" sandbox="allow-scripts allow-downloads" title="健康记录交互预览"></iframe></div>
 </main>
 <script>
   const frame = document.getElementById('appPreview');
+  const appSource = frame.getAttribute('src').split('#')[0];
   let enabled = true;
   const send = data => frame.contentWindow.postMessage({type:'kcal-design-preview',...data}, '*');
   function selectStyle(value){
@@ -58,7 +59,7 @@
   document.getElementById('newStyle').addEventListener('click',()=>selectStyle(true));
   document.getElementById('page').addEventListener('change',event=>send({action:'route',route:event.target.value}));
   let resetCount = 0;
-  document.getElementById('reset').addEventListener('click',()=>{frame.src='app.html?reset='+(++resetCount)+'#/health';document.getElementById('page').value='health'});
+  document.getElementById('reset').addEventListener('click',()=>{frame.src=appSource+(appSource.includes('?')?'&':'?')+'reset='+(++resetCount)+'#/health';document.getElementById('page').value='health'});
   window.addEventListener('message',event=>{
     if(event.source===frame.contentWindow && event.data?.type==='kcal-design-preview-ready') send({action:'style',enabled});
   });
