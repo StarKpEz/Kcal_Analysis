@@ -253,7 +253,7 @@ node _tools/test-health.js
 
 打开 [界面预览](https://starkpez.github.io/Kcal_Analysis/preview/index.html)，可切换当前样式与新样式，并选择饮食、健康、体重、训练、睡眠、导入和设置。仅使用虚构演示数据，刷新或「重置演示」会清除预览修改；不读取正式记录，不注册 Service Worker。请联网查看，不需要重新添加正式主屏幕图标。
 
-设计规范位于 [`design-system/kcal-analysis/MASTER.md`](design-system/kcal-analysis/MASTER.md)。沿用 HTML/CSS/JS，以 Apple HIG 为参考，暂不使用 Liquid Glass。`preview/theme.css` 是独立主题覆盖，`preview/app.html` 是生成的复制页；审阅后才考虑应用到正式版。
+设计规范位于 [`design-system/kcal-analysis/MASTER.md`](design-system/kcal-analysis/MASTER.md)。沿用 HTML/CSS/JS，以 Apple HIG 为参考；仅浮动底部导航按用户最新偏好采用接近 Liquid Glass 的网页视觉效果，内容卡片和表单仍为实色。`preview/theme.css` 是独立主题覆盖，`preview/app.html` 是生成的复制页；审阅后才考虑应用到正式版。
 
 正式页面有新变化时，运行 `node _tools/build-design-preview.js` 重新生成副本。浏览器验收运行 `node _tools/test-design-preview.js`，需要本机已有 Playwright 和 Chrome；页面本身不依赖它们。项目本地设计检索工具位于忽略目录 `.design-tools/`，不作为应用依赖或线上资源发布。
 

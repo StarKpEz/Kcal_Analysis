@@ -5,6 +5,8 @@
   --acc:#30d158;--p:#64a8ff;--f:#ffd60a;--c:#ffb45b;
   --tab-surface:#2c2c2e;--tab-selected:#1c1c1e;--tab-label:#e5e5ea;
   --tab-shadow:0 8px 24px rgba(0,0,0,.32);
+  --tab-glass:rgba(32,32,36,.84);--tab-glass-selected:rgba(0,0,0,.36);
+  --tab-edge:rgba(255,255,255,.22);--tab-sheen:rgba(255,255,255,.12);
   --radius:18px;--radius-sm:10px;--shadow:none;
 }
 @media(prefers-color-scheme:light){:root{
@@ -13,6 +15,8 @@
   --acc:#248a3d;--p:#0062cc;--f:#916a00;--c:#a95700;
   --tab-surface:#fff;--tab-selected:#eaf1ff;--tab-label:#636366;
   --tab-shadow:0 8px 24px rgba(24,32,48,.12);
+  --tab-glass:rgba(255,255,255,.78);--tab-glass-selected:rgba(222,234,255,.8);
+  --tab-edge:rgba(255,255,255,.8);--tab-sheen:rgba(255,255,255,.52);
   --shadow:none;
 }}
 html,body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
@@ -64,7 +68,7 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 .settings-content{padding-left:16px;padding-right:16px}.settings-title{font-size:30px}
 .settings-section{margin-top:24px}.settings-group{border-radius:18px}.settings-note{font-size:13px}
 .settings-nav{background:var(--bg)}.settings-nav button{background:transparent}
-/* Floating tab bar: opaque surfaces, stable labels, and a selected inner capsule. */
+/* Floating tab bar: solid fallback; glass is confined to this navigation layer. */
 .tabbar{
   inset:auto auto calc(12px + env(safe-area-inset-bottom));left:50%;
   transform:translateX(-50%);width:min(288px,calc(100% - 32px));
@@ -84,6 +88,27 @@ textarea:focus,.fld input:focus,.fld .pick:focus,.energy-row input:focus{outline
 .tabbar #navHealth[aria-current="page"] .ui-icon{fill:currentColor;stroke-width:1.5}
 .tabbar a:focus-visible{outline:2px solid var(--tint);outline-offset:-3px}
 .tabbar a:active{opacity:.7;transform:none}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .tabbar{
+    background:var(--tab-glass);border-color:var(--tab-edge);overflow:hidden;
+    backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);
+    box-shadow:var(--tab-shadow),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(0,0,0,.08);
+  }
+  .tabbar:before{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(165deg,var(--tab-sheen),transparent 45%,rgba(255,255,255,.04));
+  }
+  .tabbar-inner{position:relative;z-index:1}
+  .tabbar a{color:var(--fg)}
+  .tabbar a[aria-current="page"]{background:var(--tab-glass-selected);color:var(--tint);box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
+}
+/* Keep labels readable when the browser exposes accessibility preferences. */
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
+  .tabbar{background:var(--tab-surface);border-color:var(--line);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--tab-shadow)}
+  .tabbar:before{display:none}
+  .tabbar a{color:var(--fg)}
+  .tabbar a[aria-current="page"]{background:var(--tab-selected);color:var(--tint);box-shadow:none}
+}
 .toast{bottom:calc(96px + env(safe-area-inset-bottom))}
 .modal{background:rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
 .modal .panel{box-shadow:none}.toast{background:var(--card);color:var(--fg);border:1px solid var(--line);backdrop-filter:none;-webkit-backdrop-filter:none}

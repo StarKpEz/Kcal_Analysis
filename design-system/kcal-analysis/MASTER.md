@@ -6,7 +6,7 @@
 
 面向 iPhone 日常使用的个人饮食与综合健康记录工具。沿用 HTML、CSS、JavaScript 和现有数据模型、路由、计算口径。通过统一样式整理页面，不更换框架，不引入字体服务、图表依赖、GSAP 或 UI 组件库。
 
-优先级：用户明确偏好 > 项目既有行为与数据保护 > Apple HIG 中适用的建议 > UI UX Pro Max 的检索建议。暂不使用 Liquid Glass、玻璃卡片、夸张渐变、拟物浮雕、装饰性动画或导航图标的圆灰底。
+优先级：用户明确偏好 > 项目既有行为与数据保护 > Apple HIG 中适用的建议 > UI UX Pro Max 的检索建议。根据最新用户要求，仅浮动底部导航采用接近 Liquid Glass 的网页视觉效果；内容卡片、顶部导航、表单和设置继续使用实色，不添加夸张渐变、拟物浮雕、装饰性动画或导航图标的圆灰底。
 
 ## 视觉方向
 
@@ -63,7 +63,11 @@
 
 ### 设置与导航
 
-底部仍只有饮食/健康两个栏目，参考用户提供的苹果标签栏改为居中浮动胶囊，透明度为100%。外层最大宽288px、左右至少16px、距底部安全区12px；内层栏目触摸高度56px，图标24px配12px文字标签。选中项使用内层胶囊底色与蓝色图标/文字，并保留 `aria-current`，不依赖颜色单独传达选中状态。浅色为白色外层、淡蓝选中项；深色为深灰外层、更深的选中项。不添加玻璃模糊、折射或新的导航栏目。
+底部仍只有饮食/健康两个栏目，参考用户提供的苹果标签栏采用居中浮动胶囊。外层最大宽288px、左右至少16px、距底部安全区12px；内层栏目触摸高度56px，图标24px配12px文字标签。选中项使用内层胶囊底色与蓝色图标/文字，并保留 `aria-current`，不依赖颜色单独传达选中状态。
+
+用户后续明确允许这一处使用液态玻璃：仅外层底栏设置半透明底色、28px背景模糊、160%饱和度、细微边缘高光和阴影。浅色外层78%白色、选中项淡蓝；深色外层84%深灰、选中项加深，以保证底部文字和图标可读。实际内容可从底栏下方经过，前景图标/文字不施加模糊。内层选中背景不叠加第二层背景模糊，不使用持续动画或模拟折射滤镜。此处是CSS视觉适配，不宣称等同苹果原生动态材质。
+
+无背景模糊支持时使用原有实色胶囊；浏览器报告 `prefers-reduced-transparency: reduce`、`prefers-contrast: more` 或强制颜色时关闭通透和高光，恢复实色。网页能否获得对应系统偏好取决于浏览器支持，不宣称覆盖所有iOS设置。
 
 页面与健康详情预留104px加底部安全区，确保滚动到末尾的内容可位于浮动栏上方；提示消息显示在导航上方。栏目顺序、路由、返回和记忆上次健康子页的行为保持不变。返回、设置、关闭仍使用无底色图标与完整触摸区域。设置沿用独立页面和分组列表，不增加重复大标题或装饰图标。
 
@@ -87,7 +91,7 @@
 
 Chrome 独立浏览器上下文已检查 320×740、375×812、393×852 与 852×393 横屏，另检查 393×852 深色模式。饮食、健康、体重、能量、训练、睡眠、设置、导入入口均能切换；页面无横向溢出，样式比较正常。完成体重滑块键盘操作及健康/睡眠/设置 130% 文字尺寸模拟（并非 iOS Dynamic Type 真机结论）。
 
-浮动导航补充验收：两项真实点击切换及选中语义正常，触摸区域超过44px；小屏左右边距、底部间距与不透明表面已检查；健康页最后的导入操作、体重页底部保存按钮均可滚动到导航上方。复制页和主题资源使用内容版本参数，刷新预览即可取得新样式，无需修改正式缓存或清理正式数据。
+浮动导航补充验收：两项真实点击切换及选中语义正常，触摸区域超过44px；小屏左右边距和底部间距已检查；健康页最后的导入操作、体重页底部保存按钮均可滚动到导航上方。玻璃版本补充检查背景模糊只用于外层底栏、内容层与栏目自身无背景模糊，以及增加对比度时关闭模糊。复制页和主题资源使用内容版本参数，刷新预览即可取得新样式，无需修改正式缓存或清理正式数据。
 
 用虚构存储标记验证：预览内保存能量不会改变同站点正式存储；沙箱无法访问同源 localStorage；重置后演示修改消失。生成过程比较 SHA-256 确认正式 `index.html` 与 `sw.js` 未改变。脚本语法和复制页中无持久存储/SW调用已检查。iPhone Safari 真机效果仍由用户审阅，原有系统顶部模糊问题不在本轮修改范围内。
 
@@ -102,6 +106,7 @@ Chrome 独立浏览器上下文已检查 320×740、375×812、393×852 与 852�
 3. `touch target size --domain ux`：命中移动端触摸目标与Web目标尺寸，明确区分原生单位与CSS像素。
 4. `weight trend time series --domain chart`：命中Trend Over Time与折线图，采用真实时间轴、明细和键盘查看建议；不照搬推荐图库或强制按点数隐藏现有单点记录。
 5. `safe area bottom navigation --domain web`：命中Safe Area Insets与Bottom Tabs；将建议转换为CSS安全区，保留现有两栏导航，不照搬React Native组件。
-6. `bottom navigation selected state --domain ux`：命中Active State与Deep Linking；采用选中背景、清晰标签及现有hash路由。浮动外观参考用户截图，功能与信息组织参考苹果官方Tab bars；最新官方材料样式中的Liquid Glass因用户偏好未采用。
+6. `bottom navigation selected state --domain ux`：命中Active State与Deep Linking；采用选中背景、清晰标签及现有hash路由。浮动外观参考用户截图，功能与信息组织参考苹果官方Tab bars。
+7. `glass navigation readability --domain ux`未命中针对玻璃的可读性指导；缩小为 `text contrast transparency --domain ux` 命中Contrast Readability与Color Contrast，只采用其一般文字对比度建议。具体材质与导航层边界依据[苹果Materials](https://developer.apple.com/design/human-interface-guidelines/materials)：只在导航层使用玻璃，克制效果并优先保证文字可读性；用户最新要求覆盖此前全局避免玻璃的偏好，仅开放浮动底栏。
 
 苹果官方参考：[Layout](https://developer.apple.com/design/human-interface-guidelines/layout)、[Typography](https://developer.apple.com/design/human-interface-guidelines/typography)、[Color](https://developer.apple.com/design/human-interface-guidelines/color)、[Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons)、[Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)、[Charts](https://developer.apple.com/design/human-interface-guidelines/charts)。本项目是网页对相关原则的适配，不宣称原生组件外观完全等同。

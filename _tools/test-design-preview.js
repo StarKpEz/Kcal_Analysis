@@ -46,11 +46,17 @@ const server = http.createServer((req,res)=>{
         const bounds = document.getElementById('primaryNav').getBoundingClientRect();
         return {width:bounds.width,left:bounds.left,right:bounds.right,bottom:innerHeight-bounds.bottom,
           viewport:innerWidth,targets:[...document.querySelectorAll('.tabbar a')].map(el=>({height:el.getBoundingClientRect().height,width:el.getBoundingClientRect().width})),
-          filter:getComputedStyle(document.getElementById('primaryNav')).backdropFilter};
+          filter:getComputedStyle(document.getElementById('primaryNav')).backdropFilter,
+          supported:CSS.supports('backdrop-filter','blur(1px)')};
       });
       assert(nav.width<=288 && nav.left>=16 && nav.right<=nav.viewport-16,'Floating navigation must fit small viewports');
       assert(nav.bottom>=12 && nav.targets.every(t=>t.height>=44 && t.width>=44),'Touch targets and bottom clearance');
-      assert.equal(nav.filter,'none','Keep the opaque design preference');
+      if(nav.supported) assert(nav.filter.includes('blur(28px)'),'Glass should be applied to the navigation');
+      const noContentGlass = await child.evaluate(()=>[document.querySelector('.card'),document.querySelector('.tabbar a')].every(el=>getComputedStyle(el).backdropFilter==='none'));
+      assert(noContentGlass,'Content and individual tabs must not add extra glass layers');
+      await page.emulateMedia({contrast:'more'});
+      assert.equal(await child.evaluate(()=>getComputedStyle(document.getElementById('primaryNav')).backdropFilter),'none','Increased contrast must use the solid fallback');
+      await page.emulateMedia({contrast:'no-preference'});
       await frame.locator('#navDiet').click();
       await frame.locator('#dietPage').waitFor({state:'visible'});
       assert.equal(await frame.locator('#navDiet').getAttribute('aria-current'),'page');
@@ -62,8 +68,14 @@ const server = http.createServer((req,res)=>{
       const importClear = await child.evaluate(()=>document.getElementById('btnHealthImport').getBoundingClientRect().bottom<=document.getElementById('primaryNav').getBoundingClientRect().top);
       assert(importClear,'Last health action must scroll above the floating navigation');
       if(width===393){
-        await frame.locator('#primaryNav').screenshot({path:path.join(root,'.preview-check','floating-nav-'+scheme+'.png')});
-        await page.screenshot({path:path.join(root,'.preview-check','floating-health-'+scheme+'.png')});
+        await frame.locator('#primaryNav').screenshot({path:path.join(root,'.preview-check','floating-nav-'+scheme+'.png'),animations:'disabled'});
+        await page.screenshot({path:path.join(root,'.preview-check','floating-health-'+scheme+'.png'),animations:'disabled'});
+        // Scroll real demo content under the capsule to inspect the glass surface.
+        await page.locator('#page').selectOption('diet');
+        await frame.locator('#dietPage').waitFor({state:'visible'});
+        await child.evaluate(()=>window.scrollTo(0,Math.max(0,document.documentElement.scrollHeight-innerHeight-100)));
+        await page.screenshot({path:path.join(root,'.preview-check','glass-over-content-'+scheme+'.png'),animations:'disabled'});
+        await page.locator('#page').selectOption('health');
       }
       for(const [route,selector] of [['health','#healthPage'],['diet','#dietPage'],['weight','#weightBox'],['training','#trainingPanel'],['sleep','#sleepPanel'],['settings','#dlg'],['import','#healthImportPanel']]){
         await page.locator('#page').selectOption(route);
