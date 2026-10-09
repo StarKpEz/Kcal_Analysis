@@ -59,7 +59,8 @@ const server = http.createServer((req,res)=>{
           return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter,
             borders:[s.borderTopWidth,s.borderRightWidth,s.borderBottomWidth,s.borderLeftWidth],shadow:s.boxShadow};
         });
-        assert.equal(lensStyle.fill,'rgba(0, 0, 0, 0)','Selected lens must have a fully transparent fill');
+        const lensAlpha=Number(lensStyle.fill.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)?.[1]);
+        assert(lensAlpha>0 && lensAlpha<1,'Selected oval must remain visible and translucent after removing its outline');
         assert.equal(lensStyle.image,'none','Selected lens must not add a gradient overlay');
         assert.equal(lensStyle.filter,'none','Selected lens must not add another glass layer');
         assert(lensStyle.borders.every(width=>width==='0px'),'Selected lens must not draw an inner frame');
