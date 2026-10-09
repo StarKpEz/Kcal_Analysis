@@ -53,6 +53,15 @@ const server = http.createServer((req,res)=>{
       assert(nav.bottom>=12 && nav.targets.every(t=>t.height>=44 && t.width>=44),'Touch targets and bottom clearance');
       if(nav.supported) assert(nav.filter.includes('blur(10px)'),'Use the lighter glass filter');
       await frame.locator('#tabGlassLens[data-selected="navHealth"]').waitFor();
+      if(nav.supported){
+        const lensStyle = await child.evaluate(()=>{
+          const s=getComputedStyle(document.getElementById('tabGlassLens'));
+          return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};
+        });
+        assert.equal(lensStyle.fill,'rgba(0, 0, 0, 0)','Selected lens must have a fully transparent fill');
+        assert.equal(lensStyle.image,'none','Selected lens must not add a gradient overlay');
+        assert.equal(lensStyle.filter,'none','Selected lens must not add another glass layer');
+      }
       const noContentGlass = await child.evaluate(()=>[document.querySelector('.card'),document.querySelector('.tabbar a')].every(el=>getComputedStyle(el).backdropFilter==='none'));
       assert(noContentGlass,'Content and individual tabs must not add extra glass layers');
       await page.emulateMedia({contrast:'more'});
