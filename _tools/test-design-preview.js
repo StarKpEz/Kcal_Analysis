@@ -51,7 +51,8 @@ const server = http.createServer((req,res)=>{
       });
       assert(nav.width<=288 && nav.left>=16 && nav.right<=nav.viewport-16,'Floating navigation must fit small viewports');
       assert(nav.bottom>=12 && nav.targets.every(t=>t.height>=44 && t.width>=44),'Touch targets and bottom clearance');
-      if(nav.supported) assert(nav.filter.includes('blur(28px)'),'Glass should be applied to the navigation');
+      if(nav.supported) assert(nav.filter.includes('blur(10px)'),'Use the lighter glass filter');
+      await frame.locator('#tabGlassLens[data-selected="navHealth"]').waitFor();
       const noContentGlass = await child.evaluate(()=>[document.querySelector('.card'),document.querySelector('.tabbar a')].every(el=>getComputedStyle(el).backdropFilter==='none'));
       assert(noContentGlass,'Content and individual tabs must not add extra glass layers');
       await page.emulateMedia({contrast:'more'});
@@ -61,9 +62,38 @@ const server = http.createServer((req,res)=>{
       await frame.locator('#dietPage').waitFor({state:'visible'});
       assert.equal(await frame.locator('#navDiet').getAttribute('aria-current'),'page');
       assert.equal(await frame.locator('#navHealth').getAttribute('aria-current'),null);
+      if(width===393 && scheme==='light'){
+        await frame.locator('#tabGlassLens[data-selected="navDiet"][data-moving="true"]').waitFor();
+        assert(await child.evaluate(()=>document.getElementById('tabGlassLens').getAnimations().some(a=>a.playState==='running')),'Switching must animate the sliding lens');
+        await frame.locator('#navHealth').click();
+        await frame.locator('#navDiet').click();
+        await frame.locator('#tabGlassLens[data-selected="navDiet"][data-moving="false"]').waitFor();
+        const aligned=await child.evaluate(()=>{
+          const a=document.getElementById('navDiet').getBoundingClientRect(), lens=document.getElementById('tabGlassLens').getBoundingClientRect();
+          return Math.abs(lens.left-a.left-4)<1;
+        });
+        assert(aligned,'Rapid taps must settle on the actual selected tab');
+        await page.emulateMedia({reducedMotion:'reduce'});
+        await frame.locator('#navHealth').click();
+        await frame.locator('#tabGlassLens[data-selected="navHealth"]').waitFor();
+        assert.equal(await child.evaluate(()=>document.getElementById('tabGlassLens').getAnimations().filter(a=>a.playState==='running').length),0,'Reduced motion must suppress elastic animation');
+        await page.emulateMedia({reducedMotion:'no-preference'});
+        console.log('PASS sliding lens, rapid switching, and reduced-motion feedback');
+      }
       await frame.locator('#navHealth').click();
       await frame.locator('#healthPage').waitFor({state:'visible'});
       assert.equal(await frame.locator('#navHealth').getAttribute('aria-current'),'page');
+      if(width===393){
+        // Colorful fixture proves actual backdrop color transmission; not product content.
+        await child.evaluate(()=>{
+          const nav=document.getElementById('primaryNav').getBoundingClientRect();
+          const sample=document.createElement('div');sample.id='glass-color-fixture';
+          sample.style.cssText='position:fixed;z-index:84;pointer-events:none;left:'+nav.left+'px;top:'+(nav.top-30)+'px;width:'+nav.width+'px;height:'+(nav.height+60)+'px;background:linear-gradient(90deg,#22c55e,#06b6d4 50%,#8b5cf6);border-radius:16px';
+          document.body.append(sample);
+        });
+        await frame.locator('#primaryNav').screenshot({path:path.join(root,'.preview-check','glass-transmission-'+scheme+'.png'),animations:'disabled'});
+        await child.evaluate(()=>document.getElementById('glass-color-fixture').remove());
+      }
       await child.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
       const importClear = await child.evaluate(()=>document.getElementById('btnHealthImport').getBoundingClientRect().bottom<=document.getElementById('primaryNav').getBoundingClientRect().top);
       assert(importClear,'Last health action must scroll above the floating navigation');
@@ -73,6 +103,8 @@ const server = http.createServer((req,res)=>{
         // Scroll real demo content under the capsule to inspect the glass surface.
         await page.locator('#page').selectOption('diet');
         await frame.locator('#dietPage').waitFor({state:'visible'});
+        await frame.locator('#tabGlassLens[data-selected="navDiet"][data-moving="false"]').waitFor();
+        await child.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         await child.evaluate(()=>window.scrollTo(0,Math.max(0,document.documentElement.scrollHeight-innerHeight-100)));
         await page.screenshot({path:path.join(root,'.preview-check','glass-over-content-'+scheme+'.png'),animations:'disabled'});
         await page.locator('#page').selectOption('health');
