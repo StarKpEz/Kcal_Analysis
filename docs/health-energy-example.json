@@ -1,0 +1,19 @@
+{
+  "app": "kcal-health-energy",
+  "version": 1,
+  "exportedAt": "2026-10-08T08:00:00+08:00",
+  "from": "2026-10-06",
+  "through": "2026-10-07",
+  "dailyTotals": [
+    {"kind":"active","unit":"kcal","source":"Synthetic Watch","count":2,"separator":"|","dates":"2026-10-06|2026-10-07","values":"500|600"},
+    {"kind":"basal","unit":"kcal","source":"Synthetic Watch","count":2,"separator":"|","dates":"2026-10-06|2026-10-07","values":"1500|1600"}
+  ],
+  "boundarySamples": [
+    {"kind":"active","unit":"kcal","source":"Synthetic Watch","boundaryAt":"2026-10-06T00:00:00+08:00","value":120,"startAt":"2026-10-05T23:00:00+08:00","endAt":"2026-10-06T01:00:00+08:00"},
+    {"kind":"active","unit":"kcal","source":"Synthetic Watch","boundaryAt":"2026-10-07T00:00:00+08:00","value":80,"startAt":"2026-10-06T23:00:00+08:00","endAt":"2026-10-07T01:00:00+08:00"},
+    {"kind":"active","unit":"kcal","source":"Synthetic Watch","boundaryAt":"2026-10-08T00:00:00+08:00","value":40,"startAt":"2026-10-07T23:00:00+08:00","endAt":"2026-10-08T01:00:00+08:00"},
+    {"kind":"basal","unit":"kcal","source":"Synthetic Watch","boundaryAt":"2026-10-06T00:00:00+08:00","value":200,"startAt":"2026-10-05T23:00:00+08:00","endAt":"2026-10-06T01:00:00+08:00"},
+    {"kind":"basal","unit":"kcal","source":"Synthetic Watch","boundaryAt":"2026-10-07T00:00:00+08:00","value":120,"startAt":"2026-10-06T23:00:00+08:00","endAt":"2026-10-07T01:00:00+08:00"},
+    {"kind":"basal","unit":"kcal","source":"Synthetic Watch","boundaryAt":"2026-10-08T00:00:00+08:00","value":80,"startAt":"2026-10-07T23:00:00+08:00","endAt":"2026-10-08T01:00:00+08:00"}
+  ]
+}

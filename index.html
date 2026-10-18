@@ -616,6 +616,7 @@
       </div>
       <div class="energy-actions"><button class="primary wide" id="btnSaveEnergy">保存当日能量</button><button class="ghost" id="btnClearEnergy" hidden>清除录入</button></div>
       <div class="hint" id="energyHint">填写 Apple 健康中所选日期的两项累计能量。总消耗 = 活动 + 静息，不另加训练热量。今天保存的是日内累计，暂不计算全天差额；历史日期请使用全天累计值，之后可补录修正。</div>
+      <a class="settings-action" id="btnEnergyImport" href="#/health/import">从文件导入多日能量 <span aria-hidden="true">›</span></a>
     </div>
 
     <div class="sechd">身体数据</div>
@@ -693,7 +694,7 @@
         <label for="healthJson" class="hint">JSON 内容</label><textarea id="healthJson" placeholder="选择文件或粘贴 JSON"></textarea>
         <div class="row"><button class="wide ghost" id="btnCheckHealth">检查内容</button><button class="wide primary" id="btnApplyHealth">确认导入</button></div>
         <p class="health-preview" id="healthPreview" role="status"></p>
-        <details class="hint"><summary>文件格式与导出说明</summary><p>支持旧版日汇总、新版体重日汇总及快捷指令精简样本。苹果全量 XML 不适合每日导入。手机创建步骤见上方指南，目前没有经过真机验证的一键安装快捷指令。</p><p>建议早晨导出最近 7 天；第一次可单独补入历史体重。样本中同一天多次称重取最后一次；睡眠片段去重，排除卧床与清醒，并按结束日期归档。请核对睡眠日期和分期，避免缺少片段导致旧记录被不完整数据替换。</p><a href="docs/健康数据导入格式.md" target="_blank" rel="noopener">查看格式说明</a></details>
+        <details class="hint"><summary>文件格式与导出说明</summary><p>支持日汇总、快捷指令精简样本，以及能量日汇总与午夜边界文件。<a href="docs/energy-shortcuts-guide.html">精简能量导出步骤</a>使用少量记录校正跨日能量。苹果全量 XML 不适合每日导入，目前没有经过真机验证的一键安装快捷指令。</p><p>建议早晨导出最近 7 天；第一次可单独补入历史体重。样本中同一天多次称重取最后一次；睡眠片段去重，排除卧床与清醒，并按结束日期归档。请核对睡眠日期和分期，避免缺少片段导致旧记录被不完整数据替换。</p><a href="docs/健康数据导入格式.md" target="_blank" rel="noopener">查看格式说明</a></details>
       </div>
     </section>
   </div>
@@ -1206,11 +1207,83 @@ function summarizeHealthSamples(data){
   if(result.some(d=>d.weight))notes.push('同一天多次称重采用最后一次；未称重的日期不补值。');
   return {app:'kcal-health',version:2,exportedAt,days:result,notes:[...new Set(notes)]};
 }
+function summarizeHealthEnergy(data){
+  if(data.version!==1 || Object.keys(data).some(k=>!['app','version','exportedAt','from','through','dailyTotals','boundarySamples'].includes(k)) || !Array.isArray(data.dailyTotals) || data.dailyTotals.length>2 || !Array.isArray(data.boundarySamples) || data.boundarySamples.length>10000)throw new Error('能量边界文件格式无效');
+  const exportedAt=healthTimestamp(data.exportedAt),exportTime=Date.parse(exportedAt);
+  if(exportTime>Date.now()+300000 || !isDayKey(data.from) || !isDayKey(data.through) || data.from>data.through || data.through>todayKey())throw new Error('能量导出时间或日期范围无效');
+  const totals={active:new Map(),basal:new Map()},boundaries={active:new Map(),basal:new Map()},sources={},notes=[];
+  const kindName={active:'活动',basal:'静息'};
+  const factor=unit=>{
+    const factors={kcal:1,'千卡':1,kJ:1/4.184,'千焦':1/4.184};
+    if(!Object.hasOwn(factors,unit))throw new Error('能量单位须为 kcal 或 kJ，并与实际查询单位一致');
+    return factors[unit];
+  };
+  const sourceOf=row=>{
+    if(!Object.hasOwn(kindName,row.kind) || typeof row.source!=='string' || !row.source.trim() || row.source.length>200)throw new Error('能量类别或来源无效');
+    if(sources[row.kind] && sources[row.kind]!==row.source)throw new Error(kindName[row.kind]+'能量汇总与边界来源不一致');
+    sources[row.kind]=row.source;
+  };
+  const seenKinds=new Set();
+  for(const block of data.dailyTotals){
+    if(!isObject(block) || Object.keys(block).some(k=>!['kind','unit','source','count','separator','dates','values'].includes(k)))throw new Error('能量日汇总字段无效');
+    sourceOf(block);const conversion=factor(block.unit);
+    if(seenKinds.has(block.kind))throw new Error('同类能量日汇总重复');seenKinds.add(block.kind);
+    if(block.separator!=='|' || !Number.isInteger(block.count) || block.count<0 || block.count>3660 || typeof block.dates!=='string' || typeof block.values!=='string')throw new Error('日汇总需要竖线分隔的日期、数值和实际数量');
+    const dates=block.dates===''?[]:block.dates.split('|'),values=block.values===''?[]:block.values.split('|');
+    if(dates.length!==block.count || values.length!==block.count)throw new Error('能量日期、数值与数量不对应');
+    for(let i=0;i<dates.length;i++){
+      const date=dates[i];
+      if(!isDayKey(date) || date<data.from || date>data.through || totals[block.kind].has(date))throw new Error('日汇总日期无效、重复或超出范围');
+      if(!/^(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(values[i]))throw new Error('日汇总数值须为无单位、无千位分隔符的数字');
+      totals[block.kind].set(date,healthNumber(Number(values[i])*conversion,'能量日汇总',0,50000));
+    }
+  }
+  const seenSamples=new Set();
+  for(const row of data.boundarySamples){
+    if(!isObject(row) || Object.keys(row).some(k=>!['kind','unit','source','boundaryAt','value','startAt','endAt'].includes(k)))throw new Error('午夜边界样本字段无效');
+    sourceOf(row);const conversion=factor(row.unit);
+    const boundaryAt=healthTimestamp(row.boundaryAt),startAt=healthTimestamp(row.startAt),endAt=healthTimestamp(row.endAt);
+    const boundary=Date.parse(boundaryAt),start=Date.parse(startAt),end=Date.parse(endAt),date=boundaryAt.slice(0,10),offset=healthOffset(boundaryAt);
+    if(!/^\d{4}-\d{2}-\d{2}T00:00(?::00)?(?:Z|[+-]\d{2}:\d{2})$/.test(boundaryAt) || date<data.from || date>shiftDay(data.through,1) || boundary>exportTime || end>exportTime+60000 || end<start || end-start>86400000 || start>=boundary || healthDateAt(start,offset)!==shiftDay(date,-1) || healthOffset(startAt)!==offset || healthOffset(endAt)!==offset)throw new Error('边界须为午夜，样本须从前一日开始且时区一致、跨度不超过一天');
+    const value=healthNumber(healthNumber(row.value,'边界能量',0,209200)*conversion,'边界能量',0,50000);
+    const fingerprint=JSON.stringify([row.kind,row.source,boundary,start,end,value]);
+    if(seenSamples.has(fingerprint))continue;seenSamples.add(fingerprint);
+    if(!boundaries[row.kind].has(date))boundaries[row.kind].set(date,{offset,rows:[]});
+    const bucket=boundaries[row.kind].get(date);
+    if(bucket.offset!==offset)throw new Error('同一午夜的边界时区不一致');
+    bucket.rows.push({start,end,value,boundary});
+  }
+  for(const map of Object.values(boundaries))for(const bucket of map.values()){
+    bucket.rows.sort((a,b)=>a.start-b.start || a.end-b.end);let lastEnd=-Infinity;
+    for(const row of bucket.rows){
+      if(row.value>0 && row.end>row.start){if(row.start<lastEnd)throw new Error('同一来源的午夜边界样本重叠');lastEnd=row.end;}
+    }
+    bucket.transfer=bucket.rows.reduce((sum,row)=>sum+(row.end>row.boundary?row.value*(row.end-row.boundary)/(row.end-row.start):0),0);
+  }
+  const days=[];
+  for(const date of [...new Set([...totals.active.keys(),...totals.basal.keys()])].sort()){
+    const energy={};let complete=true,dayOffset;
+    for(const kind of ['active','basal']){
+      const incoming=boundaries[kind].get(date),outgoing=boundaries[kind].get(shiftDay(date,1));
+      if(!totals[kind].has(date) || !incoming || !outgoing){notes.push(date+' '+kindName[kind]+'能量缺少日汇总或午夜边界，本次保留已有能量。');complete=false;continue;}
+      if(incoming.offset!==outgoing.offset)throw new Error('同一天两侧午夜时区不同，请使用同一当地时区导出');
+      if(dayOffset!==undefined && dayOffset!==incoming.offset)throw new Error('同一天活动与静息的边界时区不同');dayOffset=incoming.offset;
+      const corrected=totals[kind].get(date)+incoming.transfer-outgoing.transfer;
+      if(corrected<0 || corrected>50000 || !Number.isFinite(corrected))throw new Error(date+' 边界校正能量无效，请核对单位和汇总口径');
+      energy[kind]=corrected;
+    }
+    if(complete)days.push({date,energy});
+  }
+  if(!days.length)throw new Error('没有两类日汇总与两侧午夜边界齐全的日期；不会用缺失值覆盖已有能量');
+  notes.unshift('能量按日汇总＋前夜跨入部分−当晚跨出部分校正，跨午夜部分按时长比例分配；请与健康 App 对照。保存小数，预览另列舍去小数的对照值。');
+  return {app:'kcal-health',version:2,exportedAt,days,notes:[...new Set(notes)]};
+}
 function parseHealthJSON(text){
   if (String(text).length>5*1024*1024) throw new Error('内容超过 5 MB，请导出精简日汇总 JSON');
   let data,notes=[];
   try { data = JSON.parse(String(text).replace(/^\uFEFF/,'')); } catch(e){ throw new Error('JSON 不完整或格式错误'); }
   if (isObject(data) && data.app === 'kcal-health-samples'){data = summarizeHealthSamples(data);notes=data.notes;}
+  if (isObject(data) && data.app === 'kcal-health-energy'){data = summarizeHealthEnergy(data);notes=data.notes;}
   if (!isObject(data) || data.app !== 'kcal-health' || ![1,2].includes(data.version) || !Array.isArray(data.days) || !data.days.length || data.days.length > 3660) throw new Error('需要健康日汇总或快捷指令样本 JSON；完整备份请在设置中恢复');
   const exportedAt = healthTimestamp(data.exportedAt), fields = { burn:{},training:{},sleep:{},weight:{},weightMeta:{} }, dates = new Set();
   if (Date.parse(exportedAt)>Date.now()+300000) throw new Error('导出时间在未来，请核对导出工具时间');
@@ -1257,12 +1330,14 @@ function healthImportPlan(fields){
       if (old != null && oldMeta?.source !== 'health-json') conflicts++;
       patch[key][date] = cloneData(value); updates++;
       if(key==='weight')patch.weightMeta[date]=cloneData(newMeta);
-      const suffix = key === 'weight' ? N(value)+' kg · '+newMeta.measuredAt.slice(11,16) : key === 'burn' ? N(value.active+value.basal)+' kcal' : key === 'training' ? value.sessions.length+' 次 · '+N(value.sessions.reduce((n,s)=>n+s.durationMinutes,0))+' 分钟' : formatSleep(value.asleepMinutes)+(value.stages?' · 核心 '+N(value.stages.core??0)+' / 深度 '+N(value.stages.deep??0)+' / REM '+N(value.stages.rem??0)+' 分':'');
+      const suffix = key === 'weight' ? N(value)+' kg · '+newMeta.measuredAt.slice(11,16) : key === 'burn' ? '活动 '+Math.floor(value.active)+' / 静息 '+Math.floor(value.basal)+' kcal · 合计 '+N(value.active+value.basal)+' kcal' : key === 'training' ? value.sessions.length+' 次 · '+N(value.sessions.reduce((n,s)=>n+s.durationMinutes,0))+' 分钟' : formatSleep(value.asleepMinutes)+(value.stages?' · 核心 '+N(value.stages.core??0)+' / 深度 '+N(value.stages.deep??0)+' / REM '+N(value.stages.rem??0)+' 分':'');
       details.push(date+' '+names[key]+'：'+(old?'更新':'新增')+' '+suffix);
     }
   }
   if(fields.notes)details.push(...fields.notes);
-  return {patch,updates,skipped,conflicts,details};
+  const energyDates=Object.keys(fields.burn || {}).sort();
+  const summary=energyDates.length?'能量 '+energyDates.length+' 天 · '+energyDates[0]+' 至 '+energyDates[energyDates.length-1]:'';
+  return {patch,updates,skipped,conflicts,details,summary};
 }
 function formatSleep(minutes){ const n = Math.round(minutes); return Math.floor(n/60)+' 小时 '+n%60+' 分'; }
 function healthSource(record){return record?.source === 'health-json' ? '健康 JSON 导入' : record?.source === 'mixed' ? '导入后手动修正' : '手动记录';}
@@ -2763,19 +2838,19 @@ $('btnClearSleep').addEventListener('click',async()=>{
 });
 function checkHealthImport(){
   const fields=parseHealthJSON($('healthJson').value),plan=healthImportPlan(fields);
-  $('healthPreview').textContent='将更新 '+plan.updates+' 项日记录，跳过 '+plan.skipped+' 项。'+(plan.conflicts?'\n其中 '+plan.conflicts+' 项将覆盖手动记录。':'')+'\n'+plan.details.join('\n');
+  $('healthPreview').textContent=(plan.summary?plan.summary+'\n':'')+'将更新 '+plan.updates+' 项日记录，跳过 '+plan.skipped+' 项。'+(plan.conflicts?'\n其中 '+plan.conflicts+' 项将覆盖手动记录。':'')+'\n'+plan.details.join('\n');
   return {fields,plan};
 }
 async function applyHealthJSON(text){
   const fields=parseHealthJSON(text),plan=healthImportPlan(fields);
   if(!plan.updates){toast('没有更新：相同或较旧的数据已跳过');return false;}
-  if(!await askChoice({title:'导入健康数据？',message:plan.details.join('\n')+(plan.conflicts?'\n将覆盖 '+plan.conflicts+' 项手动记录。':'')+'\n按所列日期更新；文件未包含的记录保留。训练热量不再加到每日消耗。',buttons:[{label:'导入并更新所列记录',value:true,strong:true},{label:'取消',value:false}]}))return false;
+  if(!await askChoice({title:'导入健康数据？',message:(plan.summary?plan.summary+'\n':'')+plan.details.join('\n')+(plan.conflicts?'\n将覆盖 '+plan.conflicts+' 项手动记录。':'')+'\n按所列日期更新；文件未包含的记录保留。训练热量不再加到每日消耗。',buttons:[{label:'导入并更新所列记录',value:true,strong:true},{label:'取消',value:false}]}))return false;
   // 用户确认期间其他窗口可能写入；commitData 的快照比较会拒绝过期覆盖。
   if(!commitData(healthImportPlan(fields).patch))return false;
   energyEditDate='';wellnessEditDate='';weightEditDate='';render();refreshRisk();toast('健康数据已导入');return true;
 }
 $('btnCheckHealth').addEventListener('click',()=>{try{checkHealthImport();}catch(e){$('healthPreview').textContent=e.message;}});
-$('btnApplyHealth').addEventListener('click',async()=>{try{checkHealthImport();if(await applyHealthJSON($('healthJson').value))checkHealthImport();}catch(e){$('healthPreview').textContent=e.message;toast('导入失败：'+e.message);}});
+$('btnApplyHealth').addEventListener('click',async()=>{try{checkHealthImport();if(await applyHealthJSON($('healthJson').value)){checkHealthImport();$('healthPreview').textContent='导入成功，数据已保存在此设备。\n'+$('healthPreview').textContent;}}catch(e){$('healthPreview').textContent=e.message;toast('导入失败：'+e.message);}});
 $('healthJson').addEventListener('input',()=>{$('healthPreview').textContent='';});
 $('btnChooseHealthFile').addEventListener('click',()=>{$('healthFile').value='';$('healthFile').click();});
 $('healthFile').addEventListener('change',async()=>{
@@ -3412,7 +3487,7 @@ $('btnToday').addEventListener('click', () => setEditDate(todayKey()));
 /* ---------------- 版本与更新 ----------------
    iOS 主屏幕应用没有地址栏、没有下拉刷新，Service Worker 在后台还会被冻结，
    所以这里提供「可见版本号 + 手动检查更新」，并且 sw.js 对 HTML 走网络优先。 */
-const APP_VERSION = '2026-10-09.2';
+const APP_VERSION = '2026-10-18.1';
 try { $('verLabel').textContent = 'v' + APP_VERSION; } catch (e) {}
 
 let waitingSW = null;

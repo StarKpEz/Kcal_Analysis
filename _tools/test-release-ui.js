@@ -10,6 +10,12 @@ new vm.Script(read('navigation.js'));
 const fixtureContext=vm.createContext({window:{}});
 vm.runInContext(read('preview/demo.js')+'\nglobalThis.fixture=previewStorage.getItem("kcal.data.v5");',fixtureContext);
 const fixture=fixtureContext.fixture; // Generated fictional records, never user data.
+// A separate fictional 17-day energy export exercises the actual file-picker flow.
+const energyDates=Array.from({length:17},(_,i)=>'2026-09-'+String(i+1).padStart(2,'0'));
+const energyFile={app:'kcal-health-energy',version:1,exportedAt:new Date(Date.now()+1000).toISOString(),from:energyDates[0],through:energyDates[16],dailyTotals:['active','basal'].map(kind=>({kind,unit:'kcal',source:'Synthetic Watch',count:17,separator:'|',dates:energyDates.join('|'),values:energyDates.map((_,i)=>(kind==='active'?500:1400)+i).join('|')})),boundarySamples:Array.from({length:18},(_,i)=>{
+  const date='2026-09-'+String(i+1).padStart(2,'0'),previous=i?'2026-09-'+String(i).padStart(2,'0'):'2026-08-31';
+  return ['active','basal'].map(kind=>({kind,unit:'kcal',source:'Synthetic Watch',boundaryAt:date+'T00:00:00+08:00',startAt:previous+'T23:50:00+08:00',endAt:date+'T00:10:00+08:00',value:(kind==='active'?30:100)+i}));
+}).flat()};
 const beforeHtml=process.env.RELEASE_PREVIOUS_HTML, beforeWorker=process.env.RELEASE_PREVIOUS_SW;
 let servePrevious=false;
 const server=http.createServer((req,res)=>{
@@ -107,8 +113,44 @@ async function ready(page){
       for(const category of ['entries','weight','weightMeta','training','sleep','settings','body'])assert.deepEqual(after[category],before[category],'Saving energy must preserve '+category);
       const saved=await disk(page);await page.reload();await page.locator('#energyActive').waitFor({state:'visible'});
       assert.equal(await page.locator('#energyActive').inputValue(),'777');assert.equal(await disk(page),saved);
+      await page.locator('#btnEnergyImport').click();await page.locator('#healthImportPanel').waitFor({state:'visible'});
+      const payload={name:'synthetic-energy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(energyFile))};
+      const importBefore=JSON.parse(await page.evaluate(()=>buildBackup()));
+      const importDisk=await disk(page);
+      await page.locator('#healthFile').setInputFiles(payload);
+      await page.waitForFunction(()=>document.getElementById('healthPreview').textContent.includes('能量 17 天 · 2026-09-01 至 2026-09-17'));
+      assert((await page.locator('#healthPreview').textContent()).includes('将更新 17 项日记录'));
+      assert.equal(await disk(page),importDisk,'Choosing and checking an energy file must not save anything');
+      const importButton=await page.locator('#btnApplyHealth').evaluate(el=>({text:el.textContent,color:getComputedStyle(el).color,fill:getComputedStyle(el).webkitTextFillColor,opacity:getComputedStyle(el).opacity}));
+      assert.equal(importButton.text,'确认导入');assert.equal(importButton.color,'rgb(255, 255, 255)');
+      assert.equal(importButton.fill,'rgb(255, 255, 255)');assert.equal(importButton.opacity,'1');
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      if(width===393)await page.screenshot({path:path.join(root,'.preview-check','energy-import-'+scheme+'.png'),animations:'disabled'});
+      await page.locator('#btnApplyHealth').click();await page.locator('#alert.on').waitFor();
+      await page.locator('#alertBtns button').filter({hasText:'取消'}).click();
+      assert.equal(await disk(page),importDisk,'Cancelling the 17-day import must preserve all stored records');
+      await page.locator('#btnApplyHealth').click();await page.locator('#alert.on').waitFor();
+      await page.locator('#alertBtns button').filter({hasText:'导入并更新所列记录'}).click();
+      await page.waitForFunction(()=>document.getElementById('healthPreview').textContent.startsWith('导入成功'));
+      const imported=JSON.parse(await page.evaluate(()=>buildBackup()));
+      for(const category of ['entries','weight','weightMeta','training','sleep','settings','body'])assert.deepEqual(imported[category],importBefore[category],'Energy import must preserve '+category);
+      for(const [date,value] of Object.entries(importBefore.burn))if(!energyDates.includes(date))assert.deepEqual(imported.burn[date],value,'Energy import must preserve dates outside the file');
+      for(let i=0;i<17;i++){
+        assert.equal(imported.burn[energyDates[i]].active,499.5+i);assert.equal(imported.burn[energyDates[i]].basal,1399.5+i);
+      }
+      const importedDisk=await disk(page);await page.reload();await page.locator('#healthImportPanel').waitFor({state:'visible'});
+      assert.equal(await disk(page),importedDisk,'Imported energy must survive an offline reload');
+      await page.locator('#healthFile').setInputFiles(payload);
+      await page.waitForFunction(()=>document.getElementById('healthPreview').textContent.includes('跳过 17 项'));
+      await page.locator('#btnApplyHealth').click();
+      assert.equal(await page.locator('#alert.on').count(),0,'An identical export must not ask to overwrite records');
+      assert.equal(await disk(page),importedDisk,'Repeat import must not add energy or write storage');
+      await page.goto(url+'/docs/energy-single-day-guide.html');
+      await page.getByRole('heading',{name:'选择日期导出单日能量',exact:true}).waitFor();
+      assert(await page.evaluate(()=>Math.max(document.body.scrollWidth,document.documentElement.scrollWidth)<=innerWidth+1),'Single-day guide must fit the viewport and remain available offline');
+      if(width===393 && scheme==='light')await page.screenshot({path:path.join(root,'.preview-check','energy-single-day-guide.png'),animations:'disabled'});
       assert.deepEqual(errors,[]);
-      console.log(`PASS production ${width}x${height} ${scheme}: ${upgrade?'old-to-new upgrade, ':''}zero-fill lens, routes, unchanged records, offline assets and durable save`);
+      console.log(`PASS production ${width}x${height} ${scheme}: ${upgrade?'old-to-new upgrade, ':''}zero-fill lens, routes, unchanged records, offline assets, durable save and 17-day energy import/cancel/repeat`);
       await context.close();
     }
   }finally{await browser.close();server.close();}

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>选择日期导出单日能量</title>
+<style>:root{--bg:#f2f2f7;--card:#fff;--fg:#1c1c1e;--dim:#636366;--link:#007aff}@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--fg:#f5f5f7;--dim:#aeaeb2;--link:#64a8ff}}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:700px;margin:auto;padding:24px 18px calc(28px + env(safe-area-inset-bottom))}a{color:var(--link)}h1{font-size:28px;line-height:1.25}h2{font-size:21px}section{background:var(--card);padding:18px;border-radius:16px;margin:16px 0}li{margin:12px 0}ol{padding-left:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);padding:14px;border-radius:10px;font:13px/1.6 ui-monospace,Consolas,monospace}.note{font-size:14px;color:var(--dim)}table{border-collapse:collapse;width:100%;font-size:14px}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--dim)}</style></head>
+<body><main><a href="../index.html#/health/import">‹ 返回健康导入</a><h1>选择日期导出单日能量</h1>
+<p>复制已经运行成功的多日指令，保留查询、字典和保存动作，只替换日期准备、循环次数和文件范围。每次运行选择一个已结束的日期，导出两类日汇总与两个午夜的候选样本。</p>
+<p class="note">本指令用于昨天或更早的完整日期。今天的数据请在明天同步后导出。本页沿用当前已验证的中国时区 +08:00；查询与文件时区应一致。没有一键安装文件，手机上的修改需要按下面步骤完成。</p>
+<section><h2>1. 复制现有指令</h2><ol>
+<li>在快捷指令列表中长按已成功的多日能量指令，选择“复制”。</li>
+<li>打开副本，改名为“导出单日能量”。保留原来的批量指令，供以后补历史使用。</li>
+<li>保留最前面的当前日期、ISO格式化和“导出时间”变量。若你原变量叫“导出日期”，沿用该名称并让模板引用它。</li>
+<li>找到原先两项固定“指定日期”及对应的“汇总起点/汇总终点”设定。用下一节的新动作替换这四项；后面的手表来源和日汇总查询保留。</li>
+</ol></section>
+<section><h2>2. 每次选择日期并准备查询范围</h2><ol>
+<li>在导出时间准备之后、日汇总查询之前，添加“请求输入”（搜索“请求输入”，部分版本显示“询问输入”或“要求输入信息”）。</li>
+<li>将输入类型选择为“日期”，提示填写“请选择要导出的日期（昨天或更早）”。</li>
+<li>添加“设定变量”，名称“选择日期”，输入选择请求输入的结果。</li>
+<li>添加“格式化日期”，输入明确选择“选择日期”，自定格式为下方的日期格式。</li>
+</ol><pre>yyyy-MM-dd</pre><ol start="5">
+<li>添加“设定变量”，名称“目标日期”，输入选择刚才的格式化日期结果。它是文件和文件名使用的日期文本。</li>
+<li>添加“文本”，插入“目标日期”变量后紧接下面的固定时间部分。方括号处必须使用变量标签，不打成普通文字。</li>
+</ol><pre>【目标日期】T00:00:00+08:00</pre><ol start="7">
+<li>添加“从输入中获取日期”（搜索“获取日期”），输入明确选择上面的文本，将ISO文本解析成日期。</li>
+<li>添加“获取列表中的项目”，选择“第一项”，输入选择上一步获取到的日期。</li>
+<li>添加“设定变量”，名称“汇总起点”，输入选择刚才的第一项。此处是日期，不能直接设成“目标日期”文本。</li>
+<li>添加“调整日期”，输入明确选择“汇总起点”，添加1天。</li>
+<li>添加“设定变量”，名称“汇总终点”，输入选择这个调整后的日期。</li>
+<li>可暂时显示提醒，插入“目标日期”“汇总起点”“汇总终点”检查。例如选择10月17日时，两端应为17日零点和18日零点。</li>
+</ol><p class="note">解析明确包含00:00:00的文本，是为了让所选日期固定到午夜，不依赖日期选择器默认附带的时间。分组日汇总及午夜候选查询均沿用已验证的相邻两日零点方式。</p></section>
+<section><h2>3. 核对两类日汇总</h2><ol>
+<li>活动日汇总查询仍是：开始日期介于“汇总起点”和“汇总终点”，同一手表来源，千卡，分组天，填写缺失项关闭，开始日期最旧优先，限制关闭。</li>
+<li>静息日汇总查询使用相同范围和设置，类型为静息能量。再次确认单位为千卡。</li>
+<li>后面的整批获取值/日期、竖线合并、字典和“活动日JSON/静息日JSON”设定全部保留。</li>
+<li>两份日汇总字典的“count”继续引用各自实际计数；不要直接输入数字1。“source”拼写正确。</li>
+</ol></section>
+<section><h2>4. 将午夜循环改为2次</h2><ol>
+<li>找到循环前“无 → 将变量 午夜JSON片段 设为 无”，保留在循环外。</li>
+<li>将固定“重复18次”改为“重复2次”。</li>
+<li>循环内“重复索引减1 → 偏移天数 → 汇总起点加偏移天数天 → 本次午夜”保留。</li>
+<li>“边界查询起点”仍为本次午夜减1天；“边界查询终点”直接设为本次午夜，不减1秒。</li>
+<li>活动和静息边界查询、各自“样本有任何值”的判断、详情、字典、从字典获取文本和添加到同一个“午夜JSON片段”全部保留。</li>
+<li>两类边界startAt/endAt继续使用完整ISO自定格式。静息结束时间也必须包含秒和时区。</li>
+</ol><pre>yyyy-MM-dd'T'HH:mm:ssXXX</pre><p>第一轮取得所选日期零点的候选，第二轮取得次日零点的候选。总计2个午夜×2类能量=4条候选；未跨午夜的真实候选继续保留。</p></section>
+<section><h2>5. 改为单日文件模板</h2><ol>
+<li>循环后的“午夜JSON片段”计数、英文逗号合并和“午夜JSON”设定保留。</li>
+<li>找到完整JSON模板，把from和through两项的固定日期都替换成“目标日期”变量，两边引号保留。</li>
+<li>其他字段继续引用原有变量，完整模板如下。</li>
+</ol><pre>{
+  "app": "kcal-health-energy",
+  "version": 1,
+  "exportedAt": "【导出时间】",
+  "from": "【目标日期】",
+  "through": "【目标日期】",
+  "dailyTotals": [
+    【活动日JSON】,
+    【静息日JSON】
+  ],
+  "boundarySamples": [
+    【午夜JSON】
+  ]
+}</pre><p class="note">两个目标日期和导出时间在引号内；三个JSON片段变量没有外层引号。目标日期是你选择的记录日，导出时间是现在，不能互换。</p></section>
+<section><h2>6. 文件名与第一次运行</h2><ol>
+<li>将“设定名称”的固定文件名改成下面的形式，日期位置插入“目标日期”变量。</li>
+</ol><pre>kcal-energy-【目标日期】.json</pre><ol start="2">
+<li>确认保存链仍为：完整文本 → 获取完整字典 → 从字典获取文本 → 设定名称 → 保存文件。不要使用“获取所有值”。</li>
+<li>修改最终提醒，加上目标日期，并保留实际计数变量。</li>
+</ol><pre>导出日期：【目标日期】
+活动日数量：【活动日数量】
+活动日日期数量：【活动日日期数量】
+静息日数量：【静息日数量】
+静息日日期数量：【静息日日期数量】
+午夜样本数量：【午夜样本数量】</pre><ol start="4">
+<li>第一次选择已经批量验证过的历史日期，例如10月17日。应得到1、1、1、1、4。缺失时不填零，先检查来源和同步情况。</li>
+<li>保存后，在PWA中进入“健康 → 代谢与消耗 → 从文件导入多日能量”，或直接进入“导入健康JSON”。这个入口也支持单日。</li>
+<li>检查预览应显示“能量1天”，起止日期都等于目标日期。确认后仅更新该日能量，其他日期与类别保留。</li>
+<li>同一文件重复导入会跳过；重新导出的较新文件按该日替换，不累加。已有更晚手动记录或导入时可能跳过，按预览提示处理。</li>
+</ol></section>
+<section><h2>只需要记住的变化</h2><table><tr><th>位置</th><th>单日设置</th></tr><tr><td>选择日期</td><td>每次运行请求日期</td></tr><tr><td>汇总范围</td><td>所选日零点至次日零点</td></tr><tr><td>固定重复</td><td>2次</td></tr><tr><td>from / through</td><td>都使用目标日期</td></tr><tr><td>预期数量</td><td>1、1、1、1、4</td></tr><tr><td>文件名</td><td>kcal-energy-目标日期.json</td></tr></table></section>
+<p class="note">单日操作步骤尚待你在iPhone上首次运行确认。网页接收协议与多日相同，已覆盖单日解析测试；全天完整性与边界分配仍需健康App对照。</p>
+<p><a href="energy-shortcuts-guide.html">多日指令完整设置</a> · <a href="https://support.apple.com/zh-cn/guide/shortcuts/apd68b5c9161/ios">苹果：请求输入支持日期</a> · <a href="https://support.apple.com/en-euro/guide/shortcuts/apdfd459e13d/ios">苹果：ISO日期与时区</a></p>
+</main></body></html>

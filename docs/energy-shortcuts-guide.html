@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>精简能量导出</title>
+<style>:root{--bg:#f2f2f7;--card:#fff;--text:#1c1c1e;--muted:#636366;--link:#007aff}@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--text:#f5f5f7;--muted:#aeaeb2;--link:#0a84ff}}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:700px;margin:auto;padding:24px 18px calc(28px + env(safe-area-inset-bottom))}a{color:var(--link)}h1{font-size:28px}h2{font-size:21px;margin:24px 0 12px}section{background:var(--card);padding:18px;border-radius:16px;margin:16px 0}li{margin:10px 0}ol,ul{padding-left:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);padding:14px;border-radius:10px;font:13px/1.6 ui-monospace,Consolas,monospace}code{overflow-wrap:anywhere}.note{color:var(--muted);font-size:14px}</style></head>
+<body><main><a href="shortcuts-guide.html">‹ 返回快捷指令指南</a><h1>导出10月1日至11日能量</h1>
+<p>手机读取两类日汇总和少量午夜候选样本，网页校正跨日部分。没有全天原始样本循环。所有计算保留小数，导入预览另列舍去小数的活动与静息对照值。</p>
+<p class="note">网页v2026-10-18.1起支持kcal-health-energy v1。该方法按区间时长分配边界样本，属于已做少量日期对照的假设，不代表苹果完整算法。示例文件全部虚构，不可导入个人记录。</p>
+<p><a href="energy-single-day-guide.html">已有多日指令？改成每次选择日期的单日版</a>。</p>
+<p><a href="能量导出步骤与接续-2026-10-12.md">完整逐项操作与接续说明</a>。活动与静息的边界判断均使用“样本有任何值”。</p>
+<p class="note">2026-10-18更新：导出1日至17日时，汇总终点设为10月18日零点，重复18次，through为2026-10-17，文件名为kcal-energy-2026-10-01-17.json。手机数量检查已通过（四项17、午夜36），文件内容及真实导入仍待验收。边界查询终点直接使用“本次午夜”，不能减1秒；同一天零点到23:59:59在本次设备测试中查询为空。保存后还需核对候选startAt早于boundaryAt。</p>
+<section><h2>1. 固定日期与来源</h2><ol>
+<li>复制已有小型能量验证指令，命名为“导出10月1日至11日能量”。保留已验证的健康查询和日期读取方式；移除旧提醒、数量截取、分批循环与旧保存模板。</li>
+<li>最前面添加“当前日期”→“格式化日期”（自定下列ISO格式）→“设定变量”，保存为“导出时间”。</li>
+<li>指定日期 2026-10-01T00:00:00+08:00 → 设定变量“汇总起点”。</li>
+<li>指定日期 2026-10-12T00:00:00+08:00 → 设定变量“汇总终点”。</li>
+<li>添加“文本”，填你已确认的手表实际来源名称，设定变量“手表来源”。下面所有健康查询都明确筛选这一来源；切换类型后重新确认单位为千卡。</li>
+</ol><pre>yyyy-MM-dd'T'HH:mm:ssXXX</pre></section>
+<section><h2>2. 活动日汇总（整批读取）</h2><ol>
+<li>查找健康样本：全部条件；活动能量；开始日期介于“汇总起点”和“汇总终点”；来源为实际手表；单位千卡；分组天；填写缺失项关闭；开始日期最旧优先；限制关闭。</li>
+<li>设定变量“活动日样本”，输入为这个查询的健康样本输出。后面详情均引用它。</li>
+<li>从“活动日样本”获取值→设定“活动日数值列表”。计数这个列表的项目→设定“活动日数量”。</li>
+<li>从“活动日样本”获取开始日期→格式化日期，自定 yyyy-MM-dd →设定“活动日日期列表”。计数这个格式化列表→设定“活动日日期数量”。</li>
+<li>合并“活动日数值列表”，自定义分隔符为下面的竖线→设定“活动日数值文本”。</li>
+<li>合并“活动日日期列表”，使用同一竖线→设定“活动日日期文本”。</li>
+<li>字典按下面字段创建；count 为数字，其余为文本；右侧变量使用变量标签。</li>
+</ol><pre>|</pre><pre>kind       active
+unit       kcal
+source     【手表来源】
+count      【活动日数量】（数字）
+separator  |
+dates      【活动日日期文本】
+values     【活动日数值文本】</pre><p>从该字典获取文本→设定变量“活动日JSON”。</p></section>
+<section><h2>3. 静息日汇总</h2><p>在活动日JSON之后建立同样的一组动作，不使用循环：</p><ol>
+<li>查询类型静息能量；日期、来源、单位、天分组、关闭填写缺失项和关闭限制与活动查询相同。</li>
+<li>保存查询输出为“静息日样本”。获取值→“静息日数值列表”；计数→“静息日数量”。</li>
+<li>从同一“静息日样本”获取开始日期→自定 yyyy-MM-dd →“静息日日期列表”；计数→“静息日日期数量”。</li>
+<li>分别用竖线合并数值、日期列表，保存“静息日数值文本”和“静息日日期文本”。</li>
+<li>建立字典如下，再从字典获取文本，保存为“静息日JSON”。</li>
+</ol><pre>kind       basal
+unit       kcal
+source     【手表来源】
+count      【静息日数量】（数字）
+separator  |
+dates      【静息日日期文本】
+values     【静息日数值文本】</pre><p>此处可加一个简短提醒显示四个数量。每类的日期数量和数值数量必须一致；全部日期有数据时两类各11项。缺少某天不补零，保留真实日期供网页匹配。</p></section>
+<section><h2>4. 准备12个午夜</h2><ol>
+<li>添加“无”→“设定变量”，把“午夜JSON片段”初始化为无。只放在循环外，不能每轮重设。</li>
+<li>添加“重复”，设置12次，不是重复健康样本中的每一项。</li>
+<li>在循环内计算“重复索引 − 1”，保存“偏移天数”。重复索引使用循环变量。</li>
+<li>调整“汇总起点”，添加“偏移天数”天→保存日期变量“本次午夜”。依次为10月1日零点至12日零点。</li>
+<li>调整“本次午夜”，减1天→日期变量“边界查询起点”。</li>
+<li>将“边界查询终点”直接设为“本次午夜”，保留日期类型。不减1秒，查询使用相邻两日零点；本次设备测试中减1秒会使查询返回空。仍需检查候选的开始时间早于对应午夜。</li>
+<li>格式化“本次午夜”，自定ISO格式→保存文本变量“午夜时间”。</li>
+</ol><pre>yyyy-MM-dd'T'HH:mm:ssXXX</pre><p>第1轮查询9月30日最后的候选样本，第12轮查询10月11日最后的候选样本。</p></section>
+<section><h2>5. 循环内读取活动候选样本</h2><ol>
+<li>查找健康样本：活动能量；开始日期介于“边界查询起点”和“边界查询终点”；来源为同一手表；单位千卡；分组无；开始日期最新优先；限制1项。</li>
+<li>保存查询输出为“活动边界样本”。添加“如果”，输入明确选择“活动边界样本”，条件选择“有任何值”。这里直接判断样本是否存在，不需要计数或创建“活动边界数量”。</li>
+<li>以下动作放在“如果”和“否则”之间，详情输入均明确选择“活动边界样本”：获取值→保存“活动边界值”；获取开始日期→格式化ISO→保存“活动边界开始”；获取结束日期→格式化ISO→保存“活动边界结束”；获取来源→保存“活动边界来源”。</li>
+<li>建立下面的字典，从字典获取文本，再“添加到变量 午夜JSON片段”。“否则”留空，保留结束如果。</li>
+</ol><pre>kind        active（文本）
+unit        kcal（文本）
+source      【活动边界来源】（文本）
+boundaryAt  【午夜时间】（文本）
+value       【活动边界值】（数字）
+startAt     【活动边界开始】（文本）
+endAt       【活动边界结束】（文本）</pre><p class="note">候选样本没有跨过午夜也保留：它证明本候选的跨入量为零。没查到样本则不制造零值；网页将保留缺少边界的日期。此单候选方案适用于已核对的单一来源边界规律；如果存在多条实际跨界样本，需要完整边界集合，不能只取最新一条。</p></section>
+<section><h2>6. 循环内读取静息候选样本</h2><p>放在活动“结束如果”之后、12次“结束重复”之前。逐项添加：</p><ol>
+<li>查询静息能量，其他设置与活动候选查询一致，尤其是单位千卡、分组无、最新优先、限制1项。</li>
+<li>保存为“静息边界样本”→如果“静息边界样本”“有任何值”。不需要中间计数。</li>
+<li>在如果内：获取值→“静息边界值”；开始日期→ISO格式化→“静息边界开始”；结束日期→ISO格式化→“静息边界结束”；来源→“静息边界来源”。所有输入为“静息边界样本”。</li>
+<li>字典如下→从字典获取文本→添加到同一个“午夜JSON片段”。否则留空。保留结束如果和结束重复。</li>
+</ol><pre>kind        basal（文本）
+unit        kcal（文本）
+source      【静息边界来源】（文本）
+boundaryAt  【午夜时间】（文本）
+value       【静息边界值】（数字）
+startAt     【静息边界开始】（文本）
+endAt       【静息边界结束】（文本）</pre><p>只循环12个日期；健康数据库完成查询，不对全天几千条样本逐条循环。</p></section>
+<section><h2>7. 检查数量并包装文件</h2><ol>
+<li>循环外计数“午夜JSON片段”的项目，保存“午夜样本数量”。两类每天均有候选样本时应为24项。</li>
+<li>合并“午夜JSON片段”，自定义分隔符为英文逗号，保存“午夜JSON”。不要合并重复结果，它不是这个累计变量。</li>
+<li>添加显示提醒，显示两类日日期/数值数量和边界数量。开启取消按钮。日期与数值数量不同应取消；完整目标通常为11、11、11、11、24。实际缺失不填零，网页也会显示未更新日期。</li>
+<li>添加文本，使用下列完整模板，分别插入变量标签。导出时间保留引号，三个JSON变量不加引号。</li>
+</ol><pre>{
+  "app": "kcal-health-energy",
+  "version": 1,
+  "exportedAt": "【导出时间】",
+  "from": "2026-10-01",
+  "through": "2026-10-11",
+  "dailyTotals": [
+    【活动日JSON】,
+    【静息日JSON】
+  ],
+  "boundarySamples": [
+    【午夜JSON】
+  ]
+}</pre></section>
+<section><h2>8. 保存与导入</h2><ol>
+<li>从完整文本获取字典，检查JSON能否解析。</li>
+<li>从完整字典获取文本→设定名称 kcal-energy-2026-10-01-11.json →存储文件，询问存储位置。</li>
+<li>使用支持新格式的网页：健康→导入健康JSON→选择文件。先检查预览列出的日期、活动与静息整数对照值、遗漏提示和覆盖提示，再确认。</li>
+<li>保存后导出完整备份。重复同一文件应跳过；新文件按日期替换而不累加，饮食、体重和睡眠不随能量文件改变。</li>
+</ol><p class="note">数量只用于结构检查，不能证明健康数据库已经同步完整。先等待Watch数据出现在健康App中，再导出。没有新版本上线时，先保存手机文件，不能用旧版网页验证新协议。</p></section>
+<p><a href="健康数据导入格式.md">协议与校验规则</a> · <a href="health-energy-example.json">虚构格式示例</a> · <a href="https://support.apple.com/zh-cn/guide/shortcuts/apdc11deb2c1/ios">苹果：重复索引与循环</a></p>
+</main></body></html>
