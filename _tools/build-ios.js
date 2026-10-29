@@ -1,7 +1,7 @@
 // Bundle the whole existing application for iOS, without editing any PWA resource.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),nativeRoot=path.join(root,'native-ios'),target=path.join(nativeRoot,'Web');
-const bridge=['native-platform.js','native-health.js','native-app.js','native.css'];
+const bridge=['native-platform.js','native-health.js','native-app.js','native-navigation.js','native.css'];
 // Only these reviewed public files belong in the app; extra source files are ignored.
 const docs=['health-import-example.json','health-samples-example.json','health-energy-example.json','健康数据导入格式.md','shortcuts-guide.html','energy-shortcuts-guide.html','energy-single-day-guide.html','能量导出步骤与接续-2026-10-12.md'];
 function statIfPresent(file){
@@ -45,13 +45,10 @@ function replaceSection(start,end,replacement){
 replaceOnce('await navigator.clipboard.writeText(prompt)',"await KcalNative.call('clipboard.write',{text:prompt})");
 replaceOnce('if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText();',"text = (await KcalNative.call('clipboard.read')).text || '';");
 replaceSection('function launchDeepSeek(){',"$('btnCopy').addEventListener",`async function launchDeepSeek(){
-  const requested=settings.dsScheme || DS_WEB;
-  try{await KcalNative.call('external.open',{url:requested});}
-  catch(error){
-    if(requested===DS_WEB){toast(error.message);return;}
-    try{await KcalNative.call('external.open',{url:DS_WEB});}
-    catch(fallback){toast(fallback.message);}
-  }
+  try{
+    const result=await KcalNative.call('deepseek.open',{preferred:settings.dsScheme || null});
+    if(result?.target==='web')toast('未能打开 DeepSeek App，已打开网页版');
+  }catch(error){toast(error.message);}
 }`);
 replaceOnce("$('btnExport').addEventListener('click', () => {","$('btnExport').addEventListener('click', async () => {");
 const csvStart=script.indexOf("    const blob = new Blob(['\\ufeff' + s]");
@@ -95,12 +92,13 @@ html=html.replace('<section id="healthPage" aria-labelledby="pageTitle" hidden>'
   <label id="nativeSleepLabel" for="nativeSleepSource" hidden>睡眠来源</label><select id="nativeSleepSource" hidden aria-label="睡眠来源"></select>
   <button class="wide primary" id="btnNativeSync">连接并同步 Apple 健康</button>
   <label class="native-auto"><input type="checkbox" id="nativeAutoSync">打开 App 时自动刷新最近7天</label>
-  <p id="nativeSyncStatus" class="hint" role="status">首次使用可先到设置恢复网页的完整备份；网页与 App 的记录分别保存。</p>
+  <p id="nativeSyncStatus" class="hint" role="status">正在检查原生连接… 开发验收请使用虚构备份；网页与 App 的记录分别保存。</p>
   <details id="nativeSyncDetails" class="hint" hidden><summary>同步详情</summary><p id="nativeSyncNotes"></p></details>
 </section>`);
 if(!html.includes('id="nativeHealth"'))throw new Error('Health page insertion point missing');
 html=html.replace('</head>',`<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">\n<link rel="stylesheet" href="native.css">\n</head>`);
-html=html.replace('</body>','<script src="native-health.js"></script>\n<script src="native-app.js"></script>\n</body>');
+html=html.replace('可选，默认使用网页链接','可选，默认优先打开 DeepSeek App');
+html=html.replace('</body>','<script src="native-health.js"></script>\n<script src="native-app.js"></script>\n<script src="native-navigation.js"></script>\n</body>');
 if(/navigator\.serviceWorker|\blocalStorage\b|URL\.createObjectURL|new FileReader/.test(html))throw new Error('Browser-only platform operation leaked into native bundle');
 // Prepare a complete sibling tree before replacing the generated folder. In-place
 // copying would leave stale or unreviewed files in Xcode's Web folder reference.

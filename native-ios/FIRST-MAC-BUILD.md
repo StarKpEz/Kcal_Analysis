@@ -1,6 +1,6 @@
 # 首次 macOS 编译检查点
 
-当前阶段只准备本地源码，不提交、上传、启用云构建或发布。PWA 基线仍为 `main / f26a175 / 2026-10-18.1 / kcal-v17`；App 为 `1.0.0 / 1`。本检查点是可单独复制的源码目录，不是 Git 提交、iOS 分支或已编译 App。当前混合工作树及全部原有改动仍保留。
+本文保留源码检查点与 Mac 手动构建流程。2026-10-29 已在 `ios/first-native-build / bd145cd` 完成首次编译及用户安装，IPA/日志位于本地 `docs/ios-builds/2026-10-29/`；健康与完整真机验收尚未通过。首次包为 `1.0.0 / 1`，当前本地修复源码为 `1.0.1 / 2`，尚未原生编译，后续不自动构建。PWA 业务基线仍为 `f26a175 / 2026-10-18.1 / kcal-v17`。下述源码检查点不能作为 IPA 安装；main 混合工作树仍保留。
 
 ## Windows 生成独立源码材料
 
@@ -19,7 +19,7 @@ node _tools/prepare-ios-checkpoint.js
 
 ## macOS 环境与编译
 
-需要完整 Xcode 及 iPhoneOS SDK、Node 和 XcodeGen；仅有 Command Line Tools 不够。安装工具、首次 Xcode 许可与组件准备由 Mac 使用者操作，不需要提供 Apple ID 或开发团队。已有工具时：
+需要完整 Xcode 26+、设备/模拟器 SDK 26+、已安装的 iOS 26+ iPhone 模拟器运行时、Node 和 XcodeGen；仅有 Command Line Tools 不够。安装工具、首次 Xcode 许可与组件准备由 Mac 使用者操作，不需要提供 Apple ID 或开发团队。已有工具时：
 
 ```bash
 node _tools/prepare-ios-checkpoint.js --verify
@@ -40,7 +40,7 @@ bash native-ios/scripts/build-unsigned.sh
 | `artifacts/BUILD-INFO.txt`、`SHA256SUMS.txt` | 工具版本、构建身份及产物校验 |
 | `artifacts/ios-checkpoint.json` | 若从检查点构建，保留该材料的源文件摘要 |
 
-脚本检查 Bundle ID、版本/构建号、健康读取说明、隐私清单、Web 文件清单及字节一致性，以及 ad-hoc HealthKit 声明。只有脚本 exit 0 且本次目录含完整材料，才记录为“首次原生编译通过”。失败目录中的中间文件不能作为成功 IPA；修复时保留原日志和检查点编号。Windows 模拟桥或预检通过不等于 Swift 编译成功。
+脚本先在新建空白 iPhone 模拟器运行 hosted XCTest，再编译设备包；模拟器结果位于 `native-ios/build/simulator-runs/<时间-进程>/`，含 `test.log`、`Tests.xcresult`（含截图）、`test-summary.json` 与运行时选择证据，结束只清理本轮新建模拟器。设备阶段检查 Bundle ID、版本/构建号、健康读取说明、隐私清单、Web 清单/字节及 ad-hoc HealthKit 声明。只有测试通过、脚本 exit 0 且本次目录含完整材料才记录成功。失败中间文件不能作为 IPA；Windows 检查不等于 Swift 编译成功。
 
 没有 Mac 时停在源码检查点。后续需要云编译，仍须用户明确授权提交/上传及启用；不要把本检查点复制到 `.github/workflows/`，也不要自动推 `ios-build-*` 标签。未启用模板保留失败诊断制品 1 天，规则参见 [构建与迁移说明](README.md)。
 

@@ -1,12 +1,20 @@
 import Foundation
 import HealthKit
 
+protocol NativeHealthProviding {
+    var isAvailable: Bool { get }
+    func authorize(completion: @escaping (Result<[String: Any], Error>) -> Void)
+    func sync(params: [String: Any], completion: @escaping (Result<[String: Any], Error>) -> Void)
+}
+
 /// Read-only adapter. Returned documents pass through the web app's existing
 /// parseHealthJSON -> healthImportPlan -> one commitData transaction.
 /// Never treat an empty query as proof of read permission or as a deletion.
-final class HealthKitService {
+final class HealthKitService: NativeHealthProviding {
     typealias Completion = (Result<[String: Any], Error>) -> Void
     private let store = HKHealthStore()
+
+    var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
     private var readTypes: Set<HKObjectType> {
         var types: Set<HKObjectType> = [HKObjectType.workoutType()]

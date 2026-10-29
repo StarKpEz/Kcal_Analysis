@@ -6,11 +6,12 @@
   const available = () => !!window.webkit?.messageHandlers?.kcalNative;
   const api = window.KcalNative = {
     available,
-    call(method, params = {}) {
+    call(method, params = {}, options = {}) {
       if (!available()) return Promise.reject(new Error('此功能需要在 iOS App 中使用'));
       const id = session + ':' + (++serial);
       return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(id); reject(new Error('操作超时，请重试')); }, 180000);
+        const timeout = options.timeoutMs ?? (method.startsWith('health.') || method === 'file.pick' || method === 'share.text' ? 180000 : 10000);
+        const timer = setTimeout(() => { pending.delete(id); reject(Object.assign(new Error('原生操作未响应，请重新打开 App 后重试'),{code:'bridge_timeout'})); }, timeout);
         pending.set(id, {resolve,reject,timer});
         try { window.webkit.messageHandlers.kcalNative.postMessage({id,method,params}); }
         catch(error) { clearTimeout(timer); pending.delete(id); reject(error); }
@@ -24,6 +25,12 @@
       else task.resolve(message.result);
     }
   };
+  api.ready = api.call('bridge.ping', {}, {timeoutMs:8000}).then(info => {
+    if (info?.protocolVersion !== 2) throw new Error('App 原生组件版本不匹配，请更新安装包');
+    return info;
+  });
+  // Consumers handle the failure visibly; attach now to avoid an early unhandled rejection.
+  api.ready.catch(() => {});
   function storage(operation, extra = {}) {
     if (!available()) throw new Error('App 原生存储桥不可用，已停止保存');
     const response = window.prompt('__KCAL_STORAGE__', JSON.stringify({operation,...extra}));

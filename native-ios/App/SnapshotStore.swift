@@ -8,10 +8,11 @@ final class SnapshotStore {
     private let file: URL
     private let lock = NSLock()
 
-    init() {
-        directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    init(directory: URL? = nil) {
+        let resolvedDirectory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("KcalAnalysis", isDirectory: true)
-        file = directory.appendingPathComponent("snapshot.json", isDirectory: false)
+        self.directory = resolvedDirectory
+        file = resolvedDirectory.appendingPathComponent("snapshot.json", isDirectory: false)
     }
 
     func load() throws -> String? {

@@ -1,4 +1,4 @@
-/* App additions use solid cards; Liquid Glass remains confined to the existing bottom bar. */
+/* Solid content; the acknowledged UIKit/SwiftUI host owns the floating navigation. */
 #nativeHealth{grid-column:1/-1}
 #nativeHealth h2{font-size:17px;color:var(--fg);margin-bottom:8px}
 .native-range{display:flex;gap:12px;margin:12px 0;flex-wrap:wrap}
@@ -12,3 +12,6 @@
 #nativeSleepSource{width:100%;margin:8px 0}
 .native-migration{margin-top:12px}
 html{overscroll-behavior:none}
+html.native-navigation #primaryNav{display:none}
+html.native-navigation body,html.native-navigation .scrwrap{padding-bottom:var(--native-tab-clearance,120px)}
+html.native-navigation .toast{bottom:var(--native-tab-clearance,120px)}

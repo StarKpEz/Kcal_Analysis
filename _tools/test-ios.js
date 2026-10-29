@@ -23,6 +23,7 @@ const server=http.createServer((req,res)=>{
       const context=await browser.newContext({viewport:{width,height},colorScheme:scheme,timezoneId:'Asia/Shanghai'});
       const page=await context.newPage(),errors=[];page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
       let raw=fixture,writes=0,failWrites=false,shareCompleted=false,prefs={autoSync:false,sleepSource:''},result={daily:null,sleepSamples:null,notes:[]},failure=null;
+      let nativeNavigation=false,pingFailure=false,holdAuthorization=false,authorizationReply=null,dropNavigationReply=false,nativeVisible=false;
       const calls=[];
       page.on('dialog',async dialog=>{
         assert.equal(dialog.message(),'__KCAL_STORAGE__');
@@ -33,8 +34,13 @@ const server=http.createServer((req,res)=>{
       });
       await page.exposeBinding('__nativeRequest',async({page},message)=>{
         calls.push(message);
+        if(message.method==='synthetic.noResponse')return;
         let value;
-        if(message.method==='preferences.load')value=prefs;
+        if(message.method==='bridge.ping')value={protocolVersion:2,appVersion:'1.0.1',buildNumber:'2',healthAvailable:true,nativeNavigation};
+        else if(message.method==='nav.state'){nativeVisible=message.params.visible;if(dropNavigationReply)return;value={accepted:true};}
+        else if(message.method==='nav.disable'){nativeVisible=false;value={disabled:true};}
+        else if(message.method==='deepseek.open')value={opened:true,target:'app'};
+        else if(message.method==='preferences.load')value=prefs;
         else if(message.method==='preferences.save')value=prefs={...prefs,...message.params};
         else if(message.method==='health.authorize')value={requestCompleted:true};
         else if(message.method==='health.sync')value=result;
@@ -42,8 +48,9 @@ const server=http.createServer((req,res)=>{
         else if(message.method==='file.pick')value={name:'synthetic-backup.json',text:fixture};
         else if(message.method==='clipboard.read')value={text:'synthetic clipboard'};
         else value={};
-        const requestFailure=message.method==='health.sync'?failure:message.method==='external.open'&&message.params.url==='bad-kcal-test://'?'Synthetic missing app':null;
+        const requestFailure=message.method==='health.sync'?failure:message.method==='bridge.ping'&&pingFailure?'Synthetic bridge unavailable':null;
         const reply=requestFailure?{id:message.id,error:{code:'synthetic',message:requestFailure}}:{id:message.id,result:value};
+        if(message.method==='health.authorize'&&holdAuthorization){authorizationReply=()=>page.evaluate(reply=>window.KcalNative.receive(reply),reply);return;}
         await page.evaluate(reply=>window.KcalNative.receive(reply),reply);
       });
       await page.addInitScript(()=>{window.webkit={messageHandlers:{kcalNative:{postMessage:message=>window.__nativeRequest(message)}}};});
@@ -104,7 +111,8 @@ const server=http.createServer((req,res)=>{
           assert.deepEqual(restoredBackup[key],fixtureData[key],'Fictional acceptance backup must round-trip '+key);
         }
         await page.evaluate(async()=>{settings.dsScheme='bad-kcal-test://';await launchDeepSeek();delete settings.dsScheme;});
-        assert.deepEqual(calls.filter(c=>c.method==='external.open').map(c=>c.params.url),['bad-kcal-test://','https://chat.deepseek.com/'],'Missing custom app scheme must fall back to the web link');
+        await page.evaluate(async()=>launchDeepSeek());
+        assert.deepEqual(calls.filter(c=>c.method==='deepseek.open').map(c=>c.params.preferred),['bad-kcal-test://',null],'Native launcher must own app-first fallback and optional custom links');
         // Fresh launch with explicitly opted-in auto sync must protect hand-entered records.
         prefs={autoSync:true,sleepSource:''};
         const now=new Date(),today=now.toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'});
@@ -121,6 +129,55 @@ const server=http.createServer((req,res)=>{
         await page.evaluate(()=>{KcalNative.onResume();KcalNative.onResume();});
         assert.equal(calls.filter(c=>c.method==='health.sync').length,syncCalls,'Repeated foreground events should not repeat a recent sync');
         assert.equal(new Set(calls.map(c=>c.id)).size,calls.length,'Bridge request IDs must not be reused across page reloads');
+        // The reported failure was a silent early return. Exercise the protected states directly.
+        prefs={autoSync:false,sleepSource:''};raw=null;result={daily:null,sleepSamples:null,notes:[]};
+        await page.reload();await page.evaluate(()=>navigateApp('health'));
+        await page.evaluate(()=>KcalNative.ready);writesBefore=writes;
+        holdAuthorization=true;authorizationReply=null;
+        await page.locator('#btnNativeSync').click();
+        await page.waitForFunction(()=>document.getElementById('nativeSyncStatus').textContent.includes('正在请求 Apple 健康授权'));
+        assert.equal(await page.locator('#btnNativeSync').isDisabled(),true);
+        assert.equal(typeof authorizationReply,'function');
+        await authorizationReply();holdAuthorization=false;
+        await page.waitForFunction(()=>document.getElementById('nativeSyncStatus').textContent.includes('没有可更新'));
+        assert.equal(writes,writesBefore);assert.equal(raw,null,'Empty first install must not write before accepting real records');
+        await page.evaluate(()=>{storageReadError=true;document.getElementById('btnNativeSync').click();});
+        assert.match(await page.locator('#nativeSyncStatus').textContent(),/本地记录读取异常/);
+        await page.evaluate(()=>{storageReadError=false;storageStale=true;document.getElementById('btnNativeSync').click();});
+        assert.match(await page.locator('#nativeSyncStatus').textContent(),/其他操作更新/);
+        pingFailure=true;await page.reload();await page.evaluate(()=>navigateApp('health'));
+        await page.waitForFunction(()=>document.getElementById('nativeSyncStatus').textContent.includes('Synthetic bridge unavailable'));
+        await page.locator('#btnNativeSync').click();
+        await page.waitForFunction(()=>document.getElementById('nativeSyncStatus').textContent.startsWith('未更新：'));
+        assert.equal(raw,null);pingFailure=false;
+        assert.equal(await page.evaluate(async()=>{try{await KcalNative.call('synthetic.noResponse',{}, {timeoutMs:20});return 'unexpected';}catch(error){return error.code;}}),'bridge_timeout');
+        // A successful native handshake alone may hide HTML navigation; native taps reuse route guards.
+        nativeNavigation=true;raw=fixture;await page.reload();
+        await page.waitForFunction(()=>document.documentElement.classList.contains('native-navigation'));
+        await page.evaluate(()=>KcalNativeNavigation.setClearance(180));
+        await page.waitForFunction(()=>Math.abs(parseFloat(getComputedStyle(document.getElementById('toast')).bottom)-180)<0.1);
+        assert.equal(await page.locator('#toast').evaluate(element=>getComputedStyle(element).bottom),'180px','Large native bars must lift feedback above their bounds');
+        await page.evaluate(()=>KcalNativeNavigation.select('health'));
+        await page.waitForFunction(()=>document.getElementById('navHealth').getAttribute('aria-current')==='page');
+        await page.evaluate(()=>navigateApp('weight'));await page.evaluate(()=>KcalNativeNavigation.select('diet'));
+        await page.evaluate(()=>KcalNativeNavigation.select('health'));
+        assert.equal(await page.evaluate(()=>appRoute),'weight','Native health tab must restore last detail route');
+        await page.evaluate(()=>openSet());
+        await page.waitForFunction(()=>document.querySelector('.modal.on'));
+        await page.waitForTimeout(30);
+        assert.equal(calls.findLast(c=>c.method==='nav.state').params.visible,false,'Native bar must hide for editing modals');
+        await page.evaluate(()=>KcalNativeNavigation.setEnabled(false));
+        assert.equal(await page.locator('#primaryNav').getAttribute('aria-hidden'),null,'Native failure must restore accessible HTML navigation');
+        await page.waitForTimeout(30);assert.equal(nativeVisible,false,'HTML fallback must disable an already visible native bar');
+        // Native applied a new route, but its acknowledgement never arrived.
+        await page.reload();await page.waitForFunction(()=>document.documentElement.classList.contains('native-navigation'));
+        await page.evaluate(()=>{const call=KcalNative.call.bind(KcalNative);KcalNative.call=(method,params,options)=>call(method,params,method==='nav.state'?{timeoutMs:30}:options);});
+        dropNavigationReply=true;
+        await page.evaluate(()=>KcalNativeNavigation.select(document.getElementById('navHealth').hasAttribute('aria-current')?'diet':'health'));
+        await page.waitForFunction(()=>!document.documentElement.classList.contains('native-navigation'));
+        await page.waitForTimeout(30);assert.equal(nativeVisible,false,'Lost navigation replies must not leave both bars visible');
+        dropNavigationReply=false;
+        nativeNavigation=false;await page.reload();
         console.log('PASS native sync preview/cancel, all-category atomic save, disk failure rollback, CAS, backup sharing, empty/failure preservation and auto-sync conflicts');
       }
       assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>navigator.serviceWorker.getRegistrations().then(x=>x.length)),0);

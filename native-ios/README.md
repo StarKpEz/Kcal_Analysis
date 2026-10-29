@@ -2,7 +2,7 @@
 
 本目录将现有饮食与健康页面放入本机 iOS App，并增加原生 HealthKit 读取、文件导入/导出及本机备份。PWA 正在日常使用，App 另行开发；两端数据、构建和发布分开。网页源码是共享界面的来源，平台适配放在本目录；共用源码变更仍须分别评估两端影响。它是 Swift 原生容器内运行本地网页的 App，不是把所有页面重写为 SwiftUI，也不依赖 Expo Go。
 
-当前交付包含源码和构建流程。Windows 上的检查不能验证 Swift 编译、iPhone 安装、HealthKit 授权或七天续签；这些都需要后续云端构建及真机验收。没有现成已签名安装包，也没有替用户开通付费服务。
+2026-10-29 已在独立分支 `ios/first-native-build` 完成首次 macOS/Xcode 编译与 IPA 打包，成功源码为 `bd145cd`，构建记录为 [Actions run 40852613051](https://github.com/StarKpEz/Kcal_Analysis/actions/runs/40852613051)。产物及日志已下载到本地 `docs/ios-builds/2026-10-29/`（忽略，不提交），Sideloadly 已通过命令行静默安装。IPA 为 ad-hoc 能力声明包，尚需用户本人签名；iPhone 安装、HealthKit 授权/读取及七天续签都未验收。没有开通付费服务，也没有迁移真实数据。
 
 ## 目录与本地检查
 
@@ -27,7 +27,21 @@ node _tools/test-ios-checkpoint.js
 node _tools/prepare-ios-checkpoint.js
 ```
 
-构建不读取手机数据，也不把 PWA 的 localStorage 或备份嵌入 App。App 专属界面变更修改桥接源文件；共用界面变更才评估正式源码，并分别验证两端，再重新生成 `Web/`。原生版本为 `1.0.0` / build `1`，独立于 PWA 资源版本；既有液态玻璃设计预览不会自动替换正式界面。
+构建不读取手机数据，也不把 PWA 的 localStorage 或备份嵌入 App。App 专属界面变更修改桥接源文件；共用界面变更才评估正式源码，并分别验证两端，再重新生成 `Web/`。当前修复源码为 `1.0.1` / build `2`，首次已安装包为 `1.0.0` / build `1`，独立于 PWA 资源版本。
+
+## 首次安装后的修复（2026-10-29，待原生编译）
+
+用户已安装首包，反馈健康同步按钮完全无变化。当前本地修复包含：
+
+- DeepSeek：默认用官方关联域名 `https://applink.deepseek.com/`，通过 `universalLinksOnly` 请求已安装 App；失败再尝试其官方网页客户端使用的 `dpsk://chat/new`，最后打开网页。有效自定义链接仍优先，旧默认网页设置也使用 App 优先。Scheme 是实现证据，不承诺长期稳定；不传递照片、健康记录或登录凭据。
+- 健康：启动握手、8 秒连接超时；按钮立即展示检查/授权/读取阶段，存储异常或冲突显示原因。保留主框架、文档 URL、WebView 身份及 securityOrigin 校验。空结果和错误保留旧记录，预览确认后一次保存。手机问题的最终原因仍待真实 WKWebView 与重签后的设备验证。
+- 底栏：仅 App 使用 `UIHostingController` 承载 SwiftUI `.glassEffect(.regular.interactive(), in: Capsule())`；iOS 26+ 使用真实材质，旧系统/减少透明度实色回退。网页路由确认后才替换 HTML 底栏；弹窗/键盘/加载期间隐藏，实际高度用于内容和提示避让。握手失败恢复 HTML 并关闭原生栏，迟到消息不能重开。PWA 底栏不变。
+
+2026-10-29 重新读取 Apple 当前文档：[glassEffect](https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:))（iOS 26+）、[健康授权](https://developer.apple.com/documentation/healthkit/authorizing-access-to-health-data)、[Universal Links only](https://developer.apple.com/documentation/uikit/uiapplication/openexternalurloptionskey/universallinksonly)。DeepSeek 关联证据见其 [AASA](https://applink.deepseek.com/.well-known/apple-app-site-association)。授权流程完成不表示获准读取；没有样本也不能推断没有历史记录。
+
+本地 Chrome 整页回归已覆盖空库、授权等待、存储保护反馈、消息失败/超时、取消、整批保存、备份、路由/弹窗及窄屏/深浅色/文字放大。新增 hosted XCTest 将运行真实本地页面、消息桥、原生导航与同步存储，健康服务和外链使用虚构替身；尚未运行，不代表原生编译或真机验收通过。
+
+新版要求完整 Xcode 26+。CI 固定标准 `macos-15` 的 Xcode 26.3；设备打包前必须通过新建空白 iPhone 模拟器 XCTest，保留日志、截图附件和 `.xcresult`。后续上传/触发仍需明确授权，手机安装与 HealthKit 核对由用户完成。
 
 打包检查不需要 Chrome，验证精确白名单、残留文件排除及失败保留；生成器在完整临时树准备成功后替换 Web。`test-ios.js` 需要 Playwright 与 Chrome，使用固定虚构备份和模拟原生桥，不访问手机。检查点工具生成可单独复制到 Mac 的白名单源码目录，记录逐文件 SHA-256，不创建 Git 分支或提交。详见 [首次 Mac 编译检查点](FIRST-MAC-BUILD.md)。App 紧凑快照上限32MB，原生文件导入/分享上限96MB以容纳完整备份和原始恢复文件；App正常完整备份导出为紧凑JSON以保证往返。健康JSON的5MB校验单独保留。超限或保存失败不裁剪历史、不覆盖已有快照。
 
@@ -46,13 +60,13 @@ Apple 的 [能力表](https://developer.apple.com/help/account/reference/support
 
 ## 启用云编译前的最后步骤
 
-模板当前位于 `native-ios/ci/`，GitHub 不会执行它。授权上传并启用后，才将它复制到仓库根的 `.github/workflows/ios-unsigned.yml` 并上传相应代码；本轮不自动提交、推送、发布或触发运行。
+模板仍保留在 `native-ios/ci/`。本次经用户明确授权，已仅在 `ios/first-native-build` 分支创建 `.github/workflows/ios-unsigned.yml` 并用显式标签触发构建；当前检出的 `main` 未增加活动工作流，PWA 源码与版本不变。后续不因首次授权而自动推送、定期编译或发布。
 
 首次可将代码上传到独立分支，在需要构建的提交上明确创建并推送一个 `ios-build-*` 标签触发编译；普通分支 push、PR 或定时任务都不会启动构建。这允许保留当前 main 与网页发布不变，也不会创建 GitHub Release。
 
 如果将来模板经审阅进入默认分支，还可以在 GitHub 的 **Actions → Build iOS installation package (manual) → Run workflow** 手动构建指定分支。GitHub 的 `workflow_dispatch` 要求工作流先存在于默认分支，因此只上传新分支后不能直接假定会出现 Run workflow 按钮；首次使用上面的显式构建标签。见 [GitHub 触发规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)。
 
-流程只读检出源码，用 macOS 15 标准运行器和系统 Xcode，安装 XcodeGen，不用 Apple 账号、证书、描述文件、付费构建服务或签名密钥。
+流程只读检出源码，用 macOS 15 标准运行器和指定 Xcode 26.3，安装 XcodeGen，不用 Apple 账号、证书、描述文件、付费构建服务或签名密钥。
 
 构建产物保留 **1 天**；及时下载并保留 IPA 和校验值。七天续签通常复用同一安装包，不需要每七天云编译。公开仓库的标准托管运行器可免费使用；私有仓库有账户配额，制品存储另有免费限制。保持无付费预算，不启用大型运行器，并在实际启用时核对 [GitHub Actions 计费说明](https://docs.github.com/en/billing/concepts/product-billing/github-actions)。
 

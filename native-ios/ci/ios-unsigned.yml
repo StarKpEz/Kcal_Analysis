@@ -22,6 +22,9 @@ jobs:
     # Standard public-repository runner; no paid larger runner or signing service.
     runs-on: macos-15
     timeout-minutes: 25
+    env:
+      # macos-15 still defaults to Xcode 16.4; Liquid Glass needs the 26 SDK.
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - name: Check out source
         uses: actions/checkout@v7
@@ -36,7 +39,7 @@ jobs:
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
         run: brew install xcodegen
-      - name: Build app without Apple signing credentials
+      - name: Test on an iPhone simulator, then build the unsigned device app
         run: bash native-ios/scripts/build-unsigned.sh
       - name: Save installation package
         uses: actions/upload-artifact@v7
@@ -54,5 +57,12 @@ jobs:
           path: |
             native-ios/build/runs/*/build.log
             native-ios/build/runs/*/Build.xcresult/
+            native-ios/build/simulator-runs/*/test.log
+            native-ios/build/simulator-runs/*/Tests.xcresult/
+            native-ios/build/simulator-runs/*/test-summary.json
+            native-ios/build/simulator-runs/*/destination.json
+            native-ios/build/simulator-runs/*/devices.json
+            native-ios/build/simulator-runs/*/runtimes.json
+            native-ios/build/simulator-runs/*/device-types.json
           if-no-files-found: ignore
           retention-days: 1

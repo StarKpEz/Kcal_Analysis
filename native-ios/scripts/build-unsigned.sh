@@ -20,42 +20,10 @@ mkdir -p "$artifact_root"
 exec > >(tee "$run_root/build.log") 2>&1
 trap 'build_status=$?; echo "Build exit: $build_status; evidence: $run_root"' EXIT
 bash "$native_root/scripts/preflight.sh"
-node _tools/build-ios.js
+# The simulator script prepares Web/icon/project inputs, then runs hosted
+# XCTest. Failure stops this run before a device build or IPA can be emitted.
+bash "$native_root/scripts/simulator-tests.sh"
 package_root="$(mktemp -d "$run_root/package.XXXXXX")"
-icon_source="$repo_root/icons/icon-512-v3.png"
-icon_target="$native_root/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
-
-# Reuse the existing artwork. CoreGraphics only sizes it for Xcode and removes
-# the unused alpha channel; the PWA image and visual design remain unchanged.
-xcrun swift - "$icon_source" "$icon_target" <<'SWIFT'
-import Foundation
-import CoreGraphics
-import ImageIO
-import UniformTypeIdentifiers
-
-let arguments = CommandLine.arguments
-guard arguments.count == 3,
-      let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: arguments[1]) as CFURL, nil),
-      let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
-      let context = CGContext(data: nil, width: 1024, height: 1024,
-                              bitsPerComponent: 8, bytesPerRow: 0,
-                              space: CGColorSpaceCreateDeviceRGB(),
-                              bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
-else { fatalError("Cannot prepare existing app icon") }
-context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-context.fill(CGRect(x: 0, y: 0, width: 1024, height: 1024))
-context.interpolationQuality = .high
-context.draw(image, in: CGRect(x: 0, y: 0, width: 1024, height: 1024))
-guard let output = context.makeImage(),
-      let destination = CGImageDestinationCreateWithURL(
-        URL(fileURLWithPath: arguments[2]) as CFURL, UTType.png.identifier as CFString, 1, nil)
-else { fatalError("Cannot create app icon") }
-CGImageDestinationAddImage(destination, output, nil)
-guard CGImageDestinationFinalize(destination) else { fatalError("Cannot save app icon") }
-SWIFT
-
-plutil -lint "$native_root/App/Info.plist" "$native_root/App/KcalAnalysis.entitlements" "$native_root/App/PrivacyInfo.xcprivacy"
-xcodegen generate --spec "$native_root/project.yml" --project "$native_root"
 xcodebuild \
   -project "$native_root/KcalAnalysis.xcodeproj" \
   -scheme KcalAnalysis \
@@ -77,8 +45,8 @@ if [[ ! -f "$app_path/Web/index.html" || ! -f "$app_path/KcalAnalysis" ]]; then
 fi
 plutil -lint "$app_path/Info.plist" "$app_path/PrivacyInfo.xcprivacy"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_path/Info.plist")" == "com.starkpez.kcalanalysis" ]]
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Info.plist")" == "1.0.0" ]]
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Info.plist")" == "1" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Info.plist")" == "1.0.1" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Info.plist")" == "2" ]]
 /usr/libexec/PlistBuddy -c 'Print :NSHealthShareUsageDescription' "$app_path/Info.plist" >/dev/null
 # Confirm Xcode copied every generated Web file byte-for-byte, with no extras.
 node - "$native_root/Web" "$app_path/Web" <<'NODE'
@@ -121,6 +89,8 @@ fi
 {
   echo "Built UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "Run: $run_id"
+  echo "App: 1.0.1 / 2"
+  echo "Simulator XCTest gate: passed before the device build (evidence path in build.log)"
   echo "Apple signing: none (ad-hoc metadata only)"
   node --version
   xcodegen --version

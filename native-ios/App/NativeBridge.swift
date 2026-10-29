@@ -6,16 +6,24 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UIDocumentPickerDele
     weak var webView: WKWebView?
     private weak var presenter: UIViewController?
     private let store: SnapshotStore
-    private let health = HealthKitService()
+    private let health: NativeHealthProviding
+    private let launcher: ExternalAppLauncher
+    var onNavigationState: ((String, Bool) -> Void)?
+    var onNavigationDisabled: (() -> Void)?
+    // Diagnostic metadata only; never retain health payloads or full request URLs.
+    private(set) var lastMessageOrigin: (scheme: String, host: String)?
     private var pendingPicker: ((Result<[String: Any], Error>) -> Void)?
     private let preferencePrefix = "kcal.native."
     // Transport must fit every valid compact snapshot, formatted legacy backups
     // and the escaped raw snapshot inside a recovery export.
     private static let maximumTransferBytes = SnapshotStore.maximumBytes * 3
 
-    init(presenter: UIViewController, store: SnapshotStore) {
+    init(presenter: UIViewController, store: SnapshotStore,
+         health: NativeHealthProviding = HealthKitService(), launcher: ExternalAppLauncher = ExternalAppLauncher()) {
         self.presenter = presenter
         self.store = store
+        self.health = health
+        self.launcher = launcher
     }
 
     static func isLocal(_ url: URL?) -> Bool {
@@ -56,18 +64,44 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UIDocumentPickerDele
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "kcalNative", message.frameInfo.isMainFrame,
+        guard message.name == "kcalNative", message.webView === webView, message.frameInfo.isMainFrame,
               Self.isAppDocument(message.frameInfo.request.url), Self.isAppDocument(webView?.url),
-              message.frameInfo.securityOrigin.protocol == "kcalapp", message.frameInfo.securityOrigin.host == "localhost",
               let body = message.body as? [String: Any],
               let id = body["id"] as? String, !id.isEmpty, id.count <= 100,
               let method = body["method"] as? String else { return }
+        let origin = message.frameInfo.securityOrigin
+        lastMessageOrigin = (scheme: origin.protocol, host: origin.host)
+        guard origin.protocol == "kcalapp", origin.host == "localhost", origin.port == 0 else {
+            // Report an origin mismatch only to the already-verified local main document.
+            // Never execute a requested capability or relax the origin check to recover.
+            reply(id: id, result: .failure(NativeFailure("untrusted_origin", "原生连接来源校验失败，请重新打开 App；若仍失败，请保留当前记录并反馈。")))
+            NSLog("Kcal native bridge rejected origin (protocol=%@, host=%@).", origin.protocol, origin.host)
+            return
+        }
         let params = body["params"] as? [String: Any] ?? [:]
         let complete: (Result<[String: Any], Error>) -> Void = { [weak self] result in
             DispatchQueue.main.async { self?.reply(id: id, result: result) }
         }
         do {
             switch method {
+            case "bridge.ping":
+                complete(.success([
+                    "protocolVersion": 2,
+                    "nativeNavigation": true,
+                    "appVersion": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
+                    "buildNumber": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown",
+                    "healthAvailable": health.isAvailable
+                ]))
+            case "nav.state":
+                guard let section = params["section"] as? String, ["diet", "health"].contains(section),
+                      let visible = params["visible"] as? Bool else {
+                    throw NativeFailure("invalid_navigation", "页面导航状态无效。")
+                }
+                onNavigationState?(section, visible)
+                complete(.success(["accepted": true]))
+            case "nav.disable":
+                onNavigationDisabled?()
+                complete(.success(["disabled": true]))
             case "storage.load":
                 complete(.success(["raw": try store.load() as Any? ?? NSNull()]))
             case "storage.save":
@@ -93,6 +127,11 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UIDocumentPickerDele
                     if opened { complete(.success(["opened": true])) }
                     else { complete(.failure(NativeFailure("cannot_open", "无法打开此链接，请检查对应 App 是否安装。"))) }
                 }
+            case "deepseek.open":
+                if let preferred = params["preferred"], !(preferred is String), !(preferred is NSNull) {
+                    throw NativeFailure("invalid_url", "DeepSeek 启动链接无效。")
+                }
+                launcher.openDeepSeek(preferred: params["preferred"] as? String, completion: complete)
             case "health.authorize": health.authorize(completion: complete)
             case "health.sync": health.sync(params: params, completion: complete)
             default: throw NativeFailure("unknown_method", "不支持的原生操作。")
@@ -135,7 +174,10 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UIDocumentPickerDele
         case .success(let value): message["result"] = value
         case .failure(let error): message["error"] = errorBody(error)
         }
-        webView?.evaluateJavaScript("if (window.KcalNative && typeof window.KcalNative.receive === 'function') window.KcalNative.receive(\(Self.json(message)));", completionHandler: nil)
+        webView?.evaluateJavaScript("if (window.KcalNative && typeof window.KcalNative.receive === 'function') window.KcalNative.receive(\(Self.json(message)));") { _, error in
+            // Avoid logging JS source, error userInfo, request IDs or response payloads.
+            if error != nil { NSLog("Kcal native bridge could not deliver a reply to the local document.") }
+        }
     }
 
     private func errorBody(_ error: Error, includeOK: Bool = false) -> [String: Any] {
@@ -212,12 +254,6 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UIDocumentPickerDele
     }
 
     func openExternal(_ url: URL, completion: ((Bool) -> Void)? = nil) {
-        let denied = ["file", "javascript", "data", "kcalapp", "blob", "about", "applewebdata"]
-        guard let scheme = url.scheme?.lowercased(), !denied.contains(scheme), !scheme.isEmpty,
-              url.user == nil, url.password == nil else { completion?(false); return }
-        if scheme == "https" || scheme == "http" {
-            guard let host = url.host, !host.isEmpty else { completion?(false); return }
-        }
-        UIApplication.shared.open(url, options: [:]) { completion?($0) }
+        launcher.openExternal(url, completion: completion)
     }
 }

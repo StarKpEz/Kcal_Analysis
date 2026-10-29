@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),vm=require('node:vm');
 const assert=require('node:assert/strict'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
-const bridge=['native-platform.js','native-health.js','native-app.js','native.css'];
+const bridge=['native-platform.js','native-health.js','native-app.js','native-navigation.js','native.css'];
 const docs=['health-import-example.json','health-samples-example.json','health-energy-example.json','健康数据导入格式.md','shortcuts-guide.html','energy-shortcuts-guide.html','energy-single-day-guide.html','能量导出步骤与接续-2026-10-12.md'];
 const sourceFiles=['_tools/build-ios.js','index.html','app.css','navigation.js','sw.js',...bridge.map(file=>'native-ios/bridge/'+file),...docs.map(file=>'docs/'+file)];
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'kcal-ios-packaging-'));
