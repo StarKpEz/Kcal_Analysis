@@ -1,0 +1,256 @@
+{
+  "app": "kcal",
+  "version": 7,
+  "entries": {
+    "2026-10-03": {
+      "breakfast": [
+        {
+          "name": "虚构燕麦与酸奶（仅供验收）",
+          "kcal": 360,
+          "protein": 19,
+          "fat": 10,
+          "carbs": 48
+        }
+      ],
+      "lunch": [
+        {
+          "name": "鸡肉蔬菜饭",
+          "kcal": 580,
+          "protein": 38,
+          "fat": 18,
+          "carbs": 65
+        }
+      ],
+      "dinner": [
+        {
+          "name": "豆腐与杂粮",
+          "kcal": 520,
+          "protein": 28,
+          "fat": 16,
+          "carbs": 61
+        }
+      ],
+      "snack": [
+        {
+          "name": "水果与坚果",
+          "kcal": 180,
+          "protein": 4,
+          "fat": 8,
+          "carbs": 23
+        }
+      ]
+    },
+    "2026-10-04": {
+      "breakfast": [
+        {
+          "name": "燕麦与酸奶",
+          "kcal": 360,
+          "protein": 19,
+          "fat": 10,
+          "carbs": 48
+        }
+      ],
+      "lunch": [
+        {
+          "name": "鸡肉蔬菜饭",
+          "kcal": 580,
+          "protein": 38,
+          "fat": 18,
+          "carbs": 65
+        }
+      ],
+      "dinner": [
+        {
+          "name": "豆腐与杂粮",
+          "kcal": 520,
+          "protein": 28,
+          "fat": 16,
+          "carbs": 61
+        }
+      ],
+      "snack": [
+        {
+          "name": "水果与坚果",
+          "kcal": 180,
+          "protein": 4,
+          "fat": 8,
+          "carbs": 23
+        }
+      ]
+    },
+    "2026-10-05": {
+      "breakfast": [
+        {
+          "name": "燕麦与酸奶",
+          "kcal": 360,
+          "protein": 19,
+          "fat": 10,
+          "carbs": 48
+        }
+      ],
+      "lunch": [
+        {
+          "name": "鸡肉蔬菜饭",
+          "kcal": 580,
+          "protein": 38,
+          "fat": 18,
+          "carbs": 65
+        }
+      ],
+      "snack": [
+        {
+          "name": "水果与坚果",
+          "kcal": 180,
+          "protein": 4,
+          "fat": 8,
+          "carbs": 23
+        }
+      ]
+    }
+  },
+  "weight": {
+    "2026-10-04": 78.1,
+    "2026-10-05": 78.2
+  },
+  "burn": {
+    "2026-10-03": {
+      "active": 524,
+      "basal": 1450,
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "source": "health-json"
+    },
+    "2026-10-04": {
+      "active": 502,
+      "basal": 1450,
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "source": "health-json"
+    },
+    "2026-10-05": {
+      "active": 480,
+      "basal": 1450,
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "source": "health-json"
+    }
+  },
+  "completion": {},
+  "training": {
+    "2026-10-03": {
+      "sessions": [
+        {
+          "id": "demo-walk-2026-10-03",
+          "type": "户外步行",
+          "durationMinutes": 35,
+          "distanceKm": 3.6,
+          "energyKcal": 230,
+          "startAt": "2026-10-03T08:30:00+08:00"
+        }
+      ],
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z"
+    },
+    "2026-10-04": {
+      "sessions": [
+        {
+          "id": "demo-walk-2026-10-04",
+          "type": "户外步行",
+          "durationMinutes": 35,
+          "distanceKm": 3.6,
+          "energyKcal": 230,
+          "startAt": "2026-10-04T08:30:00+08:00"
+        },
+        {
+          "id": "fictional-hiit-2026-10-04",
+          "type": "HIIT",
+          "durationMinutes": 18,
+          "energyKcal": 150,
+          "startAt": "2026-10-04T18:00:00+08:00"
+        }
+      ],
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z"
+    },
+    "2026-10-05": {
+      "sessions": [
+        {
+          "id": "demo-walk-2026-10-05",
+          "type": "户外步行",
+          "durationMinutes": 35,
+          "distanceKm": 3.6,
+          "energyKcal": 230,
+          "startAt": "2026-10-05T08:30:00+08:00"
+        }
+      ],
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z"
+    }
+  },
+  "sleep": {
+    "2026-10-03": {
+      "asleepMinutes": 420,
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "startAt": "2026-10-02T23:15:00+08:00",
+      "endAt": "2026-10-03T06:30:00+08:00",
+      "stages": {
+        "core": 285,
+        "deep": 60,
+        "rem": 75
+      }
+    },
+    "2026-10-04": {
+      "asleepMinutes": 420,
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "startAt": "2026-10-03T23:15:00+08:00",
+      "endAt": "2026-10-04T06:30:00+08:00",
+      "stages": {
+        "core": 285,
+        "deep": 60,
+        "rem": 75
+      }
+    },
+    "2026-10-05": {
+      "asleepMinutes": 420,
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "startAt": "2026-10-04T23:15:00+08:00",
+      "endAt": "2026-10-05T06:30:00+08:00",
+      "stages": {
+        "core": 285,
+        "deep": 60,
+        "rem": 75
+      }
+    }
+  },
+  "weightMeta": {
+    "2026-10-04": {
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "measuredAt": "2026-10-04T07:30:00+08:00"
+    },
+    "2026-10-05": {
+      "source": "health-json",
+      "updatedAt": "2026-10-05T04:00:00.000Z",
+      "measuredAt": "2026-10-05T07:30:00+08:00"
+    }
+  },
+  "settings": {
+    "kcal": 2100,
+    "p": 115,
+    "f": 65,
+    "c": 260
+  },
+  "body": {
+    "sex": "female",
+    "birthYear": 1990,
+    "heightCm": 170,
+    "bodyFat": "",
+    "activity": 1.375,
+    "weightKg": "",
+    "preferHarris": false
+  },
+  "meta": {
+    "lastBackup": "2026-10-05"
+  },
+  "exportedAt": "2026-10-05T04:00:00.000Z"
+}

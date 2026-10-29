@@ -1,0 +1,14 @@
+/* App additions use solid cards; Liquid Glass remains confined to the existing bottom bar. */
+#nativeHealth{grid-column:1/-1}
+#nativeHealth h2{font-size:17px;color:var(--fg);margin-bottom:8px}
+.native-range{display:flex;gap:12px;margin:12px 0;flex-wrap:wrap}
+.native-range label{flex:1;min-width:130px;font-size:13px;color:var(--dim)}
+.native-range input{width:100%;min-width:0;display:block;margin-top:4px;min-height:44px;background:var(--card2);border:1px solid var(--line);color:var(--fg);padding:8px;border-radius:10px}
+#btnNativeSync{display:block;width:100%}
+#nativeSyncStatus{white-space:pre-line;overflow-wrap:anywhere;margin:12px 0 0}
+#nativeSyncDetails{margin-top:8px}#nativeSyncNotes{white-space:pre-line;overflow-wrap:anywhere}
+.native-auto{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:8px;font-size:14px}
+.native-auto input{width:20px;height:20px;min-height:20px}
+#nativeSleepSource{width:100%;margin:8px 0}
+.native-migration{margin-top:12px}
+html{overscroll-behavior:none}

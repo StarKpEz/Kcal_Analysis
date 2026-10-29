@@ -1,0 +1,58 @@
+# Inert template: only workflows inside .github/workflows are active.
+# Copy there only when cloud-build publication is explicitly authorized.
+name: Build iOS installation package (manual)
+
+on:
+  workflow_dispatch:
+  # Explicitly pushing an installation-build tag also works before this workflow
+  # exists on the default branch. Ordinary branch pushes never start a build.
+  push:
+    tags:
+      - 'ios-build-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kcal-ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    # Standard public-repository runner; no paid larger runner or signing service.
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Install XcodeGen
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: brew install xcodegen
+      - name: Build app without Apple signing credentials
+        run: bash native-ios/scripts/build-unsigned.sh
+      - name: Save installation package
+        uses: actions/upload-artifact@v7
+        with:
+          name: KcalAnalysis-unprovisioned-${{ github.run_number }}
+          path: native-ios/build/runs/*/artifacts/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+      - name: Save build diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: KcalAnalysis-diagnostics-${{ github.run_number }}
+          path: |
+            native-ios/build/runs/*/build.log
+            native-ios/build/runs/*/Build.xcresult/
+          if-no-files-found: ignore
+          retention-days: 1

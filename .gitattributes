@@ -1,0 +1,2 @@
+# Keep macOS entry points executable by bash after a Windows checkout/transfer.
+native-ios/scripts/*.sh text eol=lf

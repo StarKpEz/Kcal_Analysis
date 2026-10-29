@@ -1,2 +1,9 @@
 /.design-tools/
 /.preview-check/
+/native-ios/Web/
+/native-ios/.web-build-*/
+/native-ios/build/
+/native-ios/*.xcodeproj/
+/native-ios/*.xcworkspace/
+/native-ios/App/Assets.xcassets/AppIcon.appiconset/*.png
+/docs/ios-builds/
