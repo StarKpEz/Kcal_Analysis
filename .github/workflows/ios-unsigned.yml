@@ -64,5 +64,6 @@ jobs:
             native-ios/build/simulator-runs/*/devices.json
             native-ios/build/simulator-runs/*/runtimes.json
             native-ios/build/simulator-runs/*/device-types.json
+            native-ios/build/simulator-runs/*/attachments/
           if-no-files-found: ignore
           retention-days: 1

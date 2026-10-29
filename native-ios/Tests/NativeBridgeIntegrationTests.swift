@@ -398,7 +398,7 @@ final class NativeBridgeIntegrationTests: XCTestCase {
     }
 
     @MainActor
-    private func awaitBridgeReady(in webView: WKWebView) async throws -> Any {
+    private func awaitBridgeReady(in webView: WKWebView) async throws -> Any? {
         try await callAsyncJavaScript("await window.KcalNative.ready; return await window.KcalNative.call('bridge.ping');", in: webView)
     }
 
@@ -419,13 +419,9 @@ final class NativeBridgeIntegrationTests: XCTestCase {
     }
 
     @MainActor
-    private func callAsyncJavaScript(_ script: String, arguments: [String: Any] = [:], in webView: WKWebView) async throws -> Any {
+    private func callAsyncJavaScript(_ script: String, arguments: [String: Any] = [:], in webView: WKWebView) async throws -> Any? {
         let bounded = "var timeout; try { return await Promise.race([(async () => { " + script + " })(), new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Native integration request timed out')), 15000); })]); } finally { clearTimeout(timeout); }"
-        return try await withCheckedThrowingContinuation { continuation in
-            webView.callAsyncJavaScript(bounded, arguments: arguments, in: nil, contentWorld: .page) { result in
-                continuation.resume(with: result)
-            }
-        }
+        return try await webView.callAsyncJavaScript(bounded, arguments: arguments, in: nil, contentWorld: .page)
     }
 
     @MainActor

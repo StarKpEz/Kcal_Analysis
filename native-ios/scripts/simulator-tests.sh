@@ -97,3 +97,10 @@ if(summary.result!=null)assert.equal(summary.result,'Passed','Simulator test ses
 console.log('PASS native simulator XCTest: '+summary.passedTests+' tests passed.');
 NODE
 echo "Simulator XCTest passed. Device installation and HealthKit grants still require iPhone acceptance."
+# Export the existing XCTest screenshots for review on Windows as well as Xcode.
+# A CLI export failure does not invalidate passing tests; the originals remain in xcresult.
+if xcrun xcresulttool export attachments --path "$run_root/Tests.xcresult" --output-path "$run_root/attachments"; then
+  echo "XCTest attachments exported for local visual review."
+else
+  echo "Attachment export unavailable; originals are retained in Tests.xcresult." >&2
+fi
