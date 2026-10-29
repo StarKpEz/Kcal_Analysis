@@ -102,7 +102,8 @@ codesign --force --sign - \
   --entitlements "$native_root/App/KcalAnalysis.entitlements" \
   --generate-entitlement-der "$app_path"
 codesign --verify --strict "$app_path"
-codesign --display --entitlements - "$app_path" > "$artifact_root/requested-entitlements.plist"
+codesign --display --entitlements - --xml "$app_path" > "$artifact_root/requested-entitlements.plist"
+plutil -lint "$artifact_root/requested-entitlements.plist"
 /usr/libexec/PlistBuddy -c 'Print :com.apple.developer.healthkit' \
   "$artifact_root/requested-entitlements.plist" | /usr/bin/grep -qx true
 
