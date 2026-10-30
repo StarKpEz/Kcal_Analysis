@@ -129,7 +129,7 @@ final class NativeHealthSyncTests: XCTestCase {
         XCTAssertTrue(health.syncRequests.isEmpty)
         XCTAssertNil(model.review)
         XCTAssertFalse(model.authorizationPending)
-        await Task.yield()
+        try await settleCallbacks()
         XCTAssertEqual(model.phase, .failed, "Errors persist until a new user action; no transient toast")
     }
 
@@ -181,7 +181,7 @@ final class NativeHealthSyncTests: XCTestCase {
         let health = FakeHealth()
         health.heldRead = true
         var previews = 0
-        let model = NativeHealthSyncModel(health: health, timeouts: .init(read: 0.1), defaults: nil) { _, _, _ in
+        let model = NativeHealthSyncModel(health: health, timeouts: .init(read: 1), defaults: nil) { _, _, _ in
             previews += 1
             return self.preview()
         }
@@ -192,7 +192,7 @@ final class NativeHealthSyncTests: XCTestCase {
         model.start()
         try await eventually { health.reads.count == 2 }
         oldRead(.success([:]))
-        await Task.yield()
+        try await settleCallbacks()
         XCTAssertEqual(previews, 0)
         health.reads[1](.success([:]))
         try await eventually { model.phase == .ready }
@@ -221,6 +221,7 @@ final class NativeHealthSyncTests: XCTestCase {
     @MainActor
     func testReviewTimeoutIgnoresAnEventuallyPreparedReview() async throws {
         var pending: CheckedContinuation<NativeHealthReview, Never>?
+        defer { pending?.resume(returning: preview()) }
         let model = NativeHealthSyncModel(health: FakeHealth(), timeouts: .init(review: 0.05), defaults: nil) { _, _, _ in
             await withCheckedContinuation { pending = $0 }
         }
@@ -229,7 +230,7 @@ final class NativeHealthSyncTests: XCTestCase {
         XCTAssertTrue(model.errorText?.contains("timeout.reviewing") == true)
         pending?.resume(returning: preview())
         pending = nil
-        await Task.yield()
+        try await settleCallbacks()
         XCTAssertEqual(model.phase, .failed)
         XCTAssertNil(model.review)
         XCTAssertFalse(model.canCommit)
@@ -238,6 +239,7 @@ final class NativeHealthSyncTests: XCTestCase {
     @MainActor
     func testSavingCannotBeCancelledOrConfirmedTwice() async throws {
         var pending: CheckedContinuation<String, Never>?
+        defer { pending?.resume(returning: "测试结束") }
         var commits = 0
         let model = NativeHealthSyncModel(health: FakeHealth(), defaults: nil) { _, _, _ in
             NativeHealthReview(title: "虚构记录", details: [], canCommit: true) {
@@ -273,14 +275,16 @@ final class NativeHealthSyncTests: XCTestCase {
         try await eventually { health.reads.count == 1 }
         model.cancel()
         health.reads[0](.success([:]))
-        await Task.yield()
+        try await settleCallbacks()
         XCTAssertEqual(previews, 0)
         XCTAssertNil(model.review)
         model.start()
         try await eventually { health.reads.count == 2 }
         health.reads[1](.success([:]))
-        health.reads[1](.failure(NSError(domain: "duplicate", code: 1)))
         try await eventually { model.phase == .ready }
+        health.reads[1](.failure(NSError(domain: "duplicate", code: 1)))
+        try await settleCallbacks()
+        XCTAssertEqual(model.phase, .ready)
         XCTAssertEqual(previews, 1)
         XCTAssertNil(model.errorText)
         model.cancel()
@@ -419,7 +423,7 @@ final class NativeHealthSyncTests: XCTestCase {
         XCTAssertTrue(model.isRunning)
         model.cancel()
         health.reads[0](.success([:]))
-        await Task.yield()
+        try await settleCallbacks()
         XCTAssertFalse(model.isRunning)
         XCTAssertEqual(previews, 0)
     }
@@ -473,7 +477,7 @@ final class NativeHealthSyncTests: XCTestCase {
         health.heldRead = true
         var now = Date()
         var commits = 0
-        let model = NativeHealthAutoSyncModel(health: health, defaults: defaults, now: { now }, timeout: 0.1) { _, _, _ in
+        let model = NativeHealthAutoSyncModel(health: health, defaults: defaults, now: { now }, timeout: 1) { _, _, _ in
             NativeHealthAutomaticReview(updates: 1, conflicts: 0) { commits += 1; return "虚构刷新完成" }
         }
         model.refreshIfEnabled(allowed: true)
@@ -483,7 +487,7 @@ final class NativeHealthSyncTests: XCTestCase {
         model.refreshIfEnabled(allowed: true)
         XCTAssertEqual(health.reads.count, 2)
         health.reads[0](.success([:]))
-        await Task.yield()
+        try await settleCallbacks()
         XCTAssertEqual(commits, 0)
         health.reads[1](.success([:]))
         try await eventually { !model.isRunning }
@@ -547,7 +551,7 @@ final class NativeHealthSyncTests: XCTestCase {
             ])
             host.didMove(toParent: parent)
             parent.view.layoutIfNeeded()
-            try await eventually { self.descendants(host.view).compactMap { $0 as? UIDatePicker }.count == 2 }
+            try await eventually(timeout: 10) { self.descendants(host.view).compactMap { $0 as? UIDatePicker }.count == 2 }
             host.view.layoutIfNeeded()
             let controls = descendants(host.view).compactMap { $0 as? UIDatePicker }
             let frames = controls.map { $0.convert($0.bounds, to: host.view) }.sorted { $0.minY < $1.minY }
@@ -576,8 +580,15 @@ final class NativeHealthSyncTests: XCTestCase {
         NativeHealthReview(title: "虚构预览", details: [], canCommit: true) { "虚构保存" }
     }
 
-    @MainActor private func eventually(_ predicate: () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(3)
+    /// A single Task.yield may resume this test before the callback's queued task.
+    /// Use a short main-run-loop interval before asserting an ignored callback has
+    /// left state unchanged; positive transitions still use the polling helper.
+    @MainActor private func settleCallbacks() async throws {
+        try await Task.sleep(nanoseconds: 20_000_000)
+    }
+
+    @MainActor private func eventually(timeout: TimeInterval = 3, _ predicate: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if predicate() { return }
             try await Task.sleep(nanoseconds: 10_000_000)

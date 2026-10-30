@@ -109,74 +109,11 @@ struct NativeEnergyDetail: View {
         Form {
             Section { NativeDateHeader(model: model) }
             if let feedback { Section { HealthFeedback(message: feedback, failed: failed) } }
-            Section("摄入与消耗") {
-                HealthValueRow("已记录摄入", HealthUI.flag(energy, "hasIntake") ? HealthUI.number(energy["intake"]) + " kcal" : "未记录")
-                HealthValueRow(energy["source"] as? String == "estimate" ? "总消耗 · 公式估算" : "总消耗 · 健康能量",
-                    HealthUI.flag(energy, "hasBurn") ? HealthUI.number(energy["burn"]) + " kcal" : "无数据")
-                if HealthUI.flag(energy, "hasBurn") {
-                    HealthValueRow("静息 / 基础代谢", HealthUI.number(energy["rest"]) + " kcal")
-                    HealthValueRow("活动", HealthUI.number(energy["active"]) + " kcal")
-                }
-                if HealthUI.flag(energy, "canCompare"), let deficit = HealthUI.value(energy["deficit"]) {
-                    HealthValueRow((deficit >= 0 ? "记录缺口" : "记录盈余") +
-                        (energy["source"] as? String == "estimate" ? " · 公式估算" : ""), HealthUI.number(abs(deficit)) + " kcal")
-                } else {
-                    Text(model.dayKey == HealthUI.key(Date()) ? "今天仍在累计，全天差额次日查看。" : "有饮食与消耗记录后才比较差额。")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                Text("消耗来自健康能量录入，或 BMR × 活动系数估算；不再叠加训练热量和食物热效应。饮食漏记会影响差额，差额不代表实际减重。")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-            Section {
-                HealthNumberField(title: "活动能量（kcal）", text: $active, identifier: "energy-active")
-                HealthNumberField(title: "静息能量（kcal）", text: $basal, identifier: "energy-basal")
-                Button("保存当日能量", action: save).disabled(model.isReadOnly)
-                    .accessibilityIdentifier("energy-save")
-                if saved != nil {
-                    Button("清除当日能量", role: .destructive) { confirmClear = true }.disabled(model.isReadOnly)
-                }
-            } header: { Text("录入健康能量") } footer: {
-                Text(saved == nil ? "两项都需填写。0 可以保存；缺失不当作 0。" :
-                    HealthUI.source(saved) + " · " + HealthUI.timestamp(saved?["updatedAt"]) + "。手动保存会替换当天两项能量。")
-            }
-            if HealthUI.flag(energy, "hasBody") {
-                Section("身体档案与公式") {
-                    HealthValueRow("最近体重", HealthUI.latestWeight(model.snapshot, through: model.dayKey).1.map { HealthUI.number($0) + " kg" } ?? "未提供")
-                    HealthValueRow("身高", HealthUI.value(bodyProfile["heightCm"]).map { HealthUI.number($0) + " cm" } ?? "未提供")
-                    HealthValueRow("基础代谢 BMR", HealthUI.number(energy["bmr"]) + " kcal")
-                    HealthValueRow("活动系数", HealthUI.number(bodyProfile["activity"]))
-                    HealthValueRow("估算总消耗 TDEE", HealthUI.number((HealthUI.value(energy["bmr"]) ?? 0) * (HealthUI.value(bodyProfile["activity"]) ?? 1.2)) + " kcal")
-                    if let formula = energy["formula"] as? String { Text(formula).font(.footnote).foregroundStyle(.secondary) }
-                    if let target = energy["target"] as? [String: Any], HealthUI.flag(target, "ok") {
-                        HealthValueRow("参考摄入", HealthUI.number(target["target"]) + " kcal")
-                        Text(HealthUI.flag(target, "clipped") ? "参考值已按原有摄入下限调整；下限不保证个人适用。" : "参考值按身体档案估算。")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-                    Text("身体档案与摄入目标可在设置中调整。公式结果仅作参考，不自动修改目标。")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-            }
-            Section("近 14 天 · 截至 " + model.dayKey) {
-                if days.contains(where: { $0.hasIntake || $0.hasBurn }) { energyChart }
-                else { Text("尚无可显示的摄入或消耗。").foregroundStyle(.secondary) }
-                energyStatistics
-                DisclosureGroup("每日数值与来源") {
-                    ForEach(days) { day in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(day.key).font(.subheadline)
-                            Text("摄入 " + (day.hasIntake ? HealthUI.number(day.intake) + " kcal" : "未记录") +
-                                "；消耗 " + (day.hasBurn ? HealthUI.number(day.burn) + " kcal" : "无数据"))
-                                .font(.footnote)
-                            Text(day.estimated ? "公式估算" : day.closed ? "历史录入" : "今日累计")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-            Section {
-                Button("同步 Apple 健康", action: onSync)
-                Button("导入健康 JSON", action: onImport)
-            }
+            balanceSection
+            entrySection
+            if HealthUI.flag(energy, "hasBody") { profileSection }
+            historySection
+            importSection
         }
         .navigationTitle("能量").navigationBarTitleDisplayMode(.inline)
         .task(id: model.dayKey) { refresh(resetInputs: true) }
@@ -184,6 +121,115 @@ struct NativeEnergyDetail: View {
         .confirmationDialog("清除 " + model.dayKey + " 的能量录入？", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("清除录入", role: .destructive) { clear() }
         } message: { Text("只清除当天活动与静息能量，之后恢复公式估算。") }
+    }
+
+    private var balanceSection: some View {
+        Section("摄入与消耗") {
+            HealthValueRow("已记录摄入", intakeText)
+            HealthValueRow(isEstimated ? "总消耗 · 公式估算" : "总消耗 · 健康能量", burnText)
+            if HealthUI.flag(energy, "hasBurn") {
+                HealthValueRow("静息 / 基础代谢", HealthUI.number(energy["rest"]) + " kcal")
+                HealthValueRow("活动", HealthUI.number(energy["active"]) + " kcal")
+            }
+            balanceComparison
+            Text("消耗来自健康能量录入，或 BMR × 活动系数估算；不再叠加训练热量和食物热效应。饮食漏记会影响差额，差额不代表实际减重。")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+    @ViewBuilder private var balanceComparison: some View {
+        if HealthUI.flag(energy, "canCompare"), let deficit = HealthUI.value(energy["deficit"]) {
+            HealthValueRow(deficitTitle(deficit), HealthUI.number(abs(deficit)) + " kcal")
+        } else {
+            Text(model.dayKey == HealthUI.key(Date()) ? "今天仍在累计，全天差额次日查看。" : "有饮食与消耗记录后才比较差额。")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+    private var entrySection: some View {
+        Section {
+            HealthNumberField(title: "活动能量（kcal）", text: $active, identifier: "energy-active")
+            HealthNumberField(title: "静息能量（kcal）", text: $basal, identifier: "energy-basal")
+            Button("保存当日能量", action: save).disabled(model.isReadOnly)
+                .accessibilityIdentifier("energy-save")
+            if saved != nil {
+                Button("清除当日能量", role: .destructive) { confirmClear = true }.disabled(model.isReadOnly)
+            }
+        } header: { Text("录入健康能量") } footer: { Text(entryFooter) }
+    }
+    private var profileSection: some View {
+        Section("身体档案与公式") {
+            profileValues
+            if let formula = energy["formula"] as? String { Text(formula).font(.footnote).foregroundStyle(.secondary) }
+            targetReference
+            Text("身体档案与摄入目标可在设置中调整。公式结果仅作参考，不自动修改目标。")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+    @ViewBuilder private var profileValues: some View {
+        HealthValueRow("最近体重", profileWeightText)
+        HealthValueRow("身高", profileHeightText)
+        HealthValueRow("基础代谢 BMR", HealthUI.number(energy["bmr"]) + " kcal")
+        HealthValueRow("活动系数", HealthUI.number(bodyProfile["activity"]))
+        HealthValueRow("估算总消耗 TDEE", estimatedTotalText)
+    }
+    @ViewBuilder private var targetReference: some View {
+        if let target = energy["target"] as? [String: Any], HealthUI.flag(target, "ok") {
+            HealthValueRow("参考摄入", HealthUI.number(target["target"]) + " kcal")
+            Text(HealthUI.flag(target, "clipped") ? "参考值已按原有摄入下限调整；下限不保证个人适用。" : "参考值按身体档案估算。")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+    private var historySection: some View {
+        Section("近 14 天 · 截至 " + model.dayKey) {
+            if days.contains(where: { $0.hasIntake || $0.hasBurn }) { energyChart }
+            else { Text("尚无可显示的摄入或消耗。").foregroundStyle(.secondary) }
+            energyStatistics
+            DisclosureGroup("每日数值与来源") {
+                ForEach(days) { day in energyDayRow(day) }
+            }
+        }
+    }
+    private func energyDayRow(_ day: HealthEnergyDay) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(day.key).font(.subheadline)
+            Text(energyDayDescription(day)).font(.footnote)
+            Text(day.estimated ? "公式估算" : day.closed ? "历史录入" : "今日累计")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+    private var importSection: some View {
+        Section {
+            Button("同步 Apple 健康", action: onSync)
+            Button("导入健康 JSON", action: onImport)
+        }
+    }
+    private var isEstimated: Bool { energy["source"] as? String == "estimate" }
+    private var intakeText: String { HealthUI.flag(energy, "hasIntake") ? HealthUI.number(energy["intake"]) + " kcal" : "未记录" }
+    private var burnText: String { HealthUI.flag(energy, "hasBurn") ? HealthUI.number(energy["burn"]) + " kcal" : "无数据" }
+    private func deficitTitle(_ deficit: Double) -> String {
+        let title = deficit >= 0 ? "记录缺口" : "记录盈余"
+        return title + (isEstimated ? " · 公式估算" : "")
+    }
+    private var entryFooter: String {
+        guard let saved else { return "两项都需填写。0 可以保存；缺失不当作 0。" }
+        return HealthUI.source(saved) + " · " + HealthUI.timestamp(saved["updatedAt"]) + "。手动保存会替换当天两项能量。"
+    }
+    private var profileWeightText: String {
+        guard let value = HealthUI.latestWeight(model.snapshot, through: model.dayKey).1 else { return "未提供" }
+        return HealthUI.number(value) + " kg"
+    }
+    private var profileHeightText: String {
+        guard let value = HealthUI.value(bodyProfile["heightCm"]) else { return "未提供" }
+        return HealthUI.number(value) + " cm"
+    }
+    private var estimatedTotalText: String {
+        let bmr = HealthUI.value(energy["bmr"]) ?? 0
+        let activity = HealthUI.value(bodyProfile["activity"]) ?? 1.2
+        return HealthUI.number(bmr * activity) + " kcal"
+    }
+    private func energyDayDescription(_ day: HealthEnergyDay) -> String {
+        let intake = day.hasIntake ? HealthUI.number(day.intake) + " kcal" : "未记录"
+        let burn = day.hasBurn ? HealthUI.number(day.burn) + " kcal" : "无数据"
+        return "摄入 \(intake)；消耗 \(burn)"
     }
 
     private var energyChart: some View {
@@ -200,10 +246,15 @@ struct NativeEnergyDetail: View {
             }
         }
         .chartForegroundStyleScale(domain: ["摄入", "消耗"], range: [Color.blue, Color.orange])
-        .chartXScale(domain: (days.first?.date ?? model.selectedDate.addingTimeInterval(-86_400))...(days.last?.date ?? model.selectedDate))
+        .chartXScale(domain: energyChartDomain)
         .frame(height: 200)
         .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.twoDigits).day(.twoDigits)) } }
         .accessibilityLabel("近十四天摄入与消耗，蓝色为摄入，橙色为消耗。每日明细可在下方展开。")
+    }
+    private var energyChartDomain: ClosedRange<Date> {
+        let from = days.first?.date ?? model.selectedDate.addingTimeInterval(-86_400)
+        let through = days.last?.date ?? model.selectedDate
+        return from...through
     }
 
     @ViewBuilder private var energyStatistics: some View {
@@ -280,68 +331,119 @@ struct NativeWeightDetail: View {
         Form {
             Section { NativeDateHeader(model: model) }
             if let feedback { Section { HealthFeedback(message: feedback, failed: failed) } }
-            Section("体重趋势") {
-                rangePicker
-                periodNavigation
-                HealthValueRow(mode == "all" ? "累计体重变化" : "区间体重变化",
-                    HealthUI.value(window["delta"]).map { ($0 > 0 ? "+" : "") + HealthUI.number($0) + " kg" } ?? "—")
-                HealthValueRow("首次", HealthUI.value(window["first"]).map { HealthUI.number($0) + " kg" } ?? "—")
-                HealthValueRow("末次", HealthUI.value(window["last"]).map { HealthUI.number($0) + " kg" } ?? "—")
-                HealthValueRow("记录天数", String(records.count))
-                if records.isEmpty {
-                    Text("这个区间尚无称重。").foregroundStyle(.secondary)
-                } else {
-                    weightChart
-                    if let selected {
-                        HealthValueRow(selected.key, HealthUI.number(selected.kg) + " kg")
-                        Text(HealthUI.source(meta) + (meta?["measuredAt"] == nil ? "" : " · " + HealthUI.timestamp(meta?["measuredAt"])))
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-                    Slider(value: pointSelection, in: 0...Double(max(1, records.count - 1)), step: 1)
-                        .disabled(records.count < 2)
-                        .accessibilityLabel("逐条查看称重记录")
-                        .accessibilityValue(selected.map { $0.key + "，" + HealthUI.number($0.kg) + " kg" } ?? "无记录")
-                    Text("仅连接真实日期的称重，缺测不补值。点选图表或移动滑块查看每次记录。")
-                        .font(.footnote).foregroundStyle(.secondary)
-                    DisclosureGroup("查看区间全部记录（\(records.count) 天）") {
-                        ForEach(records.reversed()) { record in
-                            Button { selectedKey = record.key } label: {
-                                HealthValueRow(record.key, HealthUI.number(record.kg) + " kg")
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-            Section("记录 " + model.dayKey + " 的体重") {
-                HealthNumberField(title: "体重（kg）", text: $weight, identifier: "weight-input")
-                Button("保存体重", action: save).disabled(model.isReadOnly).accessibilityIdentifier("weight-save")
-                if currentSaved != nil {
-                    Button("删除当日称重", role: .destructive) { confirmClear = true }.disabled(model.isReadOnly)
-                }
-            }
-            Section("近 28 天消耗推算 · 截至 " + model.dayKey) {
-                if HealthUI.flag(reverse, "ok") {
-                    HealthValueRow("趋势推算（参考）", HealthUI.number(reverse["value"]) + " kcal/天")
-                    Text((reverse["from"] as? String ?? "") + " 至 " + (reverse["to"] as? String ?? "") +
-                        "，区间 " + HealthUI.number(reverse["days"]) + " 天均有饮食记录。")
-                        .font(.footnote)
-                } else {
-                    Text(reverseExplanation).foregroundStyle(.secondary)
-                }
-                Text("按近 28 天真实体重趋势与已记录摄入推算，漏记与体重水分会影响结果，不视为实测消耗，不自动调整摄入目标。")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
+            trendSection
+            entrySection
+            reverseSection
         }
         .navigationTitle("体重").navigationBarTitleDisplayMode(.inline)
         .task(id: model.dayKey) { anchor = model.dayKey; selectedKey = ""; weight = HealthUI.input(currentSaved); refresh() }
         .onReceive(model.$snapshot.dropFirst()) { _ in refresh() }
         .onChange(of: mode) { _, _ in anchor = model.dayKey; selectedKey = ""; refresh() }
-        .onChange(of: chartDate) { _, date in
-            if let date, let nearest = records.min(by: { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }) { selectedKey = nearest.key }
-        }
+        .onChange(of: chartDate) { _, date in selectNearest(to: date) }
         .confirmationDialog("删除 " + model.dayKey + " 的称重？", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("删除当日称重", role: .destructive) { clear() }
         } message: { Text("仅删除当天称重与其来源，其他日期保留。") }
+    }
+
+    private var trendSection: some View {
+        Section("体重趋势") {
+            rangePicker
+            periodNavigation
+            trendSummary
+            if records.isEmpty {
+                Text("这个区间尚无称重。").foregroundStyle(.secondary)
+            } else {
+                trendRecords
+            }
+        }
+    }
+    @ViewBuilder private var trendSummary: some View {
+        HealthValueRow(mode == "all" ? "累计体重变化" : "区间体重变化", deltaText)
+        HealthValueRow("首次", weightText(window["first"]))
+        HealthValueRow("末次", weightText(window["last"]))
+        HealthValueRow("记录天数", String(records.count))
+    }
+    @ViewBuilder private var trendRecords: some View {
+        weightChart
+        selectedRecord
+        recordSlider
+        Text("仅连接真实日期的称重，缺测不补值。点选图表或移动滑块查看每次记录。")
+            .font(.footnote).foregroundStyle(.secondary)
+        allRecords
+    }
+    @ViewBuilder private var selectedRecord: some View {
+        if let selected {
+            HealthValueRow(selected.key, HealthUI.number(selected.kg) + " kg")
+            Text(selectedSourceText).font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+    private var recordSlider: some View {
+        Slider(value: pointSelection, in: sliderRange, step: 1)
+            .disabled(records.count < 2)
+            .accessibilityLabel("逐条查看称重记录")
+            .accessibilityValue(selectedAccessibilityText)
+    }
+    private var allRecords: some View {
+        DisclosureGroup("查看区间全部记录（\(records.count) 天）") {
+            ForEach(records.reversed()) { record in
+                Button { selectedKey = record.key } label: {
+                    HealthValueRow(record.key, HealthUI.number(record.kg) + " kg")
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+    private var entrySection: some View {
+        Section("记录 " + model.dayKey + " 的体重") {
+            HealthNumberField(title: "体重（kg）", text: $weight, identifier: "weight-input")
+            Button("保存体重", action: save).disabled(model.isReadOnly).accessibilityIdentifier("weight-save")
+            if currentSaved != nil {
+                Button("删除当日称重", role: .destructive) { confirmClear = true }.disabled(model.isReadOnly)
+            }
+        }
+    }
+    private var reverseSection: some View {
+        Section("近 28 天消耗推算 · 截至 " + model.dayKey) {
+            if HealthUI.flag(reverse, "ok") {
+                HealthValueRow("趋势推算（参考）", HealthUI.number(reverse["value"]) + " kcal/天")
+                Text(reversePeriodText).font(.footnote)
+            } else {
+                Text(reverseExplanation).foregroundStyle(.secondary)
+            }
+            Text("按近 28 天真实体重趋势与已记录摄入推算，漏记与体重水分会影响结果，不视为实测消耗，不自动调整摄入目标。")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+    private var deltaText: String {
+        guard let value = HealthUI.value(window["delta"]) else { return "—" }
+        let sign = value > 0 ? "+" : ""
+        return sign + HealthUI.number(value) + " kg"
+    }
+    private func weightText(_ raw: Any?) -> String {
+        guard let value = HealthUI.value(raw) else { return "—" }
+        return HealthUI.number(value) + " kg"
+    }
+    private var selectedSourceText: String {
+        let source = HealthUI.source(meta)
+        guard let measuredAt = meta?["measuredAt"] else { return source }
+        return source + " · " + HealthUI.timestamp(measuredAt)
+    }
+    private var selectedAccessibilityText: String {
+        guard let selected else { return "无记录" }
+        return selected.key + "，" + HealthUI.number(selected.kg) + " kg"
+    }
+    private var sliderRange: ClosedRange<Double> { 0...Double(max(1, records.count - 1)) }
+    private var reversePeriodText: String {
+        let from = reverse["from"] as? String ?? ""
+        let through = reverse["to"] as? String ?? ""
+        let days = HealthUI.number(reverse["days"])
+        return "\(from) 至 \(through)，区间 \(days) 天均有饮食记录。"
+    }
+    private func selectNearest(to date: Date?) {
+        guard let date else { return }
+        let nearest = records.min { left, right in
+            abs(left.date.timeIntervalSince(date)) < abs(right.date.timeIntervalSince(date))
+        }
+        if let nearest { selectedKey = nearest.key }
     }
 
     @ViewBuilder private var rangePicker: some View {
