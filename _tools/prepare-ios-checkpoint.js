@@ -2,14 +2,21 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
 const root=path.resolve(__dirname,'..');
 const files=[
-  '.gitattributes','.gitignore','AGENTS.md','index.html','app.css','navigation.js','sw.js','icons/icon-512-v3.png',
+  '.gitattributes','.gitignore','AGENTS.md','index.html','app.css','navigation.js','sw.js','manifest.webmanifest','icons/icon-512-v3.png',
   '_tools/build-ios.js','_tools/test-ios.js','_tools/test-ios-packaging.js','_tools/prepare-ios-checkpoint.js','_tools/test-ios-checkpoint.js',
+  '_tools/build-native-domain.js','_tools/test-native-domain.js','_tools/test-native-project.js',
   'native-ios/README.md','native-ios/FIRST-MAC-BUILD.md','native-ios/project.yml',
   'native-ios/scripts/build-unsigned.sh','native-ios/scripts/preflight.sh','native-ios/ci/ios-unsigned.yml',
   'native-ios/scripts/simulator-tests.sh','native-ios/scripts/prepare-project.sh',
   'native-ios/App/AppDelegate.swift','native-ios/App/SceneDelegate.swift','native-ios/App/WebViewController.swift',
   'native-ios/App/NativeBridge.swift','native-ios/App/SnapshotStore.swift','native-ios/App/HealthKitService.swift',
   'native-ios/App/NativeTabBar.swift','native-ios/App/ExternalAppLauncher.swift',
+  'native-ios/App/NativeAppModel.swift','native-ios/App/NativeDomain.swift','native-ios/App/NativeRootView.swift',
+  'native-ios/App/NativeFoodViews.swift','native-ios/App/NativeSettingsView.swift','native-ios/App/NativeHealthViews.swift','native-ios/App/NativeHealthSync.swift',
+  'native-ios/App/NativeHealthAutoSync.swift',
+  'native-ios/domain/adapter.js','native-ios/SWIFTUI-MIGRATION.md',
+  'native-ios/Tests/NativeDomainTests.swift','native-ios/Tests/NativeHealthSyncTests.swift','native-ios/Tests/NativeHealthViewTests.swift',
+  'native-ios/UITests/NativeAppUITests.swift',
   'native-ios/Tests/NativeBridgeIntegrationTests.swift','native-ios/Tests/ExternalAppLauncherTests.swift',
   'native-ios/App/Info.plist','native-ios/App/KcalAnalysis.entitlements','native-ios/App/PrivacyInfo.xcprivacy',
   'native-ios/App/Assets.xcassets/Contents.json','native-ios/App/Assets.xcassets/AppIcon.appiconset/Contents.json',
@@ -39,6 +46,7 @@ function verify(base){
   if(fs.existsSync(path.join(base,'.github','workflows')))throw new Error('Transfer checkpoint must not activate workflows');
   const generatedDirectories=new Set(['native-ios/Web','native-ios/build','native-ios/KcalAnalysis.xcodeproj','native-ios/KcalAnalysis.xcworkspace']);
   const generatedIcon='native-ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png';
+  const generatedFiles=new Set([generatedIcon,'native-ios/domain/domain.js','native-ios/domain/manifest.json']);
   const actual=[];
   function inventory(relative=''){
     for(const entry of fs.readdirSync(path.join(base,relative),{withFileTypes:true})){
@@ -49,7 +57,7 @@ function verify(base){
         continue;
       }
       if(entry.isDirectory())inventory(file);
-      else if(file!==generatedIcon)actual.push(file);
+      else if(!generatedFiles.has(file))actual.push(file);
     }
   }
   inventory();

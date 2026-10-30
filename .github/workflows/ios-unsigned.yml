@@ -60,6 +60,7 @@ jobs:
             native-ios/build/simulator-runs/*/test.log
             native-ios/build/simulator-runs/*/Tests.xcresult/
             native-ios/build/simulator-runs/*/test-summary.json
+            native-ios/build/simulator-runs/*/test-tree.json
             native-ios/build/simulator-runs/*/destination.json
             native-ios/build/simulator-runs/*/devices.json
             native-ios/build/simulator-runs/*/runtimes.json

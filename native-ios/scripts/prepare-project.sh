@@ -9,7 +9,8 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 cd "$repo_root"
-node _tools/build-ios.js
+node _tools/build-native-domain.js
+node _tools/test-native-domain.js
 icon_source="$repo_root/icons/icon-512-v3.png"
 icon_target="$native_root/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
 

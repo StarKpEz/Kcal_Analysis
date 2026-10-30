@@ -1,17 +1,19 @@
 # iOS App 构建、安装与迁移
 
-本目录将现有饮食与健康页面放入本机 iOS App，并增加原生 HealthKit 读取、文件导入/导出及本机备份。PWA 正在日常使用，App 另行开发；两端数据、构建和发布分开。网页源码是共享界面的来源，平台适配放在本目录；共用源码变更仍须分别评估两端影响。它是 Swift 原生容器内运行本地网页的 App，不是把所有页面重写为 SwiftUI，也不依赖 Expo Go。
+当前本地源码为 **SwiftUI 全部页面的 iOS 1.1.0（3）**：系统标签栏、饮食与健康页面、授权同步、设置和文件导入导出均由 SwiftUI/Swift 实现。Swift 通过系统 JavaScriptCore 复用既有纯业务算法，保留完整备份/导入口径；不在 WebView 中展示页面。PWA 正在日常使用，两端数据、构建和发布分开。详见 [本轮迁移](SWIFTUI-MIGRATION.md)。
 
-2026-10-29 已在独立分支 `ios/first-native-build` 完成首次 macOS/Xcode 编译与 IPA 打包，成功源码为 `bd145cd`，构建记录为 [Actions run 40852613051](https://github.com/StarKpEz/Kcal_Analysis/actions/runs/40852613051)。产物及日志已下载到本地 `docs/ios-builds/2026-10-29/`（忽略，不提交），Sideloadly 已通过命令行静默安装。IPA 为 ad-hoc 能力声明包，尚需用户本人签名；iPhone 安装、HealthKit 授权/读取及七天续签都未验收。没有开通付费服务，也没有迁移真实数据。
+**1.1 本地源码尚待本轮授权后的 Xcode 编译和模拟器验收；下述 1.0.x 构建记录是历史证据。** 用户已确认 DeepSeek 唤醒成功，但健康仍未出现系统权限页；不能宣称真机 HealthKit 问题已验证解决。原 Web 容器源码保留作历史参照，并已从 1.1 编译源排除。
+
+2026-10-29 首包 `1.0.0/1` 已由用户安装；修正版 `1.0.1/2` 已在独立分支 `ios/first-native-build / e5061ac` 通过 Xcode 26.3 编译、24 项原生测试并打包，[成功记录](https://github.com/StarKpEz/Kcal_Analysis/actions/runs/40883670412)。新版 IPA、校验、测试结果及三张模拟器截图位于本地忽略目录 `docs/ios-builds/2026-10-29/build-2/`。Sideloadly 已安装，新版仍由用户以同一 Apple ID/最终 Bundle ID 覆盖签名安装；HealthKit 真机读取及续签保留待验收。没有付费服务、Computer Use 或真实数据迁移。
 
 ## 目录与本地检查
 
 | 文件 | 职责 |
 | --- | --- |
 | `project.yml` | XcodeGen 工程配置，iPhone / iOS 17 及以上；Swift，无第三方原生依赖 |
-| `App/` | 原生容器、HealthKit、文件与持久化桥接、权限说明 |
-| `Web/` | `_tools/build-ios.js` 生成的本地页面及资源，不手改、不提交 |
-| `bridge/` | 生成时使用的 App 平台适配和同步入口源码 |
+| `App/` | SwiftUI 页面、HealthKit、原子快照、文件操作、权限说明；旧 Web 容器源排除编译 |
+| `domain/` | 无 DOM 的离线业务算法；domain.js 与 manifest.json 由工具生成，不提交 |
+| `Web/`、`bridge/` | 保留的 1.0.x 网页容器及其生成资源，不参与 1.1 打包 |
 | `scripts/build-unsigned.sh` | macOS 上生成工程、编译设备版本、打包安装材料 |
 | `scripts/preflight.sh`、[首次 Mac 编译检查点](FIRST-MAC-BUILD.md) | 工具/SDK 预检、源码校验、编译证据与首轮虚构数据验收 |
 | `fixtures/synthetic-backup-v7.json` | 固定虚构完整备份；开发/首轮安装使用，不嵌入 App |
@@ -27,9 +29,20 @@ node _tools/test-ios-checkpoint.js
 node _tools/prepare-ios-checkpoint.js
 ```
 
-构建不读取手机数据，也不把 PWA 的 localStorage 或备份嵌入 App。App 专属界面变更修改桥接源文件；共用界面变更才评估正式源码，并分别验证两端，再重新生成 `Web/`。当前修复源码为 `1.0.1` / build `2`，首次已安装包为 `1.0.0` / build `1`，独立于 PWA 资源版本。
+上组 Web 检查针对保留的 1.0.x 容器。1.1 活动源码执行：
 
-## 首次安装后的修复（2026-10-29，待原生编译）
+```powershell
+node _tools/build-native-domain.js
+node _tools/test-native-domain.js
+node _tools/test-native-project.js
+node _tools/test-ios-checkpoint.js
+```
+
+`scripts/prepare-project.sh` 生成 `domain.js` 并运行算法回归；新 scheme 运行 NativeDomain、健康流程/原生页面、DeepSeek 单元测试和 SwiftUI XCUITest。通过模拟器门槛后，设备包校验只允许离线算法 JS，不包含 Web UI 或测试记录。以下 1.0.x 的资源数量与版本号不适用于 1.1。
+
+构建不读取手机数据，也不把 PWA 的 localStorage 或备份嵌入 App。App 专属界面修改 `App/` 中的 SwiftUI 源文件；纯业务适配修改 `domain/adapter.js`，再生成算法资源。共用算法变更才修改正式网页源码，并分别验证两端。当前源码为 `1.1.0` / build `3`，独立于 PWA 资源版本。
+
+## 首次安装后的修复（2026-10-29，已编译，待真机验收）
 
 用户已安装首包，反馈健康同步按钮完全无变化。当前本地修复包含：
 
@@ -39,7 +52,7 @@ node _tools/prepare-ios-checkpoint.js
 
 2026-10-29 重新读取 Apple 当前文档：[glassEffect](https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:))（iOS 26+）、[健康授权](https://developer.apple.com/documentation/healthkit/authorizing-access-to-health-data)、[Universal Links only](https://developer.apple.com/documentation/uikit/uiapplication/openexternalurloptionskey/universallinksonly)。DeepSeek 关联证据见其 [AASA](https://applink.deepseek.com/.well-known/apple-app-site-association)。授权流程完成不表示获准读取；没有样本也不能推断没有历史记录。
 
-本地 Chrome 整页回归已覆盖空库、授权等待、存储保护反馈、消息失败/超时、取消、整批保存、备份、路由/弹窗及窄屏/深浅色/文字放大。新增 hosted XCTest 将运行真实本地页面、消息桥、原生导航与同步存储，健康服务和外链使用虚构替身；尚未运行，不代表原生编译或真机验收通过。
+本地 Chrome 整页回归覆盖空库、授权等待、存储保护反馈、消息失败/超时、取消、整批保存、备份、路由/弹窗及窄屏/深浅色/文字放大。Xcode 26.3 / SDK 26.2 在新建 iPhone 16 / iOS 26.2 模拟器通过 24 项 XCTest（14 项外链、10 项真实 WKWebView 集成），健康和外链使用虚构替身。三张原生截图已检查窄屏、深色及最大辅助字体下布局。设备 Release 编译、16 项 Web 清单/字节、版本、arm64、ZIP CRC、产物摘要及 HealthKit 声明均通过；不等于免费重签后的真实健康读取已通过。
 
 新版要求完整 Xcode 26+。CI 固定标准 `macos-15` 的 Xcode 26.3；设备打包前必须通过新建空白 iPhone 模拟器 XCTest，保留日志、截图附件和 `.xcresult`。后续上传/触发仍需明确授权，手机安装与 HealthKit 核对由用户完成。
 
@@ -78,7 +91,7 @@ bash native-ios/scripts/preflight.sh
 bash native-ios/scripts/build-unsigned.sh
 ```
 
-脚本检查权限 plist、生成 `KcalAnalysis.xcodeproj`、用 `iphoneos` SDK 编译 Release，并逐文件核对 Web 打包结果、App 版本和权限声明。每次输出独立位于 `native-ios/build/runs/<UTC时间>-<进程号>/`，包含 `build.log`、编译阶段生成的 `Build.xcresult` 与成功后的 `artifacts/`，失败不会复用旧 IPA。编译检查仍不能代替签名后真机运行；无 Apple 描述文件时，`codesign --verify` 只验证 ad-hoc 文件结构。
+脚本检查权限 plist、生成 `KcalAnalysis.xcodeproj`，通过原生模拟器测试后用 `iphoneos` SDK 编译 Release，并核对纯算法资源、App 版本和权限声明，拒绝 Web 页面与测试数据进入包。每次输出独立位于 `native-ios/build/runs/<UTC时间>-<进程号>/`，包含 `build.log`、编译阶段生成的 `Build.xcresult` 与成功后的 `artifacts/`，失败不会复用旧 IPA。编译检查仍不能代替签名后真机运行；无 Apple 描述文件时，`codesign --verify` 只验证 ad-hoc 文件结构。
 
 ## 首次从 PWA 迁移
 

@@ -1,5 +1,5 @@
 // Check transfer completeness and fail-closed verification using fictional data.
-const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),cp=require('node:child_process');
 const {files,prepare,verify}=require('./prepare-ios-checkpoint');
 const directory=prepare(),manifest=verify(directory);
 function inventory(base,relative=''){
@@ -29,4 +29,10 @@ try{
   assert.throws(()=>verify(directory),/allowlist mismatch/);
 }finally{fs.writeFileSync(manifestPath,rawManifest);}
 verify(directory);
-console.log('PASS complete standalone transfer, extra-source rejection, source tamper detection, manifest path rejection and inactive-CI guard');
+// Execute the actual preparation checks from the copy, not from the working
+// repository: a matching allowlist alone cannot reveal a missing dependency.
+for(const script of ['_tools/test-native-domain.js','_tools/test-native-project.js']) {
+  cp.execFileSync(process.execPath,[script],{cwd:directory,encoding:'utf8'});
+}
+verify(directory);
+console.log('PASS standalone native checks, complete transfer, extra-source rejection, source tamper detection, manifest path rejection and inactive-CI guard');

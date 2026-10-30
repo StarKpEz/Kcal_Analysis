@@ -9,8 +9,8 @@ settings:
   base:
     # Xcode's language mode is 5.0 (not the compiler's 5.9/6.x version).
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.0.1"
-    CURRENT_PROJECT_VERSION: "2"
+    MARKETING_VERSION: "1.1.0"
+    CURRENT_PROJECT_VERSION: "3"
     CODE_SIGN_STYLE: Automatic
     # Deliberately no development team, Apple ID or signing secret in source.
     DEVELOPMENT_TEAM: ""
@@ -24,9 +24,11 @@ targets:
         excludes:
           - Info.plist
           - KcalAnalysis.entitlements
-      # A folder reference preserves relative URLs and the Web directory itself.
-      - path: Web
-        type: folder
+          # Retained source for the installed 1.0.x container, never linked in 1.1.
+          - WebViewController.swift
+          - NativeBridge.swift
+          - NativeTabBar.swift
+      - path: domain/domain.js
         buildPhase: resources
     settings:
       base:
@@ -45,7 +47,9 @@ targets:
           ENABLE_TESTABILITY: YES
     dependencies:
       - sdk: UIKit.framework
-      - sdk: WebKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: Charts.framework
+      - sdk: JavaScriptCore.framework
       - sdk: HealthKit.framework
     attributes:
       SystemCapabilities:
@@ -57,6 +61,8 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: Tests
+        excludes:
+          - NativeBridgeIntegrationTests.swift
     dependencies:
       - target: KcalAnalysis
     settings:
@@ -66,18 +72,34 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/KcalAnalysis.app/KcalAnalysis"
         BUNDLE_LOADER: "$(TEST_HOST)"
         TARGETED_DEVICE_FAMILY: "1"
+  KcalAnalysisUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: KcalAnalysis
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.starkpez.kcalanalysis.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
 schemes:
   KcalAnalysis:
     build:
       targets:
         KcalAnalysis: all
         KcalAnalysisTests: [test]
+        KcalAnalysisUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - name: KcalAnalysisTests
+          parallelizable: false
+        - name: KcalAnalysisUITests
           parallelizable: false
     archive:
       config: Release

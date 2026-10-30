@@ -88,13 +88,19 @@ xcodebuild \
   DEVELOPMENT_TEAM= \
   test
 xcrun xcresulttool get test-results summary --path "$run_root/Tests.xcresult" > "$run_root/test-summary.json"
-node - "$run_root/test-summary.json" <<'NODE'
+xcrun xcresulttool get test-results tests --path "$run_root/Tests.xcresult" > "$run_root/test-tree.json"
+node - "$run_root/test-summary.json" "$run_root/test-tree.json" <<'NODE'
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const summary=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
 assert(Number.isInteger(summary.passedTests)&&summary.passedTests>0,'Simulator test gate requires a non-zero passedTests count; inspect the retained raw summary if its schema changed.');
 assert.equal(summary.failedTests,0,'Simulator test gate rejects failed XCTest results.');
+if(summary.skippedTests!=null)assert.equal(summary.skippedTests,0,'Native acceptance tests must not be silently skipped.');
 if(summary.result!=null)assert.equal(summary.result,'Passed','Simulator test session must be Passed.');
-console.log('PASS native simulator XCTest: '+summary.passedTests+' tests passed.');
+const tree=JSON.stringify(JSON.parse(fs.readFileSync(process.argv[3],'utf8')));
+for(const suite of ['NativeDomainTests','NativeHealthSyncTests','NativeHealthViewTests','ExternalAppLauncherTests','NativeAppUITests']){
+  assert(tree.includes(suite),'Missing native acceptance suite in actual xcresult: '+suite);
+}
+console.log('PASS native simulator XCTest/XCUITest: '+summary.passedTests+' tests passed; all five required suites present.');
 NODE
 echo "Simulator XCTest passed. Device installation and HealthKit grants still require iPhone acceptance."
 # Export the existing XCTest screenshots for review on Windows as well as Xcode.

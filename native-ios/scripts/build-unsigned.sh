@@ -11,7 +11,7 @@ run_root="$build_root/runs/$run_id"
 artifact_root="$run_root/artifacts"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "This build needs macOS + Xcode. Windows can generate the Web assets with node _tools/build-ios.js." >&2
+  echo "This build needs macOS + Xcode. Windows can generate the native domain with node _tools/build-native-domain.js." >&2
   exit 1
 fi
 cd "$repo_root"
@@ -20,7 +20,7 @@ mkdir -p "$artifact_root"
 exec > >(tee "$run_root/build.log") 2>&1
 trap 'build_status=$?; echo "Build exit: $build_status; evidence: $run_root"' EXIT
 bash "$native_root/scripts/preflight.sh"
-# The simulator script prepares Web/icon/project inputs, then runs hosted
+# The simulator script prepares domain/icon/project inputs, then runs native
 # XCTest. Failure stops this run before a device build or IPA can be emitted.
 bash "$native_root/scripts/simulator-tests.sh"
 package_root="$(mktemp -d "$run_root/package.XXXXXX")"
@@ -39,29 +39,32 @@ xcodebuild \
   build
 
 app_path="$run_root/DerivedData/Build/Products/Release-iphoneos/KcalAnalysis.app"
-if [[ ! -f "$app_path/Web/index.html" || ! -f "$app_path/KcalAnalysis" ]]; then
-  echo "Build did not produce the native app with its bundled Web/index.html." >&2
+if [[ ! -f "$app_path/domain.js" || ! -f "$app_path/KcalAnalysis" || -e "$app_path/Web" ]]; then
+  echo "Build must produce a SwiftUI app with domain.js and no bundled Web interface." >&2
   exit 1
 fi
 plutil -lint "$app_path/Info.plist" "$app_path/PrivacyInfo.xcprivacy"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_path/Info.plist")" == "com.starkpez.kcalanalysis" ]]
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Info.plist")" == "1.0.1" ]]
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Info.plist")" == "2" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Info.plist")" == "1.1.0" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Info.plist")" == "3" ]]
 /usr/libexec/PlistBuddy -c 'Print :NSHealthShareUsageDescription' "$app_path/Info.plist" >/dev/null
-# Confirm Xcode copied every generated Web file byte-for-byte, with no extras.
-node - "$native_root/Web" "$app_path/Web" <<'NODE'
+# Confirm Xcode copied exactly the reviewed algorithm resource. No webpage,
+# test fixture, source adapter or real snapshot belongs in the release app.
+node - "$native_root/domain/domain.js" "$app_path" <<'NODE'
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const [source,bundled]=process.argv.slice(2);
+const [source,app]=process.argv.slice(2);
 function list(root,relative=''){
   return fs.readdirSync(path.join(root,relative),{withFileTypes:true}).flatMap(entry=>{
     const file=path.join(relative,entry.name);
-    assert(!entry.isSymbolicLink(),'Unexpected linked Web resource');
+    assert(!entry.isSymbolicLink(),'Unexpected linked app resource');
     return entry.isDirectory()?list(root,file):[file];
   }).sort();
 }
-const expected=list(source);assert.deepEqual(list(bundled),expected);
-for(const file of expected)assert(fs.readFileSync(path.join(source,file)).equals(fs.readFileSync(path.join(bundled,file))),'Bundled Web mismatch: '+file);
-console.log('PASS bundled Web inventory/checksums: '+expected.length+' files');
+const inventory=list(app);
+assert(fs.readFileSync(source).equals(fs.readFileSync(path.join(app,'domain.js'))),'Bundled domain mismatch');
+assert.deepEqual(inventory.filter(file=>file.endsWith('.js')),['domain.js']);
+assert(!inventory.some(file=>/\.(?:html|css)$|(?:snapshot|synthetic-backup-v7|manifest)\.json$|(?:^|\/)Tests\//.test(file)),'Unexpected web UI, fixture or snapshot in release app');
+console.log('PASS SwiftUI resource inventory and domain checksum; no Web interface or user snapshot');
 NODE
 
 # This is not an Apple development signature or a provisioning profile. It
@@ -89,7 +92,7 @@ fi
 {
   echo "Built UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "Run: $run_id"
-  echo "App: 1.0.1 / 2"
+  echo "App: 1.1.0 / 3 (SwiftUI)"
   echo "Simulator XCTest gate: passed before the device build (evidence path in build.log)"
   echo "Apple signing: none (ad-hoc metadata only)"
   node --version

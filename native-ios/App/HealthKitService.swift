@@ -7,12 +7,23 @@ protocol NativeHealthProviding {
     func sync(params: [String: Any], completion: @escaping (Result<[String: Any], Error>) -> Void)
 }
 
-/// Read-only adapter. Returned documents pass through the web app's existing
+/// Optional diagnostics keep the read-only provider injectable in native tests.
+/// Request status predicts presentation only; it is never a read-permission check.
+protocol NativeHealthDiagnosticProviding {
+    func diagnostics(completion: @escaping (Result<[String: Any], Error>) -> Void)
+}
+
+/// Read-only adapter. Returned documents pass through the shared import engine's
 /// parseHealthJSON -> healthImportPlan -> one commitData transaction.
 /// Never treat an empty query as proof of read permission or as a deletion.
-final class HealthKitService: NativeHealthProviding {
+final class HealthKitService: NativeHealthProviding, NativeHealthDiagnosticProviding {
+    // A screen can be dismissed while an OS request remains pending. Reuse the
+    // adapter so reopening the sheet cannot create a second system request.
+    static let shared = HealthKitService()
     typealias Completion = (Result<[String: Any], Error>) -> Void
     private let store = HKHealthStore()
+    // Accessed only on the main queue, including completion callbacks.
+    private var authorizationInFlight = false
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -26,23 +37,77 @@ final class HealthKitService: NativeHealthProviding {
     }
 
     func authorize(completion: @escaping Completion) {
+        DispatchQueue.main.async { self.authorizeOnMain(completion: completion) }
+    }
+
+    private func authorizeOnMain(completion: @escaping Completion) {
         guard HKHealthStore.isHealthDataAvailable() else {
             completion(.failure(Self.failure("当前设备无法使用 Apple 健康，请在 iPhone 上运行。")))
             return
         }
+        guard Self.hasUsageDescription else {
+            completion(.failure(Self.failure("安装包缺少健康读取用途说明，暂时无法请求系统授权。", code: 2)))
+            return
+        }
+        guard !authorizationInFlight else {
+            completion(.failure(Self.failure("上一项健康授权请求尚未返回，请先完成系统授权。", code: 3)))
+            return
+        }
+        authorizationInFlight = true
         // Empty write set is intentional: there are no HealthKit save/delete calls.
         store.requestAuthorization(toShare: [], read: readTypes) { finished, error in
-            if let error = error { completion(.failure(error)); return }
-            guard finished else {
-                completion(.failure(Self.failure("健康读取授权请求未完成，请稍后重试。")))
+            // Apple documents a background completion queue. UI observers and the
+            // next request always resume on the main queue, with the real NSError.
+            DispatchQueue.main.async {
+                self.authorizationInFlight = false
+                if let error = error { completion(.failure(error)); return }
+                guard finished else {
+                    completion(.failure(Self.failure("健康读取授权请求未完成，请稍后重试。")))
+                    return
+                }
+                completion(.success([
+                    "requestCompleted": true,
+                    "readAuthorization": "notObservable",
+                    "notes": ["授权流程已完成；iOS 不向 App 透露各项读取是否被拒绝。无数据时请检查健康授权与设备同步。"]
+                ]))
+            }
+        }
+    }
+
+    func diagnostics(completion: @escaping Completion) {
+        DispatchQueue.main.async {
+            guard self.isAvailable else {
+                completion(.failure(Self.failure("当前设备无法使用 Apple 健康。")))
                 return
             }
-            completion(.success([
-                "requestCompleted": true,
-                "readAuthorization": "notObservable",
-                "notes": ["授权流程已完成；iOS 不向 App 透露各项读取是否被拒绝。无数据时请检查健康授权与设备同步。"]
-            ]))
+            guard Self.hasUsageDescription else {
+                completion(.failure(Self.failure("安装包缺少 NSHealthShareUsageDescription，暂时无法请求系统授权。", code: 2)))
+                return
+            }
+            self.store.getRequestStatusForAuthorization(toShare: [], read: self.readTypes) { status, error in
+                DispatchQueue.main.async {
+                    if let error = error { completion(.failure(error)); return }
+                    let requestStatus: String
+                    switch status {
+                    case .shouldRequest: requestStatus = "shouldRequest"
+                    case .unnecessary: requestStatus = "unnecessary"
+                    case .unknown: requestStatus = "unknown"
+                    @unknown default: requestStatus = "unknown"
+                    }
+                    completion(.success([
+                        "healthAvailable": true,
+                        "usageDescriptionPresent": true,
+                        "authorizationRequestStatus": requestStatus,
+                        "readAuthorization": "notObservable"
+                    ]))
+                }
+            }
         }
+    }
+
+    private static var hasUsageDescription: Bool {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "NSHealthShareUsageDescription") as? String else { return false }
+        return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func sync(params: [String: Any], completion: @escaping Completion) {
@@ -74,7 +139,7 @@ final class HealthKitService: NativeHealthProviding {
                 state.update {
                     switch result {
                     case .success(let days): $0.energy[key] = days
-                    case .failure(let error): $0.notes.append("\(key == "active" ? "活动" : "静息")能量读取失败：\(error.localizedDescription)。本次保留已有能量。")
+                    case .failure(let error): $0.notes.append("\(key == "active" ? "活动" : "静息")能量读取失败：\(Self.errorDetails(error))。本次保留已有能量。")
                     }
                 }
                 group.leave()
@@ -87,7 +152,7 @@ final class HealthKitService: NativeHealthProviding {
             state.update {
                 switch result {
                 case .success(let rows): $0.weights = rows.compactMap { $0 as? HKQuantitySample }
-                case .failure(let error): $0.notes.append("体重读取失败：\(error.localizedDescription)。本次保留已有体重。")
+                case .failure(let error): $0.notes.append("体重读取失败：\(Self.errorDetails(error))。本次保留已有体重。")
                 }
             }
             group.leave()
@@ -99,7 +164,7 @@ final class HealthKitService: NativeHealthProviding {
             state.update {
                 switch result {
                 case .success(let rows): $0.workouts = rows.compactMap { $0 as? HKWorkout }
-                case .failure(let error): $0.notes.append("训练读取失败：\(error.localizedDescription)。本次保留已有训练。")
+                case .failure(let error): $0.notes.append("训练读取失败：\(Self.errorDetails(error))。本次保留已有训练。")
                 }
             }
             group.leave()
@@ -113,7 +178,7 @@ final class HealthKitService: NativeHealthProviding {
             state.update {
                 switch result {
                 case .success(let rows): $0.sleep = rows.compactMap { $0 as? HKCategorySample }
-                case .failure(let error): $0.notes.append("睡眠读取失败：\(error.localizedDescription)。本次保留已有睡眠。")
+                case .failure(let error): $0.notes.append("睡眠读取失败：\(Self.errorDetails(error))。本次保留已有睡眠。")
                 }
             }
             group.leave()
@@ -385,8 +450,13 @@ final class HealthKitService: NativeHealthProviding {
         }
     }
 
-    private static func failure(_ message: String) -> NSError {
-        NSError(domain: "KcalAnalysis.HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+    private static func failure(_ message: String, code: Int = 1) -> NSError {
+        NSError(domain: "KcalAnalysis.HealthKit", code: code, userInfo: [NSLocalizedDescriptionKey: message])
+    }
+
+    private static func errorDetails(_ error: Error) -> String {
+        let value = error as NSError
+        return "\(value.localizedDescription) [\(value.domain) / \(value.code)]"
     }
 
     private struct DateContext {
