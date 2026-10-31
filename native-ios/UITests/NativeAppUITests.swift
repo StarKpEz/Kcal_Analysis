@@ -19,9 +19,8 @@ final class NativeAppUITests: XCTestCase {
         let app = launch()
         XCTAssertEqual(app.webViews.count, 0, "All visible pages must be SwiftUI")
         app.tabBars.buttons["健康"].tap()
-        XCTAssertTrue(app.buttons["health-sync"].waitForExistence(timeout: 5))
-        screenshot(app, "SwiftUI-health-light")
         reveal(app.buttons["health-sync"], in: app)
+        screenshot(app, "SwiftUI-health-light")
         app.buttons["health-sync"].tap()
         let start = app.descendants(matching: .any).matching(identifier: "health-sync-from").firstMatch
         let end = app.descendants(matching: .any).matching(identifier: "health-sync-through").firstMatch
@@ -74,8 +73,23 @@ final class NativeAppUITests: XCTestCase {
         app.tabBars.buttons["健康"].tap()
         let sync = app.buttons["health-sync"]
         reveal(sync, in: app); sync.tap()
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "health-sync-from").firstMatch.waitForExistence(timeout: 5))
+        let start = app.descendants(matching: .any).matching(identifier: "health-sync-from").firstMatch
+        let end = app.descendants(matching: .any).matching(identifier: "health-sync-through").firstMatch
+        reveal(start, in: app)
+        XCTAssertTrue(start.exists)
+        XCTAssertTrue(end.exists)
+        for control in [start, end] {
+            XCTAssertGreaterThan(control.frame.height, 0)
+            XCTAssertGreaterThanOrEqual(control.frame.minX, app.frame.minX)
+            XCTAssertLessThanOrEqual(control.frame.maxX, app.frame.maxX)
+        }
+        XCTAssertLessThanOrEqual(start.frame.maxY, end.frame.minY)
         screenshot(app, "SwiftUI-sync-dark-accessibility")
+        start.tap()
+        let wheel = app.descendants(matching: .any).matching(identifier: "health-sync-date-wheel").firstMatch
+        XCTAssertTrue(wheel.waitForExistence(timeout: 5))
+        screenshot(app, "SwiftUI-date-editor-dark-accessibility")
+        app.buttons["完成"].tap()
         XCTAssertEqual(app.webViews.count, 0)
     }
 

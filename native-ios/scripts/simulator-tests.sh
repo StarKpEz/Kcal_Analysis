@@ -72,6 +72,7 @@ simulator_created=true
 echo "Testing on fresh iPhone simulator: $simulator_id ($runtime_id)"
 xcrun simctl boot "$simulator_id"
 xcrun simctl bootstatus "$simulator_id" -b
+test_exit=0
 xcodebuild \
   -project "$native_root/KcalAnalysis.xcodeproj" \
   -scheme KcalAnalysis \
@@ -86,9 +87,20 @@ xcodebuild \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY= \
   DEVELOPMENT_TEAM= \
-  test
+  test || test_exit=$?
 xcrun xcresulttool get test-results summary --path "$run_root/Tests.xcresult" > "$run_root/test-summary.json"
 xcrun xcresulttool get test-results tests --path "$run_root/Tests.xcresult" > "$run_root/test-tree.json"
+# Keep screenshots even when a UI assertion fails, so the next correction can
+# be based on the actual renderer rather than another installation attempt.
+if xcrun xcresulttool export attachments --path "$run_root/Tests.xcresult" --output-path "$run_root/attachments"; then
+  echo "XCTest attachments exported for local visual review."
+else
+  echo "Attachment export unavailable; originals are retained in Tests.xcresult." >&2
+fi
+if [[ "$test_exit" != 0 ]]; then
+  echo "xcodebuild test failed ($test_exit); diagnostic results retained; device build is blocked." >&2
+  exit "$test_exit"
+fi
 node - "$run_root/test-summary.json" "$run_root/test-tree.json" <<'NODE'
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const summary=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
@@ -103,10 +115,3 @@ for(const suite of ['NativeDomainTests','NativeHealthSyncTests','NativeHealthVie
 console.log('PASS native simulator XCTest/XCUITest: '+summary.passedTests+' tests passed; all five required suites present.');
 NODE
 echo "Simulator XCTest passed. Device installation and HealthKit grants still require iPhone acceptance."
-# Export the existing XCTest screenshots for review on Windows as well as Xcode.
-# A CLI export failure does not invalidate passing tests; the originals remain in xcresult.
-if xcrun xcresulttool export attachments --path "$run_root/Tests.xcresult" --output-path "$run_root/attachments"; then
-  echo "XCTest attachments exported for local visual review."
-else
-  echo "Attachment export unavailable; originals are retained in Tests.xcresult." >&2
-fi

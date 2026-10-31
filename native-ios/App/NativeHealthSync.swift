@@ -405,14 +405,79 @@ struct NativeHealthSyncView: View {
     }
 
     private func dateRow(_ title: String, selection: Binding<Date>, identifier: String) -> some View {
-        // Separate full-width rows with stacked labels avoid horizontal date
-        // control compression at 320 pt and with accessibility text sizes.
+        NativeHealthDateRow(title: title, selection: selection, identifier: identifier)
+    }
+}
+
+@MainActor
+private struct NativeHealthDateRow: View {
+    let title: String
+    @Binding var selection: Date
+    let identifier: String
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var showsEditor = false
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.subheadline).foregroundStyle(.secondary)
-            DatePicker(title, selection: selection, in: ...Date(), displayedComponents: .date)
-                .datePickerStyle(.compact).labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityLabel(title).accessibilityIdentifier(identifier)
+            if typeSize.isAccessibilitySize {
+                // UIKit's compact date chip has an uncompressible intrinsic
+                // width at accessibility sizes. A wrapping native button keeps
+                // the value legible and opens a full-width system date picker.
+                Button { showsEditor = true } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(selection, format: .dateTime.year().month().day())
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right").font(.body)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title)
+                .accessibilityValue(selection.formatted(date: .long, time: .omitted))
+                .accessibilityHint("打开日期选择器")
+                .accessibilityIdentifier(identifier)
+            } else {
+                DatePicker(title, selection: $selection, in: ...Date(), displayedComponents: .date)
+                    .datePickerStyle(.compact).labelsHidden()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel(title).accessibilityIdentifier(identifier)
+            }
         }.padding(.vertical, 6)
+        .sheet(isPresented: $showsEditor) {
+            NativeHealthDateEditor(title: title, selection: $selection, onDone: { showsEditor = false })
+                .presentationDetents([.large])
+        }
+    }
+}
+
+/// Full-width wheels use the native date selection and VoiceOver behavior
+/// without placing a large compact chip inside an inset Form row.
+@MainActor
+struct NativeHealthDateEditor: View {
+    let title: String
+    @Binding var selection: Date
+    let onDone: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                DatePicker(title, selection: $selection, in: ...Date(), displayedComponents: .date)
+                    .datePickerStyle(.wheel).labelsHidden()
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel(title)
+                    .accessibilityIdentifier("health-sync-date-wheel")
+                Spacer(minLength: 0)
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成", action: onDone).accessibilityIdentifier("health-sync-date-done")
+                }
+            }
+        }
     }
 }

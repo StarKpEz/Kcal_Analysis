@@ -524,56 +524,100 @@ final class NativeHealthSyncTests: XCTestCase {
         ] {
             let health = FakeHealth()
             let model = NativeHealthSyncModel(health: health, defaults: nil) { _, _, _ in self.preview() }
-            let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
-            let previous = scene.windows.first { $0.isKeyWindow }
-            let window = UIWindow(windowScene: scene)
-            let parent = UIViewController()
-            let host = UIHostingController(rootView: NavigationStack {
+            let content = NavigationStack {
                 NativeHealthSyncView(model: model, onClose: {})
-            }.environment(\.dynamicTypeSize, typeSize).environment(\.locale, Locale(identifier: "zh_CN")))
-            window.rootViewController = parent
-            window.frame = scene.coordinateSpace.bounds
-            window.makeKeyAndVisible()
-            defer {
-                window.isHidden = true
-                window.rootViewController = nil
-                previous?.makeKeyAndVisible()
             }
-            parent.overrideUserInterfaceStyle = style
-            parent.addChild(host)
-            host.view.translatesAutoresizingMaskIntoConstraints = false
-            parent.view.addSubview(host.view)
-            NSLayoutConstraint.activate([
-                host.view.widthAnchor.constraint(equalToConstant: width),
-                host.view.heightAnchor.constraint(equalToConstant: height),
-                host.view.topAnchor.constraint(equalTo: parent.view.topAnchor),
-                host.view.leadingAnchor.constraint(equalTo: parent.view.leadingAnchor)
-            ])
-            host.didMove(toParent: parent)
-            parent.view.layoutIfNeeded()
-            try await eventually(timeout: 10) { self.descendants(host.view).compactMap { $0 as? UIDatePicker }.count == 2 }
-            host.view.layoutIfNeeded()
-            let controls = descendants(host.view).compactMap { $0 as? UIDatePicker }
-            let frames = controls.map { $0.convert($0.bounds, to: host.view) }.sorted { $0.minY < $1.minY }
-            XCTAssertEqual(frames.count, 2)
-            XCTAssertGreaterThan(frames[0].height, 0)
-            XCTAssertLessThanOrEqual(frames[0].maxY, frames[1].minY, "Native date controls must not overlap at \(name)")
-            for frame in frames {
-                XCTAssertGreaterThanOrEqual(frame.minX, 0)
-                XCTAssertLessThanOrEqual(frame.maxX, width + 1, "Date control must fit the available width")
+            let expectedPickers = typeSize.isAccessibilitySize ? 0 : 2
+            try await render(content, name: "Native-health-date-rows-" + name, width: width,
+                             height: height, style: style, typeSize: typeSize, expectedPickers: expectedPickers) { view in
+                let controls = self.descendants(view).compactMap { $0 as? UIDatePicker }
+                if typeSize.isAccessibilitySize {
+                    // The actual wrapping buttons and sheet presentation are
+                    // checked with XCUI frames in NativeAppUITests. No oversized
+                    // compact picker should remain behind the accessible rows.
+                    XCTAssertTrue(controls.isEmpty)
+                } else {
+                    let frames = controls.map { $0.convert($0.bounds, to: view) }.sorted { $0.minY < $1.minY }
+                    XCTAssertEqual(frames.count, 2)
+                    XCTAssertGreaterThan(frames[0].height, 0)
+                    XCTAssertLessThanOrEqual(frames[0].maxY, frames[1].minY, "Native date controls must not overlap at \(name)")
+                    for frame in frames {
+                        XCTAssertGreaterThanOrEqual(frame.minX, 0)
+                        XCTAssertLessThanOrEqual(frame.maxX, width + 1, "Date control must fit the available width")
+                    }
+                }
             }
-            var rendered = false
-            let image = UIGraphicsImageRenderer(bounds: host.view.bounds).image { _ in
-                rendered = host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
-            }
-            XCTAssertTrue(rendered)
-            let attachment = XCTAttachment(image: image)
-            attachment.name = "Native-health-date-rows-" + name
-            attachment.lifetime = .keepAlways
-            add(attachment)
             XCTAssertEqual(health.authorizationCount, 0)
             XCTAssertTrue(health.syncRequests.isEmpty)
         }
+    }
+
+    @MainActor
+    func testAccessibleDateEditorFits320PointsAndUpdatesSelection() async throws {
+        let calendar = Calendar.current
+        var selection = calendar.startOfDay(for: Date())
+        let editedDate = try XCTUnwrap(calendar.date(byAdding: .day, value: -3, to: selection))
+        let content = NativeHealthDateEditor(title: "开始日期", selection: Binding(
+            get: { selection }, set: { selection = $0 }), onDone: {})
+        try await render(content, name: "Native-health-date-wheel-320-largest-text", width: 320,
+                         height: 812, style: .light, typeSize: .accessibility5, expectedPickers: 1) { view in
+            let picker = try XCTUnwrap(self.descendants(view).compactMap { $0 as? UIDatePicker }.first)
+            XCTAssertEqual(picker.preferredDatePickerStyle, .wheels)
+            let frame = picker.convert(picker.bounds, to: view)
+            XCTAssertGreaterThan(frame.height, 0)
+            XCTAssertGreaterThanOrEqual(frame.minX, 0)
+            XCTAssertLessThanOrEqual(frame.maxX, 321, "The full-width native wheel must fit a 320 pt screen at AX5")
+            picker.setDate(editedDate, animated: false)
+            picker.sendActions(for: .valueChanged)
+            try await self.eventually { calendar.isDate(selection, inSameDayAs: editedDate) }
+        }
+    }
+
+    @MainActor
+    private func render<Content: View>(_ content: Content, name: String, width: CGFloat, height: CGFloat,
+                                      style: UIUserInterfaceStyle, typeSize: DynamicTypeSize,
+                                      expectedPickers: Int, validate: (UIView) async throws -> Void) async throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let previous = scene.windows.first { $0.isKeyWindow }
+        let window = UIWindow(windowScene: scene)
+        let parent = UIViewController()
+        let host = UIHostingController(rootView: content.environment(\.dynamicTypeSize, typeSize)
+            .environment(\.locale, Locale(identifier: "zh_CN")))
+        window.rootViewController = parent
+        window.frame = scene.coordinateSpace.bounds
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+            previous?.makeKeyAndVisible()
+        }
+        parent.overrideUserInterfaceStyle = style
+        parent.addChild(host)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        parent.view.addSubview(host.view)
+        NSLayoutConstraint.activate([
+            host.view.widthAnchor.constraint(equalToConstant: width),
+            host.view.heightAnchor.constraint(equalToConstant: height),
+            host.view.topAnchor.constraint(equalTo: parent.view.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: parent.view.leadingAnchor)
+        ])
+        host.didMove(toParent: parent)
+        parent.view.layoutIfNeeded()
+        // Allow SwiftUI's initial tree to materialize even when no UIDatePicker
+        // is expected on the accessible button-based screen.
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try await eventually(timeout: 10) { self.descendants(host.view).compactMap { $0 as? UIDatePicker }.count == expectedPickers }
+        host.view.layoutIfNeeded()
+        try await validate(host.view)
+        var rendered = false
+        let image = UIGraphicsImageRenderer(bounds: host.view.bounds).image { _ in
+            rendered = host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
+        XCTAssertTrue(rendered)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor private func preview() -> NativeHealthReview {
