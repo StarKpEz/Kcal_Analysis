@@ -456,17 +456,32 @@ struct NativeWeightDetail: View {
     @ViewBuilder private var rangeOptions: some View {
         Text("全部").tag("all"); Text("周").tag("week"); Text("月").tag("month"); Text("年").tag("year")
     }
-    private var periodNavigation: some View {
-        HStack {
-            Button { step("previous") } label: { Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44) }
-                .disabled(!HealthUI.flag(window, "canPrevious")).accessibilityLabel("上一个区间")
-            Spacer(minLength: 4)
-            Text((window["from"] as? String ?? model.dayKey) + " – " + (window["through"] as? String ?? model.dayKey))
-                .font(.footnote).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 4)
-            Button { step("next") } label: { Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44) }
-                .disabled(!HealthUI.flag(window, "canNext")).accessibilityLabel("下一个区间")
-        }.buttonStyle(.borderless)
+    @ViewBuilder private var periodNavigation: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 12) {
+                Text((window["from"] as? String ?? model.dayKey) + "\n至\n" + (window["through"] as? String ?? model.dayKey))
+                    .font(.footnote).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity)
+                HStack { previousPeriodButton; Spacer(); nextPeriodButton }
+            }.buttonStyle(.borderless)
+        } else {
+            HStack {
+                previousPeriodButton
+                Spacer(minLength: 4)
+                Text((window["from"] as? String ?? model.dayKey) + " – " + (window["through"] as? String ?? model.dayKey))
+                    .font(.footnote).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                nextPeriodButton
+            }.buttonStyle(.borderless)
+        }
+    }
+    private var previousPeriodButton: some View {
+        Button { step("previous") } label: { Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44) }
+            .disabled(!HealthUI.flag(window, "canPrevious")).accessibilityLabel("上一个区间")
+    }
+    private var nextPeriodButton: some View {
+        Button { step("next") } label: { Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44) }
+            .disabled(!HealthUI.flag(window, "canNext")).accessibilityLabel("下一个区间")
     }
     private var pointSelection: Binding<Double> {
         Binding(get: { Double(records.firstIndex { $0.key == selected?.key } ?? max(0, records.count - 1)) }, set: {

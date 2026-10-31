@@ -136,7 +136,7 @@ struct NativeDateHeader: View {
             Button { calendarOpen = true } label: {
                 VStack(spacing: 4) {
                     Text(model.selectedDate, format: .dateTime.month(.wide).day()).font(.headline)
-                    Text(model.selectedDate, format: .dateTime.year().weekday(.wide)).font(.caption).foregroundStyle(.secondary)
+                    Text(model.selectedDate, format: .dateTime.year().weekday(.wide)).font(.caption).foregroundStyle(Color.secondary)
                 }.padding(.vertical, 6)
             }
             .accessibilityLabel("记录日期，\(model.dayKey)")

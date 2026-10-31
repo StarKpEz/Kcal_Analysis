@@ -87,11 +87,14 @@ struct NativeNutritionSummary: View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(NativeValues.display(totals["kcal"]) + " kcal").font(.largeTitle.bold()).monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("每日目标 \(NativeValues.display(settings["kcal"])) kcal").font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             ForEach(metrics, id: \.0) { key, name, color in
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(name)  \(NativeValues.display(totals[key], digits: 1)) / \(NativeValues.display(settings[key])) g").font(.subheadline).monospacedDigit()
+                        .fixedSize(horizontal: false, vertical: true)
                     ProgressView(value: min(max(NativeValues.number(totals[key]), 0), max(NativeValues.number(settings[key]), 1)), total: max(NativeValues.number(settings[key]), 1)).tint(color)
                         .accessibilityLabel(name).accessibilityValue("\(NativeValues.display(totals[key])) 克，目标 \(NativeValues.display(settings[key])) 克")
                 }
