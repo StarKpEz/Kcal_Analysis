@@ -73,8 +73,10 @@ final class NativeAppUITests: XCTestCase {
         app.tabBars.buttons["健康"].tap()
         let sync = app.buttons["health-sync"]
         reveal(sync, in: app); sync.tap()
-        let start = app.descendants(matching: .any).matching(identifier: "health-sync-from").firstMatch
-        let end = app.descendants(matching: .any).matching(identifier: "health-sync-through").firstMatch
+        // The accessibility layout must use wrapping buttons, not the compact
+        // DatePicker. This also verifies that the sheet received the AX5 trait.
+        let start = app.buttons["health-sync-from"]
+        let end = app.buttons["health-sync-through"]
         reveal(start, in: app)
         XCTAssertTrue(start.exists)
         XCTAssertTrue(end.exists)
@@ -89,7 +91,7 @@ final class NativeAppUITests: XCTestCase {
         let wheel = app.descendants(matching: .any).matching(identifier: "health-sync-date-wheel").firstMatch
         XCTAssertTrue(wheel.waitForExistence(timeout: 5))
         screenshot(app, "SwiftUI-date-editor-dark-accessibility")
-        app.buttons["完成"].tap()
+        app.buttons["health-sync-date-done"].tap()
         XCTAssertEqual(app.webViews.count, 0)
     }
 
